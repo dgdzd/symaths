@@ -3,4 +3,5 @@ project(symaths)
 
 set(CMAKE_CXX_STANDARD 23)
 
-add_library(symaths STATIC symaths.cpp)
+add_subdirectory(lib)
+add_subdirectory(tests)
