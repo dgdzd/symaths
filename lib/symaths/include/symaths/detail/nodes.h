@@ -25,14 +25,22 @@ namespace sym {
 
 		// Base node
 		class node {
+		public:
+			enum class kind_ {
+				variable, addition, negate, multiplication, division, power, function, constant
+			};
+
+		private:
+			kind_ m_kind;
 			unsigned int m_priority;
 
 		public:
 			node() = delete;
-			explicit node(unsigned int priority) : m_priority(priority) {}
+			explicit node(kind_ kind, unsigned int priority) : m_kind(kind), m_priority(priority) {}
 		    virtual ~node() = default;
 
 			[[nodiscard]] unsigned int priority() const { return m_priority; }
+			[[nodiscard]] kind_ kind() const { return m_kind; }
 
 		    [[nodiscard]] virtual double eval(const Context* ctx) const = 0;
 			[[nodiscard]] virtual std::string string(const node* parent) const = 0;

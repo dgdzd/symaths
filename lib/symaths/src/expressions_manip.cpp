@@ -25,8 +25,28 @@ bool sym::is_constant(expression expr) {
 }*/
 
 sym::expression sym::reduce(const expression& expr) {
-	return std::static_pointer_cast<objs::addition>(expr.root)->reduced();
+	if (auto sum = std::dynamic_pointer_cast<objs::addition>(expr.root))
+		return sum->reduced();
+
+	return expr;
 }
+
+sym::expression sym::sort(const expression& expr) {
+	if (auto operation = std::dynamic_pointer_cast<detail::n_operation>(expr.root))
+		return {operation->sorted()};
+
+	return expr;
+}
+
+sym::expression sym::develop(const expression&) {
+
+}
+
+/*double sym::get_power(const expression& expr) {
+	if (auto pow = std::dynamic_pointer_cast<objs::power>(expr.root)) {
+
+	}
+}*/
 
 sym::detail::term sym::detail::extract_term(NodePtr node) {
 	term t{};

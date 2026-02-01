@@ -1,7 +1,8 @@
 # lib/symaths
 
 add_library(symaths_lib STATIC
-        src/expressions_manip.cpp)
+        src/expressions_manip.cpp
+        src/symaths.cpp)
 
 set(SYMATHS_LIB_SOURCES
         src/base_operations.cpp

@@ -65,8 +65,11 @@ namespace sym::objs {
 
 		if (par) s += "(";
 		for (size_t i = 0; i < operands.size(); ++i) {
+			if (i != 0) {
+				std::string spaces(print_policies.sum.operand_spaces, ' ');
+				s += spaces + "+";
+			}
 			s += operands[i]->string(this);
-			if (i < operands.size() - 1) s += " + ";
 		}
 		if (par) s += ")";
 		return s;
@@ -79,10 +82,52 @@ namespace sym::objs {
 	}
 
 	ptr<detail::n_operation> addition::sorted() const {
+		// First sort itself, then sort its subexpressions
 		ptr<addition> cpy = std::make_shared<addition>(*this);
+
+		for (auto& op : cpy->operands) {
+			if (auto operation = std::dynamic_pointer_cast<n_operation>(op)) {
+				op = operation->sorted();
+			}
+		}
 		std::ranges::sort(cpy->operands, [](const auto& op1, const auto& op2) {
-			return op1->string(nullptr) > op2->string(nullptr);
+			/* First sort value by type :
+			 * 1. Values
+			 * 2. Variables
+			 * 3. Other subexprs
+			 *
+			 * If they have the same type, sort by power
+			 * If they have the same power or their exponent is not a ground expression, sort by length
+			 * If they have the same length, sort alphabetically
+			 */
+			bool gnd1 = op1->is_ground();
+			bool gnd2 = op2->is_ground();
+			if (gnd1 != gnd2) {
+				return gnd2; // All ground values should be to the right
+			}
+
+			double pw1 = 1.0;
+			double pw2 = 1.0;
+			if (op1->kind() == kind_::power) {
+				auto exp = std::dynamic_pointer_cast<power>(op1)->exponent();
+				if (exp->is_ground()) pw1 = exp->eval(nullptr);
+				else pw1 = std::numeric_limits<double>::max();
+			}
+			if (op2->kind() == kind_::power) {
+				auto exp = std::dynamic_pointer_cast<power>(op2)->exponent();
+				if (exp->is_ground()) pw2 = exp->eval(nullptr);
+				else pw2 = std::numeric_limits<double>::max();
+			}
+
+			if (pw1 != pw2) return pw1 > pw2;
+
+			size_t l1 = op1->string(nullptr).size();
+			size_t l2 = op2->string(nullptr).size();
+			if (l1 != l2) return l1 < l2;
+
+			return op1->string(nullptr) < op2->string(nullptr);
 		});
+
 		return cpy;
 	}
 
@@ -109,7 +154,7 @@ namespace sym::objs {
 	detail::NodePtr addition::reduced() {
 		// In case of other sub-expressions, recursively simplify them
 		// Hold each variable and its total coefficient
-		std::unordered_map<std::string, std::pair<double, detail::NodePtr>> m;
+		std::map<std::string, std::pair<double, detail::NodePtr>> m;
 
 		// Get all variables' coefficient
 		for (auto& op : operands) {
@@ -213,8 +258,13 @@ namespace sym::objs {
 
 		if (par) s = "(";
 		for (size_t i = 0; i < operands.size(); ++i) {
+			if (i != 0) {
+				std::string spaces(print_policies.product.operand_spaces, ' ');
+				bool is_val = std::dynamic_pointer_cast<constant>(operands[i]).get();
+				if (is_val || print_policies.product.use_stars_for_subexprs)
+					s += spaces + "*";
+			}
 			s += operands[i]->string(this);
-			if (i < operands.size() - 1) s += " * ";
 		}
 		if (par) s += ")";
 		return s;
@@ -227,10 +277,52 @@ namespace sym::objs {
 	}
 
 	ptr<detail::n_operation> multiplication::sorted() const {
+		// First sort itself, then sort its subexpressions
 		ptr<multiplication> cpy = std::make_shared<multiplication>(*this);
+
+		for (auto& op : cpy->operands) {
+			if (auto operation = std::dynamic_pointer_cast<n_operation>(op)) {
+				op = operation->sorted();
+			}
+		}
 		std::ranges::sort(cpy->operands, [](const auto& op1, const auto& op2) {
-			return op1->string(nullptr) > op2->string(nullptr);
+			/* First sort value by type :
+			 * 1. Values
+			 * 2. Variables
+			 * 3. Other subexprs
+			 *
+			 * If they have the same type, sort by power
+			 * If they have the same power or their exponent is not a ground expression, sort by length
+			 * If they have the same length, sort alphabetically
+			 */
+			bool gnd1 = op1->is_ground();
+			bool gnd2 = op2->is_ground();
+			if (gnd1 != gnd2) {
+				return gnd2; // All ground values should be to the right
+			}
+
+			double pw1 = 1.0;
+			double pw2 = 1.0;
+			if (op1->kind() == kind_::power) {
+				auto exp = std::dynamic_pointer_cast<power>(op1)->exponent();
+				if (exp->is_ground()) pw1 = exp->eval(nullptr);
+				else pw1 = std::numeric_limits<double>::max();
+			}
+			if (op2->kind() == kind_::power) {
+				auto exp = std::dynamic_pointer_cast<power>(op2)->exponent();
+				if (exp->is_ground()) pw2 = exp->eval(nullptr);
+				else pw2 = std::numeric_limits<double>::max();
+			}
+
+			if (pw1 != pw2) return pw1 > pw2;
+
+			size_t l1 = op1->string(nullptr).size();
+			size_t l2 = op2->string(nullptr).size();
+			if (l1 != l2) return l1 < l2;
+
+			return op1->string(nullptr) < op2->string(nullptr);
 		});
+
 		return cpy;
 	}
 
@@ -302,10 +394,13 @@ namespace sym::objs {
 
 	std::string power::string(const node* parent) const {
 		std::string s;
-		if (parent && parent->priority() > priority())
-			return "(" + m_base->string(this) + "^" + m_exp->string(this) + ")";
+		std::string sp_b(print_policies.power.operand_spaces_before, ' ');
+		std::string sp_a(print_policies.power.operand_spaces_after, ' ');
 
-		return m_base->string(this) + "^" + m_exp->string(this);
+		if (parent && parent->priority() > priority())
+			return "(" + m_base->string(this) + sp_b + "^" + sp_a + m_exp->string(this) + ")";
+
+		return m_base->string(this) + sp_b + "^" + sp_a + m_exp->string(this);
 	}
 
 	bool power::is_ground() const {

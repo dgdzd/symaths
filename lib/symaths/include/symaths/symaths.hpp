@@ -5,6 +5,31 @@
 #include "base_functions.hpp"
 
 namespace sym {
+	struct print_policies_t {
+		struct sum_t {
+			unsigned int operand_spaces = 0;
+		};
+		struct product_t {
+			unsigned int operand_spaces = 0;
+			bool use_stars_for_subexprs = false;
+		};
+		struct power_t {
+			unsigned int operand_spaces_before = 0;
+			unsigned int operand_spaces_after = 0;
+		};
+
+		sum_t sum;
+		product_t product;
+		power_t power;
+	};
+
+	extern print_policies_t print_policies;
+
+	class expression;
+	expression reduce(const expression&);
+	expression sort(const expression&);
+	expression develop(const expression&);
+
 	class expression {
 		detail::NodePtr root;
 
@@ -28,7 +53,10 @@ namespace sym {
 		 */
 		[[nodiscard]] bool is_ground() const { return root->is_ground(); }
 
-		friend expression reduce(const expression& expr);
+		friend expression sym::reduce(const expression& expr);
+		friend expression sym::sort(const expression& expr);
+		friend expression sym::develop(const expression& expr);
+		friend double get_power(const expression& expr);
 
 		friend expression operator+(const expression& lhs, const expression& rhs) {
 			auto add = std::make_shared<objs::addition>(lhs.root, rhs.root);
@@ -46,16 +74,6 @@ namespace sym {
 			mul->flatten();
 			return {mul};
 		}
-
-		/*friend expression operator*(const expression& lhs, double rhs) {
-			auto d = std::make_shared<objs::constant>(rhs);
-			return expression(std::make_shared<objs::multiplication>(lhs.root, d));
-		}
-
-		friend expression operator*(double lhs, const expression& rhs) {
-			auto d = std::make_shared<objs::constant>(lhs);
-			return expression(std::make_shared<objs::multiplication>(d, rhs.root));
-		}*/
 
 		friend expression operator/(const expression& lhs, const expression& rhs) {
 			auto div = std::make_shared<objs::division>(lhs.root, rhs.root);

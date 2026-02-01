@@ -24,8 +24,10 @@ namespace sym {
 	 * @return The simplified expression
 	 */
 	expression reduce(const expression& expr);
+	expression sort(const expression& expr);
+	expression develop(const expression& expr);
 
-	bool is_constant(expression expr);
+	double get_power(const expression& expr);
 
 	namespace detail {
 		struct term {
