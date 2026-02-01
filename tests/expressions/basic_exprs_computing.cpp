@@ -14,6 +14,24 @@ TEST(basic_exprs_computing, simple_addition) {
 	ASSERT_EQ(expr.string(), "3 + x^(2 + x) + 10");
 }
 
+TEST(basic_exprs_computing, reduce_addition_simple) {
+	sym::expression x("x");
+	sym::expression expr = 3 + 2 * x + x + 10;
+	sym::expression expr2 = reduce(expr);
+
+	ASSERT_EQ(expr2.string(), "13 + x");
+}
+
+TEST(basic_exprs_computing, reduce_addition_multi) {
+	sym::expression a("a");
+	sym::expression x("x");
+	sym::expression y("y");
+	sym::expression expr = 3 + 3 * x + 5 * x + 10 + 2 * y + y + a;
+	sym::expression expr2 = reduce(expr);
+
+	ASSERT_EQ(expr2.string(), "3 + 8 * x + 2 * y");
+}
+
 /*TEST(ct_expressions_value_test, simple_addition) {
 	using namespace sym::objs;
 	auto expr = sum(

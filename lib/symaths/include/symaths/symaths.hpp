@@ -16,7 +16,19 @@ namespace sym {
 
 		double operator()(const detail::Context& ctx) const { return root->eval(&ctx); }
 		[[nodiscard]] std::string string() const { return root->string(nullptr); }
+
+		/**
+		 * @brief Checks if the expression is composed of constants only
+		 *
+		 * For example :
+		 * - is_ground(3 + ln(4)) == true
+		 * - is_ground(3 + 4x) == false
+		 *
+		 * @return Whether the expression is ground
+		 */
 		[[nodiscard]] bool is_ground() const { return root->is_ground(); }
+
+		friend expression reduce(const expression& expr);
 
 		friend expression operator+(const expression& lhs, const expression& rhs) {
 			auto add = std::make_shared<objs::addition>(lhs.root, rhs.root);

@@ -16,14 +16,18 @@ namespace sym::detail {
 
 	public:
 		n_operation() = delete;
+		n_operation(std::shared_ptr<n_operation>&& rhv) : node(rhv->priority()), operands(std::move(rhv->operands)) {}
+		n_operation(const std::shared_ptr<n_operation>& rhv) : node(rhv->priority()), operands(std::move(rhv->operands)) {}
 
 		template <typename... Args>
 		explicit n_operation(unsigned int priority, Args&&... args) : node(priority), operands{std::forward<Args>(args)...} {}
 		n_operation(unsigned int priority, const std::vector<NodePtr>& operands) : node(priority), operands(operands) {}
 
 		void add_operand(NodePtr operand);
+		[[nodiscard]] const std::vector<NodePtr>& get_operands() const;
 		NodePtr operator[](unsigned int index) const;
 
+		[[nodiscard]] virtual ptr<n_operation> sorted() const = 0;
 		virtual void flatten() = 0;
 	};
 }
@@ -65,9 +69,10 @@ namespace sym::objs {
 		[[nodiscard]] double eval(const detail::Context* ctx) const override;
 		[[nodiscard]] std::string string(const node* parent) const override;
 		[[nodiscard]] bool is_ground() const override;
+		[[nodiscard]]  ptr<n_operation> sorted() const override;
 		void flatten() override;
-		[[nodiscard]] const std::vector<detail::NodePtr>& get_operands() const;
-		[[nodiscard]] detail::NodePtr reduce();
+
+		[[nodiscard]] detail::NodePtr reduced();
 	};
 
 	class negate : public detail::node {
@@ -78,6 +83,7 @@ namespace sym::objs {
 		[[nodiscard]] double eval(const detail::Context* ctx) const override;
 		[[nodiscard]] std::string string(const node* parent) const override;
 		[[nodiscard]] bool is_ground() const override;
+
 		[[nodiscard]] detail::NodePtr get_child() const;
 	};
 
@@ -92,8 +98,9 @@ namespace sym::objs {
 		[[nodiscard]] double eval(const detail::Context* ctx) const override;
 		[[nodiscard]] std::string string(const node* parent) const override;
 		[[nodiscard]] bool is_ground() const override;
+		[[nodiscard]]  ptr<n_operation> sorted() const override;
 		void flatten() override;
-		[[nodiscard]] const std::vector<detail::NodePtr>& get_operands() const;
+
 		[[nodiscard]] detail::AdditionNodePtr unroll() const;
 	};
 
@@ -110,8 +117,8 @@ namespace sym::objs {
 		[[nodiscard]] double eval(const detail::Context* ctx) const override;
 		[[nodiscard]] std::string string(const node* parent) const override;
 		[[nodiscard]] bool is_ground() const override;
+		[[nodiscard]] ptr<n_operation> sorted() const override;
 		void flatten() override;
-		[[nodiscard]] const std::vector<detail::NodePtr>& get_operands() const;
 	};
 
 	class power : public detail::node {

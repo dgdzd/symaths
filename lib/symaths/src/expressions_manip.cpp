@@ -19,21 +19,22 @@ sym::expression sym::detail::simplify_multiplications(NodePtr parent) {
 }
 
 
-sym::expression sym::reduce(expression expr) {
-
-}
 
 bool sym::is_constant(expression expr) {
 	if
 }*/
 
+sym::expression sym::reduce(const expression& expr) {
+	return std::static_pointer_cast<objs::addition>(expr.root)->reduced();
+}
 
 sym::detail::term sym::detail::extract_term(NodePtr node) {
 	term t{};
 	if (auto mult = std::dynamic_pointer_cast<objs::multiplication>(node)) {
 		mult->flatten();
+		auto smult = mult->sorted();
 		t.coefficient = 1.0;
-		for (auto& op : mult->get_operands()) {
+		for (auto& op : smult->get_operands()) {
 			if (op->is_ground()) {
 				t.coefficient *= op->eval(nullptr);
 			}
@@ -48,11 +49,15 @@ sym::detail::term sym::detail::extract_term(NodePtr node) {
 			}
 		}
 	}
+	else if (auto var = std::dynamic_pointer_cast<objs::variable>(node)) {
+		t.coefficient = 1.0;
+		t.symbolic = var;
+	}
 
 	return t;
 }
 
-sym::detail::AdditionNodePtr sym::detail::develop(MultiplicationNodePtr node) {
+/*sym::detail::AdditionNodePtr sym::detail::develop(MultiplicationNodePtr node) {
 
-}
+}*/
 

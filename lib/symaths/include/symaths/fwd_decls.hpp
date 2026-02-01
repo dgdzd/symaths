@@ -2,6 +2,7 @@
 #define SYM_FWD_DECLS_HPP
 
 #include <variant>
+#include <memory>
 
 namespace sym {
 	namespace objs {
@@ -17,6 +18,9 @@ namespace sym {
 	using natural_t = unsigned int;
 	using integer_t = int;
 	using value_t = std::variant<real_t, natural_t, integer_t>;
+
+	template<typename... Args>
+	using ptr = std::shared_ptr<Args...>;
 }
 
 #endif

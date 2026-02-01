@@ -15,13 +15,13 @@ namespace sym {
 	namespace detail {
 		using Context = std::unordered_map<std::string, double>;
 
-		using NodePtr = std::shared_ptr<node>;
-		using VariableNodePtr = std::shared_ptr<objs::variable>;
-		using ConstantNodePtr = std::shared_ptr<objs::constant>;
-		using AdditionNodePtr = std::shared_ptr<objs::addition>;
-		using MultiplicationNodePtr = std::shared_ptr<objs::multiplication>;
-		using DivisionNodePtr = std::shared_ptr<objs::division>;
-		using PowerNodePtr = std::shared_ptr<objs::power>;
+		using NodePtr = ptr<node>;
+		using VariableNodePtr = ptr<objs::variable>;
+		using ConstantNodePtr = ptr<objs::constant>;
+		using AdditionNodePtr = ptr<objs::addition>;
+		using MultiplicationNodePtr = ptr<objs::multiplication>;
+		using DivisionNodePtr = ptr<objs::division>;
+		using PowerNodePtr = ptr<objs::power>;
 
 		// Base node
 		class node {

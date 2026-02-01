@@ -1,10 +1,11 @@
 #include "symaths/base_operations.hpp"
 
-#include <algorithm>
-
+#include "symaths/fwd_decls.hpp"
 #include "symaths/expressions_manip.hpp"
 
+#include <algorithm>
 #include <map>
+#include <ranges>
 
 namespace sym::detail {
 	void n_operation::add_operand(NodePtr operand) {
@@ -14,6 +15,10 @@ namespace sym::detail {
 	NodePtr n_operation::operator[](unsigned int index) const {
 		return operands.at(index);
 	}
+
+	const std::vector<NodePtr>& n_operation::get_operands() const {
+		return operands;
+	};
 }
 
 namespace sym::objs {
@@ -73,25 +78,38 @@ namespace sym::objs {
 		});
 	}
 
+	ptr<detail::n_operation> addition::sorted() const {
+		ptr<addition> cpy = std::make_shared<addition>(*this);
+		std::ranges::sort(cpy->operands, [](const auto& op1, const auto& op2) {
+			return op1->string(nullptr) > op2->string(nullptr);
+		});
+		return cpy;
+	}
+
 	void addition::flatten() {
+		std::vector<std::pair<std::vector<detail::NodePtr>::iterator, ptr<addition>>> to_replace; // Holds iterator to replace
 		for (auto it = operands.begin(); it != operands.end(); ++it) {
 			auto& op = *it;
 			if (auto add = std::dynamic_pointer_cast<addition>(op)) {
 				add->flatten();
-				operands.erase(it);
-				operands.append_range(add->get_operands());
+				to_replace.emplace_back(it, add); // Deleting or adding now invalidates vector iterators
 			}
+		}
+
+		for (auto rit = to_replace.rbegin(); rit != to_replace.rend(); ++rit) {
+			auto& [it, op] = *rit;
+			unsigned int i = std::distance(operands.begin(), it);
+
+			// First erase the old operand, and then insert its operands at its position
+			operands.erase(it);
+			operands.insert_range(operands.begin() + i, op->get_operands());
 		}
 	}
 
-	const std::vector<detail::NodePtr>& addition::get_operands() const {
-		return operands;
-	}
-
-	detail::NodePtr addition::reduce() {
+	detail::NodePtr addition::reduced() {
 		// In case of other sub-expressions, recursively simplify them
 		// Hold each variable and its total coefficient
-		std::map<std::string, double> m;
+		std::unordered_map<std::string, std::pair<double, detail::NodePtr>> m;
 
 		// Get all variables' coefficient
 		for (auto& op : operands) {
@@ -99,18 +117,64 @@ namespace sym::objs {
 			// If the operand is a constant
 			if (op->is_ground()) {
 				if (m.contains("")) {
-					m[""] += op->eval(nullptr);
+					m[""].first += op->eval(nullptr);
 				}
 				else {
-					m[""] = op->eval(nullptr);
+					m[""] = {op->eval(nullptr), nullptr};
 				}
 			}
 			// Else if the operand is not constant, separate constant part and variable part
-			else if (auto mul = std::dynamic_pointer_cast<multiplication>(op)) {
-				auto term_ = detail::extract_term(mul);
-				if (m.contains)
+			else {
+				detail::term term_ = detail::extract_term(op);
+
+				// Don't add term if coefficient is (almost) null
+				if (std::abs(term_.coefficient) > 1e-9) {
+					auto name = term_.symbolic->string(nullptr);
+					if (m.contains(name)) {
+						m[name].first += term_.coefficient;
+					}
+					else {
+						m[name] = {term_.coefficient, term_.symbolic};
+					}
+				}
 			}
 		}
+
+		// Now, create a new sorted branch
+
+		if (m.size() <= 1) {
+			if (m.begin()->first.empty()) {
+				return std::make_shared<constant>(m.begin()->second.first);
+			}
+
+			return std::make_shared<multiplication>(
+				std::make_shared<constant>(m.begin()->second.first),
+				std::make_shared<variable>(m.begin()->first)
+			);
+		}
+
+		ptr<addition> new_expr = std::make_shared<addition>();
+		for (auto& [name, val] : m) {
+			auto& [coeff, expr] = val;
+
+			// Don't make a multiplication if it is just a constant
+			if (name.empty()) {
+				new_expr->add_operand(std::make_shared<constant>(coeff));
+				continue;
+			}
+
+			// If it is (almost) equal to 1, don't create a multiplication
+			if (std::abs(coeff - 1.0) < 1e-9) {
+				new_expr->add_operand(std::make_shared<variable>(name));
+				continue;
+			}
+
+			new_expr->add_operand(std::make_shared<multiplication>(
+				std::make_shared<constant>(coeff),
+				expr
+			));
+		}
+		return new_expr;
 	}
 
 	double negate::eval(const detail::Context* ctx) const {
@@ -162,6 +226,14 @@ namespace sym::objs {
 		});
 	}
 
+	ptr<detail::n_operation> multiplication::sorted() const {
+		ptr<multiplication> cpy = std::make_shared<multiplication>(*this);
+		std::ranges::sort(cpy->operands, [](const auto& op1, const auto& op2) {
+			return op1->string(nullptr) > op2->string(nullptr);
+		});
+		return cpy;
+	}
+
 	void multiplication::flatten() {
 		for (auto it = operands.begin(); it != operands.end(); ++it) {
 			auto& op = *it;
@@ -173,13 +245,9 @@ namespace sym::objs {
 		}
 	}
 
-	const std::vector<detail::NodePtr>& multiplication::get_operands() const {
-		return operands;
-	}
+	/*detail::AdditionNodePtr multiplication::unroll() const {
 
-	detail::AdditionNodePtr multiplication::unroll() const {
-
-	}
+	}*/
 
 	double division::eval(const detail::Context* ctx) const {
 		double m = 1.0;
@@ -209,6 +277,14 @@ namespace sym::objs {
 		});
 	}
 
+	ptr<detail::n_operation> division::sorted() const {
+		ptr<division> cpy = std::make_shared<division>(*this);
+		std::ranges::sort(cpy->operands, [](const auto& op1, const auto& op2) {
+			return op1->string(nullptr) > op2->string(nullptr);
+		});
+		return cpy;
+	}
+
 	void division::flatten() {
 		for (auto it = operands.begin(); it != operands.end(); ++it) {
 			auto& op = *it;
@@ -218,10 +294,6 @@ namespace sym::objs {
 				operands.append_range(add->get_operands());
 			}
 		}
-	}
-
-	const std::vector<detail::NodePtr>& division::get_operands() const {
-		return operands;
 	}
 
 	double power::eval(const detail::Context* ctx) const {

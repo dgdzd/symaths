@@ -23,7 +23,7 @@ namespace sym {
 	 * @param expr The expression to reduce
 	 * @return The simplified expression
 	 */
-	expression reduce(expression expr);
+	expression reduce(const expression& expr);
 
 	bool is_constant(expression expr);
 
