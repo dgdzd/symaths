@@ -28,18 +28,19 @@ namespace sym {
 	class expression;
 	expression reduce(const expression&);
 	expression sort(const expression&);
-	expression develop(const expression&);
+	expression expand(const expression&);
 
 	class expression {
+	public:
 		detail::NodePtr root;
 
-	public:
 		expression(double val) : root(std::make_shared<objs::constant>(val)) {}
 		expression(const std::string& name) : root(std::make_shared<objs::variable>(name)) {}
 		expression(const char* name) : root(std::make_shared<objs::variable>(name)) {}
 		expression(detail::NodePtr node) : root(std::move(node)) {}
 
 		double operator()(const detail::Context& ctx) const { return root->eval(&ctx); }
+		double operator()() const { return root->eval(nullptr); }
 		[[nodiscard]] std::string string() const { return root->string(nullptr); }
 
 		/**
@@ -55,7 +56,8 @@ namespace sym {
 
 		friend expression sym::reduce(const expression& expr);
 		friend expression sym::sort(const expression& expr);
-		friend expression sym::develop(const expression& expr);
+		friend expression sym::expand(const expression& expr);
+		//friend size_t sym::hash(const expression& expr);
 		friend double get_power(const expression& expr);
 
 		friend expression operator+(const expression& lhs, const expression& rhs) {

@@ -28,6 +28,8 @@ namespace sym::detail {
 		NodePtr operator[](unsigned int index) const;
 
 		[[nodiscard]] virtual ptr<n_operation> sorted() const = 0;
+		[[nodiscard]] virtual ptr<n_operation> expand() const = 0;
+		[[nodiscard]] virtual NodePtr reduced() { return nullptr; }
 		virtual void flatten() = 0;
 	};
 }
@@ -70,15 +72,15 @@ namespace sym::objs {
 		[[nodiscard]] std::string string(const node* parent) const override;
 		[[nodiscard]] bool is_ground() const override;
 		[[nodiscard]]  ptr<n_operation> sorted() const override;
-		void flatten() override;
-
+		[[nodiscard]]  ptr<n_operation> expand() const override { return std::make_shared<addition>(*this); }
 		[[nodiscard]] detail::NodePtr reduced();
+		void flatten() override;
 	};
 
 	class negate : public detail::node {
 		detail::NodePtr child;
 	public:
-		explicit negate(detail::NodePtr c) : node(kind_::negate, 0), child(std::move(c)) {}
+		explicit negate(detail::NodePtr c) : node(kind_::negate, 2), child(std::move(c)) {}
 
 		[[nodiscard]] double eval(const detail::Context* ctx) const override;
 		[[nodiscard]] std::string string(const node* parent) const override;
@@ -90,15 +92,17 @@ namespace sym::objs {
 	// N+ary Node: multiplication
 	class multiplication : public detail::n_operation {
 	public:
-		explicit multiplication(std::vector<detail::NodePtr> ops) : n_operation(kind_::multiplication, 2, std::move(ops)) {}
+		explicit multiplication(std::vector<detail::NodePtr> ops) : n_operation(kind_::multiplication, 3, std::move(ops)) {}
 
 		template<typename... Args>
-		explicit multiplication(Args&&... args) : n_operation(kind_::multiplication, 2, std::forward<Args>(args)...) {}
+		explicit multiplication(Args&&... args) : n_operation(kind_::multiplication, 3, std::forward<Args>(args)...) {}
 
 		[[nodiscard]] double eval(const detail::Context* ctx) const override;
 		[[nodiscard]] std::string string(const node* parent) const override;
 		[[nodiscard]] bool is_ground() const override;
 		[[nodiscard]]  ptr<n_operation> sorted() const override;
+		[[nodiscard]]  ptr<n_operation> expand() const override;
+		[[nodiscard]] detail::NodePtr reduced();
 		void flatten() override;
 
 		[[nodiscard]] detail::AdditionNodePtr unroll() const;
@@ -109,15 +113,16 @@ namespace sym::objs {
 	class division : public detail::n_operation {
 		std::vector<detail::NodePtr> operands;
 	public:
-		explicit division(std::vector<detail::NodePtr> ops) : n_operation(kind_::division, 2, std::move(ops)) {}
+		explicit division(std::vector<detail::NodePtr> ops) : n_operation(kind_::division, 3, std::move(ops)) {}
 
 		template<typename... Args>
-		explicit division(Args&&... args) : n_operation(kind_::division, 2, std::forward<Args>(args)...) {}
+		explicit division(Args&&... args) : n_operation(kind_::division, 3, std::forward<Args>(args)...) {}
 
 		[[nodiscard]] double eval(const detail::Context* ctx) const override;
 		[[nodiscard]] std::string string(const node* parent) const override;
 		[[nodiscard]] bool is_ground() const override;
 		[[nodiscard]] ptr<n_operation> sorted() const override;
+		[[nodiscard]]  ptr<n_operation> expand() const override { return std::make_shared<division>(*this); }
 		void flatten() override;
 	};
 
@@ -127,7 +132,7 @@ namespace sym::objs {
 
 	public:
 		power() = delete;
-		power(detail::NodePtr base, detail::NodePtr exponent) : node(kind_::power, 3), m_base(std::move(base)), m_exp(std::move(exponent)) {}
+		power(detail::NodePtr base, detail::NodePtr exponent) : node(kind_::power, 4), m_base(std::move(base)), m_exp(std::move(exponent)) {}
 
 		[[nodiscard]] double eval(const detail::Context* ctx) const override;
 		[[nodiscard]] std::string string(const node* parent) const override;

@@ -7,22 +7,30 @@ int main(int argc, char** argv) {
 	return RUN_ALL_TESTS();
 }
 
-TEST(basic_exprs_computing, simple_addition) {
+TEST(basic_exprs_computing, simple_expressions) {
 	sym::expression x("x");
 	sym::expression expr1 = 3 + x + 10;
 	sym::expression expr2 = 3 * 4 * x;
 	sym::expression expr3 = 3 + 4 * 3 * x;
 	sym::expression expr4 = 3 + (2 + 7) * x;
 	sym::expression expr5 = 2 * sym::pow(x, 2) + 3 * x + 6 * x;
+	sym::expression expr6 = x - 3 - (x - 6);
+	sym::expression expr7 = sym::pow(-3, -x);
+	sym::expression expr8 = -3 * x * -6;
+	sym::expression expr9 = -3 * x * -x;
 
 	ASSERT_EQ(expr1.string(), "3+x+10");
 	ASSERT_EQ(expr2.string(), "12x");
 	ASSERT_EQ(expr3.string(), "3+12x");
 	ASSERT_EQ(expr4.string(), "3+9x");
 	ASSERT_EQ(expr5.string(), "2x^2+3x+6x");
+	ASSERT_EQ(expr6.string(), "x-3-(x-6)");
+	ASSERT_EQ(expr7.string(), "(-3)^(-x)");
+	ASSERT_EQ(expr8.string(), "(-3)x*(-6)");
+	ASSERT_EQ(expr9.string(), "(-3)x(-x)");
 }
 
-TEST(basic_exprs_computing, reduce_addition_simple) {
+TEST(basic_exprs_computing, reduce_additions_simple) {
 	sym::expression x("x");
 	sym::expression expr1 = 3 + x + 10;
 	sym::expression expr2 = 3 * 4 * x;
@@ -31,15 +39,15 @@ TEST(basic_exprs_computing, reduce_addition_simple) {
 	sym::expression expr5 = 2 * sym::pow(x, 2) + 3 * x + 6 * x;
 	sym::expression expr6 = 2 * (3 + x) + 3 * (x + 3);
 
-	ASSERT_EQ(sym::reduce(expr1).string(), "13+x");
+	ASSERT_EQ(sym::reduce(expr1).string(), "x+13");
 	ASSERT_EQ(sym::reduce(expr2).string(), "12x");
-	ASSERT_EQ(sym::reduce(expr3).string(), "3+12x");
-	ASSERT_EQ(sym::reduce(expr4).string(), "3+9x");
-	ASSERT_EQ(sym::reduce(expr5).string(), "9x+2x^2");
+	ASSERT_EQ(sym::reduce(expr3).string(), "12x+3");
+	ASSERT_EQ(sym::reduce(expr4).string(), "9x+3");
+	ASSERT_EQ(sym::reduce(expr5).string(), "2x^2+9x");
 	ASSERT_EQ(sym::reduce(expr6).string(), "5(x+3)");
 }
 
-TEST(basic_exprs_computing, reduce_addition_multi) {
+TEST(basic_exprs_computing, reduce_additions_multi) {
 	sym::expression a("a");
 	sym::expression x("x");
 	sym::expression y("y");
@@ -48,7 +56,23 @@ TEST(basic_exprs_computing, reduce_addition_multi) {
 
 
 	ASSERT_EQ(sym::reduce(expr1).string(), "2a+2x+2y");
-	ASSERT_EQ(sym::reduce(expr2).string(), "4a+5x+2xy+3y");
+	ASSERT_EQ(sym::reduce(expr2).string(), "4a+5x+3y+2xy");
+}
+
+TEST(basic_exprs_computing, reduce_multiplications) {
+	sym::expression x("x");
+	sym::expression y("y");
+	sym::expression expr1 = 3 * 6 * x;
+	sym::expression expr2 = x * x;
+	sym::expression expr3 = x * x * x;
+	sym::expression expr4 = y * y * x * x;
+	sym::expression expr5 = 5 * 5 * y * y * x * x;
+
+	ASSERT_EQ(sym::reduce(expr1).string(), "18x");
+	ASSERT_EQ(sym::reduce(expr2).string(), "x^2");
+	ASSERT_EQ(sym::reduce(expr3).string(), "x^3");
+	ASSERT_EQ(sym::reduce(expr4).string(), "x^2y^2");
+	ASSERT_EQ(sym::reduce(expr5).string(), "25x^2y^2");
 }
 
 TEST(basic_exprs_computing, sort_expressions) {
@@ -58,7 +82,7 @@ TEST(basic_exprs_computing, sort_expressions) {
 	sym::expression expr1 = 1 + x;
 	sym::expression expr2 = y + x;
 	sym::expression expr3 = z + y + x;
-	sym::expression expr4 = x + sym::pow(x, 2);
+	sym::expression expr4 = 9 * x + 2 * sym::pow(x, 2);
 	sym::expression expr5 = sym::pow(z, x * y + 3) + sym::pow(z, 3) + sym::pow(y, 2) + x;
 	sym::expression expr6 = y + x + sym::pow(x, 2) + sym::pow(y, 2) + sym::pow(x * y, z);
 	sym::expression expr7 = x * y + z * y + x + sym::pow(x, 2);
@@ -66,10 +90,22 @@ TEST(basic_exprs_computing, sort_expressions) {
 	ASSERT_EQ(sym::sort(expr1).string(), "x+1");
 	ASSERT_EQ(sym::sort(expr2).string(), "x+y");
 	ASSERT_EQ(sym::sort(expr3).string(), "x+y+z");
-	ASSERT_EQ(sym::sort(expr4).string(), "x^2+x");
+	ASSERT_EQ(sym::sort(expr4).string(), "2x^2+9x");
 	ASSERT_EQ(sym::sort(expr5).string(), "z^(xy+3)+z^3+y^2+x");
 	ASSERT_EQ(sym::sort(expr6).string(), "(xy)^z+x^2+y^2+x+y");
 	ASSERT_EQ(sym::sort(expr7).string(), "x^2+x+xy+yz");
+}
+
+TEST(basic_exprs_computing, expand_products) {
+	sym::expression x("x");
+	sym::expression y("y");
+	sym::expression expr1 = (x - 2) * (x + 2);
+	sym::expression expr2 = (x - 2) * (x + 2) * (2 * x + 6);
+	sym::expression expr3 = (x + x * (3 - x)) * (1 - x);
+
+	ASSERT_EQ(sym::reduce(sym::expand(expr1)).string(), "x^2+(-4)");
+	ASSERT_EQ(sym::reduce(sym::expand(expr2)).string(), "2x^3+6x^2+(-8)x+(-24)");
+	ASSERT_EQ(sym::reduce(sym::expand(expr3)).string(), "x^3-5x^2+4");
 }
 
 /*TEST(ct_expressions_value_test, simple_addition) {

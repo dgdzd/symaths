@@ -25,10 +25,10 @@ bool sym::is_constant(expression expr) {
 }*/
 
 sym::expression sym::reduce(const expression& expr) {
-	if (auto sum = std::dynamic_pointer_cast<objs::addition>(expr.root))
-		return sum->reduced();
+	if (auto op = std::dynamic_pointer_cast<detail::n_operation>(expr.root))
+		return sort(op->reduced());
 
-	return expr;
+	return sort(expr);
 }
 
 sym::expression sym::sort(const expression& expr) {
@@ -38,9 +38,25 @@ sym::expression sym::sort(const expression& expr) {
 	return expr;
 }
 
-sym::expression sym::develop(const expression&) {
+sym::expression sym::expand(const expression& expr) {
+	if (auto mul = std::dynamic_pointer_cast<objs::multiplication>(expr.root)) {
+		return {mul->expand()};
+	}
 
+	return expr;
 }
+
+template <class T>
+inline void hash_combine(std::size_t& seed, const T& v)
+{
+	std::hash<T> hasher;
+	seed ^= hasher(v) + 0x9e3779b9 + (seed<<6) + (seed>>2);
+}
+
+/*size_t sym::hash(const expression& expr) {
+	auto h1 = std::hash<int>{}(static_cast<int>(expr.root->kind()));
+	auto h2 = std::hash<int>{}(static_cast<int>(expr.root->priority()));
+}*/
 
 /*double sym::get_power(const expression& expr) {
 	if (auto pow = std::dynamic_pointer_cast<objs::power>(expr.root)) {
@@ -69,9 +85,9 @@ sym::detail::term sym::detail::extract_term(NodePtr node) {
 			}
 		}
 	}
-	else if (auto var = std::dynamic_pointer_cast<objs::variable>(node)) {
+	else {
 		t.coefficient = 1.0;
-		t.symbolic = var;
+		t.symbolic = node;
 	}
 
 	return t;

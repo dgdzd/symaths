@@ -43,6 +43,8 @@ namespace sym::objs {
 	}
 
 	std::string constant::string(const node* parent) const {
+		if (value < 0 && parent && parent->kind() != kind_::negate)
+			return std::format("({})", value);
 		return std::format("{}", value);
 	}
 
@@ -65,7 +67,7 @@ namespace sym::objs {
 
 		if (par) s += "(";
 		for (size_t i = 0; i < operands.size(); ++i) {
-			if (i != 0) {
+			if (i != 0 && operands[i]->kind() != kind_::negate) {
 				std::string spaces(print_policies.sum.operand_spaces, ' ');
 				s += spaces + "+";
 			}
@@ -79,6 +81,25 @@ namespace sym::objs {
 		return std::ranges::all_of(operands, [](const auto& op) {
 			return op->is_ground();
 		});
+	}
+
+	double get_biggest_power(detail::NodePtr node) {
+		double max = 1.0;
+
+		if (auto n_op = std::dynamic_pointer_cast<detail::n_operation>(node)) {
+			for (auto& subop : n_op->get_operands()) {
+				max = std::max(max, get_biggest_power(subop));
+			}
+		}
+
+		if (auto pow = std::dynamic_pointer_cast<power>(node)) {
+			if (pow->exponent()->is_ground())
+				max = pow->exponent()->eval(nullptr);
+			else
+				max = std::numeric_limits<double>::max();
+		}
+
+		return max;
 	}
 
 	ptr<detail::n_operation> addition::sorted() const {
@@ -106,26 +127,24 @@ namespace sym::objs {
 				return gnd2; // All ground values should be to the right
 			}
 
-			double pw1 = 1.0;
-			double pw2 = 1.0;
-			if (op1->kind() == kind_::power) {
-				auto exp = std::dynamic_pointer_cast<power>(op1)->exponent();
-				if (exp->is_ground()) pw1 = exp->eval(nullptr);
-				else pw1 = std::numeric_limits<double>::max();
-			}
-			if (op2->kind() == kind_::power) {
-				auto exp = std::dynamic_pointer_cast<power>(op2)->exponent();
-				if (exp->is_ground()) pw2 = exp->eval(nullptr);
-				else pw2 = std::numeric_limits<double>::max();
-			}
+			double pw1 = get_biggest_power(op1);
+			double pw2 = get_biggest_power(op2);
 
 			if (pw1 != pw2) return pw1 > pw2;
 
-			size_t l1 = op1->string(nullptr).size();
-			size_t l2 = op2->string(nullptr).size();
+			detail::term term1 = detail::extract_term(op1);
+			detail::term term2 = detail::extract_term(op2);
+			std::string repr1, repr2;
+			if (term1.symbolic)
+				repr1 = detail::extract_term(op1).symbolic->string(nullptr);
+			if (term2.symbolic)
+				repr2 = detail::extract_term(op2).symbolic->string(nullptr);
+
+			size_t l1 = repr1.size();
+			size_t l2 = repr2.size();
 			if (l1 != l2) return l1 < l2;
 
-			return op1->string(nullptr) < op2->string(nullptr);
+			return repr1 < repr2;
 		});
 
 		return cpy;
@@ -135,9 +154,11 @@ namespace sym::objs {
 		std::vector<std::pair<std::vector<detail::NodePtr>::iterator, ptr<addition>>> to_replace; // Holds iterator to replace
 		for (auto it = operands.begin(); it != operands.end(); ++it) {
 			auto& op = *it;
-			if (auto add = std::dynamic_pointer_cast<addition>(op)) {
-				add->flatten();
-				to_replace.emplace_back(it, add); // Deleting or adding now invalidates vector iterators
+			if (auto n_op = std::dynamic_pointer_cast<n_operation>(op)) {
+				n_op->flatten();
+				if (n_op->kind() == kind_::addition) {
+					to_replace.emplace_back(it, std::reinterpret_pointer_cast<addition>(n_op)); // Deleting or adding now invalidates vector iterators
+				}
 			}
 		}
 
@@ -157,7 +178,10 @@ namespace sym::objs {
 		std::map<std::string, std::pair<double, detail::NodePtr>> m;
 
 		// Get all variables' coefficient
-		for (auto& op : operands) {
+		for (auto op : operands) {
+			if (auto n_op = std::dynamic_pointer_cast<n_operation>(op)) {
+				op = n_op->reduced();
+			}
 
 			// If the operand is a constant
 			if (op->is_ground()) {
@@ -200,7 +224,7 @@ namespace sym::objs {
 
 		ptr<addition> new_expr = std::make_shared<addition>();
 		for (auto& [name, val] : m) {
-			auto& [coeff, expr] = val;
+			auto [coeff, expr] = val;
 
 			// Don't make a multiplication if it is just a constant
 			if (name.empty()) {
@@ -214,11 +238,17 @@ namespace sym::objs {
 				continue;
 			}
 
+			// If it is (almost) equal to 0, do not create an operand
+			if (std::abs(coeff) < 1e-9) {
+				continue;
+			}
+
 			new_expr->add_operand(std::make_shared<multiplication>(
 				std::make_shared<constant>(coeff),
 				expr
 			));
 		}
+		new_expr->flatten();
 		return new_expr;
 	}
 
@@ -227,7 +257,11 @@ namespace sym::objs {
 	}
 
 	std::string negate::string(const node* parent) const {
-		std::string s;
+		if (parent && parent->kind() == kind_::addition) {
+			std::string spaces(print_policies.sum.operand_spaces, ' ');
+			return spaces + "-" + spaces + child->string(this);
+		}
+
 		if (parent && parent->priority() > priority())
 			return "(-" + child->string(this) + ")";
 
@@ -298,7 +332,7 @@ namespace sym::objs {
 			bool gnd1 = op1->is_ground();
 			bool gnd2 = op2->is_ground();
 			if (gnd1 != gnd2) {
-				return gnd2; // All ground values should be to the right
+				return gnd1; // All ground values should be to the left
 			}
 
 			double pw1 = 1.0;
@@ -326,14 +360,187 @@ namespace sym::objs {
 		return cpy;
 	}
 
+	// Internal function / takes an operation, and develop all of its operands
+	void cartesian_product(ptr<detail::n_operation>& expr) {
+		const auto& operands = expr->get_operands();
+
+		for (int i = static_cast<int>(operands.size()) - 2; i >= 0; ++i) {
+			auto op1 = operands[i];
+			auto op2 = operands[i + 1];
+			if (auto suboperation = std::dynamic_pointer_cast<detail::n_operation>(op1)) {
+				op1 = suboperation->expand();
+			}
+		}
+	}
+
+	ptr<detail::n_operation> multiplication::expand() const {
+		// HOW : recursively develop expressions and subexpressions
+		//    BASE          DEVELOP       REDUCE
+		// (x+3)(x-2) --> x^2-2x+3x-6 --> x^2+x-6
+		//       BASE                 DEVELOP              REDUCE                   DEVELOP                   REDUCE
+		// (x+3)(x-2)(2x+6) --> (x^2-2x+3x-6)(2x+6) --> (x^2+x-6)(2x+6) --> 2x^3+6x^2+2x^2+6x+12x+36 --> 2x^3+8x^2+18x+36
+		//
+		// Algorithm :
+		// Take first two operands of the multiplication
+		// Create an addition node
+		// For each subexpressions in first operand
+		//     For each subexpressions in second operand
+		std::vector<std::vector<detail::NodePtr>> all_operands;
+
+		for (auto& op : operands) {
+			detail::NodePtr expanded;
+			if (auto ex = std::dynamic_pointer_cast<n_operation>(op))
+				expanded = ex->expand();
+			else
+				expanded = op;
+
+			if (auto add = std::dynamic_pointer_cast<addition>(expanded)) {
+				all_operands.push_back(add->get_operands());
+			} else {
+				all_operands.push_back({ expanded });
+			}
+		}
+
+		std::vector<std::vector<detail::NodePtr>> products;
+		products.emplace_back();
+
+		for (const auto& group : all_operands) {
+			std::vector<std::vector<detail::NodePtr>> new_products;
+
+			for (const auto& prefix : products) {
+				for (const auto& item : group) {
+					std::vector<detail::NodePtr> next = prefix;
+					next.push_back(item);
+					new_products.push_back(std::move(next));
+				}
+			}
+
+			products = std::move(new_products);
+		}
+
+		auto result = std::make_shared<addition>();
+		for (const auto& prod : products) {
+			auto mul = std::make_shared<multiplication>();
+			for (const auto& factor : prod) {
+				if (factor && !(factor->is_ground() && std::abs(factor->eval(nullptr)) < 1e-9)) {
+					mul->add_operand(factor);
+				}
+			}
+			result->add_operand(mul);
+		}
+
+		result->flatten();
+		if (result->get_operands().size() <= 1) {
+			return std::reinterpret_pointer_cast<n_operation>(result->get_operands()[0]);
+		}
+		return result;
+	}
+
+	struct product_term {
+		expression base = 1;
+		expression exp = 1;
+	};
+
+	// Internal helper function
+	product_term extract_products(detail::NodePtr op) {
+		if (auto pow = std::dynamic_pointer_cast<power>(op)) {
+			return {pow->base(), pow->exponent()};
+		}
+
+		return {op, 1};
+	}
+
+	detail::NodePtr multiplication::reduced() {
+		// Same function as addition::reduced
+		std::map<std::string, product_term> coefficients;
+
+		for (auto& op : operands) {
+			if (auto n_op = std::dynamic_pointer_cast<n_operation>(op)) {
+				op = n_op->reduced();
+			}
+
+			if (op->is_ground()) {
+				if (std::abs(op->eval(nullptr)) < 1e-9) {
+					return std::make_shared<constant>(0);
+				}
+				if (coefficients.contains("")) {
+					coefficients[""].base = coefficients[""].base * op->eval(nullptr);
+				}
+				else {
+					coefficients[""] = {op->eval(nullptr), 1};
+				}
+			}
+			else {
+				product_term result = extract_products(op);
+				std::string name = result.base.string();
+				if (coefficients.contains(name)) {
+					coefficients[name].exp = coefficients[name].exp + result.exp;
+				}
+				else {
+					coefficients[name] = result;
+				}
+			}
+		}
+
+		// Now, create a new sorted branch
+
+		if (coefficients.size() <= 1) {
+			auto [base, exp] = coefficients.begin()->second;
+			if (auto opexp = std::dynamic_pointer_cast<n_operation>(exp.root)) {
+				exp = opexp->reduced();
+			}
+			if (exp.is_ground() && std::abs(exp() - 1) < 1e-9) {
+				return base.root;
+			}
+			return std::make_shared<power>(base.root, exp.root);
+		}
+
+		ptr<multiplication> new_expr = std::make_shared<multiplication>();
+		for (auto& [name, val] : coefficients) {
+			auto [base, exp] = val;
+
+			if (auto opexp = std::dynamic_pointer_cast<n_operation>(exp.root)) {
+				exp = opexp->reduced();
+			}
+
+			// If base is (almost) equal to 1 or exponent is 0, don't create a multiplication
+			if (base.is_ground() && std::abs(base() - 1.0) < 1e-9 || exp.is_ground() && std::abs(exp()) < 1e-9) {
+				continue;
+			}
+
+			// If exponent is (almost) 1, then do not create a power node
+			if (exp.is_ground() && std::abs(exp() - 1) < 1e-9) {
+				new_expr->add_operand(base.root);
+				continue;
+			}
+
+			new_expr->add_operand(std::make_shared<power>(
+				base.root,
+				exp.root
+			));
+		}
+		new_expr->flatten();
+		return new_expr;
+	}
+
 	void multiplication::flatten() {
+		std::vector<std::pair<int, ptr<multiplication>>> to_replace; // Holds iterator to replace
 		for (auto it = operands.begin(); it != operands.end(); ++it) {
 			auto& op = *it;
-			if (auto add = std::dynamic_pointer_cast<multiplication>(op)) {
-				add->flatten();
-				operands.erase(it);
-				operands.append_range(add->get_operands());
+			if (auto n_op = std::dynamic_pointer_cast<n_operation>(op)) {
+				n_op->flatten();
+				if (n_op->kind() == kind_::multiplication) {
+					to_replace.emplace_back(std::distance(operands.begin(), it), std::reinterpret_pointer_cast<multiplication>(n_op)); // Deleting or adding now invalidates vector iterators
+				}
 			}
+		}
+
+		for (auto rit = to_replace.rbegin(); rit != to_replace.rend(); ++rit) {
+			auto& [i, op] = *rit;
+
+			// First erase the old operand, and then insert its operands at its position
+			operands.erase(operands.begin() + i);
+			operands.insert_range(operands.begin() + i, op->get_operands());
 		}
 	}
 

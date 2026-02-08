@@ -25,7 +25,8 @@ namespace sym {
 	 */
 	expression reduce(const expression& expr);
 	expression sort(const expression& expr);
-	expression develop(const expression& expr);
+	expression expand(const expression& expr);
+	//size_t hash(const expression& expr);
 
 	double get_power(const expression& expr);
 

@@ -26,7 +26,7 @@ namespace sym {
 		// Base node
 		class node {
 		public:
-			enum class kind_ {
+			enum class kind_ : int {
 				variable, addition, negate, multiplication, division, power, function, constant
 			};
 
