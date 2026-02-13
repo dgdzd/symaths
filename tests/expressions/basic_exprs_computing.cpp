@@ -3,6 +3,7 @@
 #include <symaths/symaths.hpp>
 
 int main(int argc, char** argv) {
+	sym::library lib{};
 	::testing::InitGoogleTest(&argc, argv);
 	return RUN_ALL_TESTS();
 }
@@ -26,8 +27,8 @@ TEST(basic_exprs_computing, simple_expressions) {
 	ASSERT_EQ(expr5.string(), "2x^2+3x+6x");
 	ASSERT_EQ(expr6.string(), "x-3-(x-6)");
 	ASSERT_EQ(expr7.string(), "(-3)^(-x)");
-	ASSERT_EQ(expr8.string(), "(-3)x*(-6)");
-	ASSERT_EQ(expr9.string(), "(-3)x(-x)");
+	ASSERT_EQ(expr8.string(), "-3x*(-6)");
+	ASSERT_EQ(expr9.string(), "-3x(-x)");
 }
 
 TEST(basic_exprs_computing, reduce_additions_simple) {
@@ -103,9 +104,9 @@ TEST(basic_exprs_computing, expand_products) {
 	sym::expression expr2 = (x - 2) * (x + 2) * (2 * x + 6);
 	sym::expression expr3 = (x + x * (3 - x)) * (1 - x);
 
-	ASSERT_EQ(sym::reduce(sym::expand(expr1)).string(), "x^2+(-4)");
-	ASSERT_EQ(sym::reduce(sym::expand(expr2)).string(), "2x^3+6x^2+(-8)x+(-24)");
-	ASSERT_EQ(sym::reduce(sym::expand(expr3)).string(), "x^3-5x^2+4");
+	ASSERT_EQ(sym::reduce(sym::expand(expr1)).string(), "x^2-4");
+	ASSERT_EQ(sym::reduce(sym::expand(expr2)).string(), "2x^3+6x^2+-8x-24");
+	ASSERT_EQ(sym::reduce(sym::expand(sym::expand(expr3))).string(), "x^3+-5x^2+4");
 }
 
 /*TEST(ct_expressions_value_test, simple_addition) {

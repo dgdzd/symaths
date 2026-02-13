@@ -16,12 +16,12 @@ namespace sym::detail {
 
 	public:
 		n_operation() = delete;
-		n_operation(std::shared_ptr<n_operation>&& rhv) : node(rhv->kind(), rhv->priority()), operands(std::move(rhv->operands)) {}
-		n_operation(const std::shared_ptr<n_operation>& rhv) : node(rhv->kind(), rhv->priority()), operands(std::move(rhv->operands)) {}
+		n_operation(std::shared_ptr<n_operation>&& rhv) : node(rhv->type(), rhv->priority()), operands(std::move(rhv->operands)) {}
+		n_operation(const std::shared_ptr<n_operation>& rhv) : node(rhv->type(), rhv->priority()), operands(std::move(rhv->operands)) {}
 
 		template <typename... Args>
-		explicit n_operation(kind_ kind, unsigned int priority, Args&&... args) : node(kind, priority), operands{std::forward<Args>(args)...} {}
-		n_operation(kind_ kind, unsigned int priority, const std::vector<NodePtr>& operands) : node(kind, priority), operands(operands) {}
+		explicit n_operation(p_kind kind, unsigned int priority, Args&&... args) : node(kind, priority), operands{std::forward<Args>(args)...} {}
+		n_operation(p_kind kind, unsigned int priority, const std::vector<NodePtr>& operands) : node(kind, priority), operands(operands) {}
 
 		void add_operand(NodePtr operand);
 		[[nodiscard]] const std::vector<NodePtr>& get_operands() const;
@@ -30,6 +30,7 @@ namespace sym::detail {
 		[[nodiscard]] virtual ptr<n_operation> sorted() const = 0;
 		[[nodiscard]] virtual ptr<n_operation> expand() const = 0;
 		[[nodiscard]] virtual NodePtr reduced() { return nullptr; }
+		virtual void simplify_negation() {}
 		virtual void flatten() = 0;
 	};
 }
@@ -40,10 +41,10 @@ namespace sym::objs {
 		std::string m_name;
 
 	public:
-		explicit variable(std::string n) : node(kind_::variable, ~0), m_name(std::move(n)) {}
+		explicit variable(std::string n) : node(kind::variable, ~0), m_name(std::move(n)) {}
 
 		[[nodiscard]] double eval(const detail::Context* ctx) const override;
-		[[nodiscard]] std::string string(const node* parent) const override;
+		[[nodiscard]] std::string string(const node* parent, bool first = false) const override;
 		[[nodiscard]] bool is_ground() const override;
 		[[nodiscard]] const std::string& name() const;
 	};
@@ -53,56 +54,46 @@ namespace sym::objs {
 		double value;
 
 	public:
-		constant(double v) : node(kind_::constant, ~0), value(v) {}
+		constant(double v) : node(kind::constant, ~0), value(v) {}
 
 		[[nodiscard]] double eval(const detail::Context* ctx) const override;
-		[[nodiscard]] std::string string(const node* parent) const override;
+		[[nodiscard]] std::string string(const node* parent, bool first = false) const override;
 		[[nodiscard]] bool is_ground() const override;
 	};
 
 	// N+ary Node: addition
 	class addition : public detail::n_operation {
 	public:
-		explicit addition(std::vector<detail::NodePtr> ops) : n_operation(kind_::addition, 1, std::move(ops)) {}
+		explicit addition(std::vector<detail::NodePtr> ops) : n_operation(kind::addition, 1, std::move(ops)) {}
 
 		template<typename... Args>
-		explicit addition(Args&&... args) : n_operation(kind_::addition, 1, std::forward<Args>(args)...) {}
+		explicit addition(Args&&... args) : n_operation(kind::addition, 1, std::forward<Args>(args)...) {}
 
 		[[nodiscard]] double eval(const detail::Context* ctx) const override;
-		[[nodiscard]] std::string string(const node* parent) const override;
+		[[nodiscard]] std::string string(const node* parent, bool first = false) const override;
 		[[nodiscard]] bool is_ground() const override;
 		[[nodiscard]]  ptr<n_operation> sorted() const override;
 		[[nodiscard]]  ptr<n_operation> expand() const override { return std::make_shared<addition>(*this); }
-		[[nodiscard]] detail::NodePtr reduced();
+		[[nodiscard]] detail::NodePtr reduced() override;
+		void simplify_negation() override;
 		void flatten() override;
-	};
-
-	class negate : public detail::node {
-		detail::NodePtr child;
-	public:
-		explicit negate(detail::NodePtr c) : node(kind_::negate, 2), child(std::move(c)) {}
-
-		[[nodiscard]] double eval(const detail::Context* ctx) const override;
-		[[nodiscard]] std::string string(const node* parent) const override;
-		[[nodiscard]] bool is_ground() const override;
-
-		[[nodiscard]] detail::NodePtr get_child() const;
 	};
 
 	// N+ary Node: multiplication
 	class multiplication : public detail::n_operation {
 	public:
-		explicit multiplication(std::vector<detail::NodePtr> ops) : n_operation(kind_::multiplication, 3, std::move(ops)) {}
+		explicit multiplication(std::vector<detail::NodePtr> ops) : n_operation(kind::multiplication, 3, std::move(ops)) {}
 
 		template<typename... Args>
-		explicit multiplication(Args&&... args) : n_operation(kind_::multiplication, 3, std::forward<Args>(args)...) {}
+		explicit multiplication(Args&&... args) : n_operation(kind::multiplication, 3, std::forward<Args>(args)...) {}
 
 		[[nodiscard]] double eval(const detail::Context* ctx) const override;
-		[[nodiscard]] std::string string(const node* parent) const override;
+		[[nodiscard]] std::string string(const node* parent, bool first = false) const override;
 		[[nodiscard]] bool is_ground() const override;
 		[[nodiscard]]  ptr<n_operation> sorted() const override;
 		[[nodiscard]]  ptr<n_operation> expand() const override;
-		[[nodiscard]] detail::NodePtr reduced();
+		[[nodiscard]] detail::NodePtr reduced() override;
+		void simplify_negation() override;
 		void flatten() override;
 
 		[[nodiscard]] detail::AdditionNodePtr unroll() const;
@@ -113,13 +104,13 @@ namespace sym::objs {
 	class division : public detail::n_operation {
 		std::vector<detail::NodePtr> operands;
 	public:
-		explicit division(std::vector<detail::NodePtr> ops) : n_operation(kind_::division, 3, std::move(ops)) {}
+		explicit division(std::vector<detail::NodePtr> ops) : n_operation(kind::division, 3, std::move(ops)) {}
 
 		template<typename... Args>
-		explicit division(Args&&... args) : n_operation(kind_::division, 3, std::forward<Args>(args)...) {}
+		explicit division(Args&&... args) : n_operation(kind::division, 3, std::forward<Args>(args)...) {}
 
 		[[nodiscard]] double eval(const detail::Context* ctx) const override;
-		[[nodiscard]] std::string string(const node* parent) const override;
+		[[nodiscard]] std::string string(const node* parent, bool first = false) const override;
 		[[nodiscard]] bool is_ground() const override;
 		[[nodiscard]] ptr<n_operation> sorted() const override;
 		[[nodiscard]]  ptr<n_operation> expand() const override { return std::make_shared<division>(*this); }
@@ -132,10 +123,10 @@ namespace sym::objs {
 
 	public:
 		power() = delete;
-		power(detail::NodePtr base, detail::NodePtr exponent) : node(kind_::power, 4), m_base(std::move(base)), m_exp(std::move(exponent)) {}
+		power(detail::NodePtr base, detail::NodePtr exponent) : node(kind::power, 4), m_base(std::move(base)), m_exp(std::move(exponent)) {}
 
 		[[nodiscard]] double eval(const detail::Context* ctx) const override;
-		[[nodiscard]] std::string string(const node* parent) const override;
+		[[nodiscard]] std::string string(const node* parent, bool first = false) const override;
 		[[nodiscard]] bool is_ground() const override;
 		[[nodiscard]] const detail::NodePtr& base() const;
 		[[nodiscard]] const detail::NodePtr& exponent() const;

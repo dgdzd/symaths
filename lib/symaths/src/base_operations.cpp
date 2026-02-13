@@ -18,15 +18,23 @@ namespace sym::detail {
 
 	const std::vector<NodePtr>& n_operation::get_operands() const {
 		return operands;
-	};
+	}
 }
 
 namespace sym::objs {
 	double variable::eval(const detail::Context* ctx) const {
+		if (negated())
+			return -ctx->at(m_name);
 		return ctx->at(m_name); // Throws if variable not found
 	}
 
-	std::string variable::string(const node* parent) const {
+	std::string variable::string(const node* parent, bool first) const {
+		if (negated()) {
+			if (first) {
+				return "-" + m_name;
+			}
+			return "(-" + m_name + ")";
+		}
 		return m_name;
 	}
 
@@ -39,12 +47,18 @@ namespace sym::objs {
 	}
 
 	double constant::eval(const detail::Context* ctx) const {
+		if (negated())
+			return -value;
 		return value;
 	}
 
-	std::string constant::string(const node* parent) const {
-		if (value < 0 && parent && parent->kind() != kind_::negate)
-			return std::format("({})", value);
+	std::string constant::string(const node* parent, bool first) const {
+		if (negated()) {
+			if (first) {
+				return std::format("{}", -value);
+			}
+			return std::format("({})", -value);
+		}
 		return std::format("{}", value);
 	}
 
@@ -57,22 +71,28 @@ namespace sym::objs {
 		for (const auto& op : operands) {
 			sum += op->eval(ctx);
 		}
-		return sum;
+		return negated() ? -sum : sum;
 	}
 
-	std::string addition::string(const node* parent) const {
-		bool par = false;
+	std::string addition::string(const node* parent, bool first) const {
+		bool par = parent && parent->priority() > priority() || (!first && negated());
 		std::string s;
-		if (parent && parent->priority() > priority()) par = true;
 
 		if (par) s += "(";
+		if (negated()) s += "-(";
 		for (size_t i = 0; i < operands.size(); ++i) {
-			if (i != 0 && operands[i]->kind() != kind_::negate) {
+			std::string sign = "+";
+			if (operands[i]->negated())
+				sign = "";
+
+			if (i != 0) {
 				std::string spaces(print_policies.sum.operand_spaces, ' ');
-				s += spaces + "+";
+				s += spaces + sign;
+
 			}
-			s += operands[i]->string(this);
+			s += operands[i]->string(this, i == 0);
 		}
+		if (negated()) s += ")";
 		if (par) s += ")";
 		return s;
 	}
@@ -81,25 +101,6 @@ namespace sym::objs {
 		return std::ranges::all_of(operands, [](const auto& op) {
 			return op->is_ground();
 		});
-	}
-
-	double get_biggest_power(detail::NodePtr node) {
-		double max = 1.0;
-
-		if (auto n_op = std::dynamic_pointer_cast<detail::n_operation>(node)) {
-			for (auto& subop : n_op->get_operands()) {
-				max = std::max(max, get_biggest_power(subop));
-			}
-		}
-
-		if (auto pow = std::dynamic_pointer_cast<power>(node)) {
-			if (pow->exponent()->is_ground())
-				max = pow->exponent()->eval(nullptr);
-			else
-				max = std::numeric_limits<double>::max();
-		}
-
-		return max;
 	}
 
 	ptr<detail::n_operation> addition::sorted() const {
@@ -150,24 +151,34 @@ namespace sym::objs {
 		return cpy;
 	}
 
+	void addition::simplify_negation() {
+		if (!negated()) return;
+
+		for (auto& op : operands) {
+			op->negated() = !op->negated();
+			if (auto n_op = std::dynamic_pointer_cast<n_operation>(op)) {
+				n_op->simplify_negation();
+			}
+		}
+	}
+
 	void addition::flatten() {
-		std::vector<std::pair<std::vector<detail::NodePtr>::iterator, ptr<addition>>> to_replace; // Holds iterator to replace
+		std::vector<std::pair<int, ptr<addition>>> to_replace; // Holds iterator to replace
 		for (auto it = operands.begin(); it != operands.end(); ++it) {
 			auto& op = *it;
 			if (auto n_op = std::dynamic_pointer_cast<n_operation>(op)) {
 				n_op->flatten();
-				if (n_op->kind() == kind_::addition) {
-					to_replace.emplace_back(it, std::reinterpret_pointer_cast<addition>(n_op)); // Deleting or adding now invalidates vector iterators
+				if (n_op->type() == kind::addition) {
+					to_replace.emplace_back(std::distance(operands.begin(), it), std::reinterpret_pointer_cast<addition>(n_op)); // Deleting or adding now invalidates vector iterators
 				}
 			}
 		}
 
 		for (auto rit = to_replace.rbegin(); rit != to_replace.rend(); ++rit) {
-			auto& [it, op] = *rit;
-			unsigned int i = std::distance(operands.begin(), it);
+			auto& [i, op] = *rit;
 
 			// First erase the old operand, and then insert its operands at its position
-			operands.erase(it);
+			operands.erase(operands.begin() + i);
 			operands.insert_range(operands.begin() + i, op->get_operands());
 		}
 	}
@@ -252,45 +263,21 @@ namespace sym::objs {
 		return new_expr;
 	}
 
-	double negate::eval(const detail::Context* ctx) const {
-		return -child->eval(ctx);
-	}
-
-	std::string negate::string(const node* parent) const {
-		if (parent && parent->kind() == kind_::addition) {
-			std::string spaces(print_policies.sum.operand_spaces, ' ');
-			return spaces + "-" + spaces + child->string(this);
-		}
-
-		if (parent && parent->priority() > priority())
-			return "(-" + child->string(this) + ")";
-
-		return "-" + child->string(this);
-
-	}
-
-	bool negate::is_ground() const {
-		return child->is_ground();
-	}
-
-	detail::NodePtr negate::get_child() const {
-		return child;
-	}
-
 	double multiplication::eval(const detail::Context* ctx) const {
-		double m = 1.0;
+		double m = negated() ? -1.0 : 1.0;
 		for (const auto& op : operands) {
 			m *= op->eval(ctx);
 		}
 		return m;
 	}
 
-	std::string multiplication::string(const node* parent) const {
-		bool par = false;
+	std::string multiplication::string(const node* parent, bool first) const {
+		bool par = parent && parent->priority() > priority() || (!first && negated());
+		bool negate_par = !first && negated();
 		std::string s;
-		if (parent && parent->priority() > priority()) par = true;
 
 		if (par) s = "(";
+		if (negated()) s += "-(";
 		for (size_t i = 0; i < operands.size(); ++i) {
 			if (i != 0) {
 				std::string spaces(print_policies.product.operand_spaces, ' ');
@@ -298,8 +285,9 @@ namespace sym::objs {
 				if (is_val || print_policies.product.use_stars_for_subexprs)
 					s += spaces + "*";
 			}
-			s += operands[i]->string(this);
+			s += operands[i]->string(this, i == 0);
 		}
+		if (negated()) s += ")";
 		if (par) s += ")";
 		return s;
 	}
@@ -337,12 +325,12 @@ namespace sym::objs {
 
 			double pw1 = 1.0;
 			double pw2 = 1.0;
-			if (op1->kind() == kind_::power) {
+			if (op1->type() == kind::power) {
 				auto exp = std::dynamic_pointer_cast<power>(op1)->exponent();
 				if (exp->is_ground()) pw1 = exp->eval(nullptr);
 				else pw1 = std::numeric_limits<double>::max();
 			}
-			if (op2->kind() == kind_::power) {
+			if (op2->type() == kind::power) {
 				auto exp = std::dynamic_pointer_cast<power>(op2)->exponent();
 				if (exp->is_ground()) pw2 = exp->eval(nullptr);
 				else pw2 = std::numeric_limits<double>::max();
@@ -523,13 +511,25 @@ namespace sym::objs {
 		return new_expr;
 	}
 
+	void multiplication::simplify_negation() {
+		bool n = negated();
+		for (auto op : operands) {
+			n ^= op->negated();
+			op->negated() = false;
+			if (auto n_op = std::dynamic_pointer_cast<n_operation>(op)) {
+				n_op->simplify_negation();
+			}
+		}
+		operands[0]->negated() = n;
+	}
+
 	void multiplication::flatten() {
 		std::vector<std::pair<int, ptr<multiplication>>> to_replace; // Holds iterator to replace
 		for (auto it = operands.begin(); it != operands.end(); ++it) {
 			auto& op = *it;
 			if (auto n_op = std::dynamic_pointer_cast<n_operation>(op)) {
 				n_op->flatten();
-				if (n_op->kind() == kind_::multiplication) {
+				if (n_op->type() == kind::multiplication) {
 					to_replace.emplace_back(std::distance(operands.begin(), it), std::reinterpret_pointer_cast<multiplication>(n_op)); // Deleting or adding now invalidates vector iterators
 				}
 			}
@@ -556,7 +556,7 @@ namespace sym::objs {
 		return m;
 	}
 
-	std::string division::string(const node* parent) const {
+	std::string division::string(const node* parent, bool first) const {
 		bool par = false;
 		std::string s;
 		if (parent && parent->priority() > priority()) par = true;
@@ -599,13 +599,21 @@ namespace sym::objs {
 		return std::pow(m_base->eval(ctx), m_exp->eval(ctx));
 	}
 
-	std::string power::string(const node* parent) const {
+	std::string power::string(const node* parent, bool first) const {
+		bool par = parent && parent->priority() > priority() || (!first && negated());
 		std::string s;
 		std::string sp_b(print_policies.power.operand_spaces_before, ' ');
 		std::string sp_a(print_policies.power.operand_spaces_after, ' ');
 
-		if (parent && parent->priority() > priority())
+		if (par) {
+			if (negated()) {
+				return "-(" + m_base->string(this) + sp_b + "^" + sp_a + m_exp->string(this) + ")";
+			}
 			return "(" + m_base->string(this) + sp_b + "^" + sp_a + m_exp->string(this) + ")";
+		}
+		if (negated()) {
+			return "-" + m_base->string(this) + sp_b + "^" + sp_a + m_exp->string(this);
+		}
 
 		return m_base->string(this) + sp_b + "^" + sp_a + m_exp->string(this);
 	}

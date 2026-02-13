@@ -25,25 +25,37 @@ bool sym::is_constant(expression expr) {
 }*/
 
 sym::expression sym::reduce(const expression& expr) {
-	if (auto op = std::dynamic_pointer_cast<detail::n_operation>(expr.root))
-		return sort(op->reduced());
+	return sort(std::visit([&](const auto& x) {
+		using T = std::decay_t<decltype(x)>;
 
-	return sort(expr);
+		if constexpr (std::is_same_v<T, detail::addition> || std::is_same_v<T, detail::multiplication> ||  std::is_same_v<T, detail::power> || std::is_same_v<T, detail::negation>) {
+			return x.reduced();
+		}
+		return expr.root;
+	}, expr.root->p_data));
 }
 
 sym::expression sym::sort(const expression& expr) {
-	if (auto operation = std::dynamic_pointer_cast<detail::n_operation>(expr.root))
-		return {operation->sorted()};
+	return std::visit([&](const auto& x) {
+		using T = std::decay_t<decltype(x)>;
 
-	return expr;
+		if constexpr (std::is_same_v<T, detail::addition> || std::is_same_v<T, detail::multiplication> || std::is_same_v<T, detail::negation>) {
+			return x.sorted();
+		}
+
+		return expr.root;
+	}, expr.root->p_data);
 }
 
 sym::expression sym::expand(const expression& expr) {
-	if (auto mul = std::dynamic_pointer_cast<objs::multiplication>(expr.root)) {
-		return {mul->expand()};
-	}
+	return std::visit([&](const auto& x) {
+		using T = std::decay_t<decltype(x)>;
 
-	return expr;
+		if constexpr (std::is_same_v<T, detail::addition> || std::is_same_v<T, detail::multiplication> || std::is_same_v<T, detail::power> || std::is_same_v<T, detail::negation>) {
+			return x.expanded();
+		}
+		return expr.root;
+	}, expr.root->p_data);
 }
 
 template <class T>
@@ -64,33 +76,41 @@ inline void hash_combine(std::size_t& seed, const T& v)
 	}
 }*/
 
-sym::detail::term sym::detail::extract_term(NodePtr node) {
-	term t{};
-	if (auto mult = std::dynamic_pointer_cast<objs::multiplication>(node)) {
-		mult->flatten();
-		auto smult = mult->sorted();
-		t.coefficient = 1.0;
-		for (auto& op : smult->get_operands()) {
-			if (op->is_ground()) {
-				t.coefficient *= op->eval(nullptr);
-			}
-			else {
-				if (t.symbolic) {
-					auto symb = std::static_pointer_cast<objs::multiplication>(t.symbolic);
-					symb->add_operand(op);
+sym::detail::term sym::detail::extract_term(const node* node) {
+	return std::visit([&](const auto& x) {
+		using T = std::decay_t<decltype(x)>;
+
+		term t{};
+		if constexpr (std::is_same_v<T, multiplication>) {
+			t.coefficient = 1.0;
+			std::vector<const detail::node*> final_operands;
+			for (auto& op : x.operands) {
+				if (op->is_ground()) {
+					t.coefficient *= op->eval(nullptr);
 				}
 				else {
-					t.symbolic = std::make_shared<objs::multiplication>(op);
+					final_operands.push_back(op);
 				}
 			}
-		}
-	}
-	else {
-		t.coefficient = 1.0;
-		t.symbolic = node;
-	}
 
-	return t;
+			if (final_operands.size() == 1) {
+				t.symbolic = final_operands.front();
+			}
+			else {
+				t.symbolic = current_context->node_manager().make_mul(final_operands);
+			}
+		}
+		else if constexpr (std::is_same_v<T, negation>) {
+			t = extract_term(x.child);
+			t.coefficient = -t.coefficient;
+		}
+		else {
+			t.coefficient = 1.0;
+			t.symbolic = node;
+		}
+
+		return t;
+	}, node->p_data);
 }
 
 /*sym::detail::AdditionNodePtr sym::detail::develop(MultiplicationNodePtr node) {

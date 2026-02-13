@@ -4,10 +4,6 @@
 #include "symaths.hpp"
 
 namespace sym {
-	namespace detail {
-		expression simplify_additions(NodePtr parent);
-		expression simplify_multiplications(NodePtr parent);
-	}
 
 	/**
 	 * @brief This function takes an expression and removes redundant operations between known values.
@@ -28,17 +24,15 @@ namespace sym {
 	expression expand(const expression& expr);
 	//size_t hash(const expression& expr);
 
-	double get_power(const expression& expr);
-
 	namespace detail {
 		struct term {
 			double coefficient;
-			NodePtr symbolic;
+			const node* symbolic;
 		};
 
-		term extract_term(NodePtr node);
+		term extract_term(const node* node);
 
-		AdditionNodePtr develop(MultiplicationNodePtr node);
+		const node* develop(const node* node);
 	}
 }
 
