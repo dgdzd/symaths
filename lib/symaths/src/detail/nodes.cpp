@@ -1,4 +1,4 @@
-#include "symaths/detail/nodes.h"
+#include "symaths/detail/nodes.hpp"
 
 #include "symaths/expressions_manip.hpp"
 #include "symaths/symaths.hpp"
@@ -347,7 +347,7 @@ const detail::node* detail::addition::reduced() const {
 			term term_ = extract_term(op);
 
 			// Don't add term if coefficient is (almost) null
-			if (std::abs(term_.coefficient) > 1e-9) {
+			if (std::abs(term_.coefficient) > 1e-12) {
 				std::string name = std::visit([&](auto& x) {
 					using T = std::decay_t<decltype(x)>;
 					if constexpr (std::is_same_v<T, negation>) {
@@ -374,6 +374,11 @@ const detail::node* detail::addition::reduced() const {
 	for (auto& [name, val] : m) {
 		auto [coeff, expr] = val;
 
+		// If it is (almost) equal to 0, do not create an operand
+		if (std::abs(coeff) < 1e-12) {
+			continue;
+		}
+
 		// Don't make a multiplication if it is just a constant
 		if (name.empty()) {
 			new_expr.push_back(nm.make_constant(coeff));
@@ -381,13 +386,8 @@ const detail::node* detail::addition::reduced() const {
 		}
 
 		// If it is (almost) equal to 1, don't create a multiplication
-		if (std::abs(coeff - 1.0) < 1e-9) {
+		if (std::abs(coeff - 1.0) < 1e-12) {
 			new_expr.push_back(reduce(expr).root);
-			continue;
-		}
-
-		// If it is (almost) equal to 0, do not create an operand
-		if (std::abs(coeff) < 1e-9) {
 			continue;
 		}
 
@@ -526,7 +526,7 @@ const detail::node* detail::multiplication::reduced() const {
 		}, op->p_data);
 
 		if (op->is_ground()) {
-			if (std::abs(op->eval(nullptr)) < 1e-10) {
+			if (std::abs(op->eval(nullptr)) < 1e-12) {
 				return current_context->node_manager().make_constant(0);
 			}
 			global_coeff *= op->eval(nullptr);
@@ -564,12 +564,12 @@ const detail::node* detail::multiplication::reduced() const {
 		}, exp.root->p_data);
 
 		// If base is (almost) equal to 1 or exponent is 0, don't create a multiplication
-		if (base.is_ground() && std::abs(base() - 1.0) < 1e-9 || exp.is_ground() && std::abs(exp()) < 1e-9) {
+		if (base.is_ground() && std::abs(base() - 1.0) < 1e-12 || exp.is_ground() && std::abs(exp()) < 1e-12) {
 			continue;
 		}
 
 		// If exponent is (almost) 1, then do not create a power node
-		if (exp.is_ground() && std::abs(exp() - 1) < 1e-9) {
+		if (exp.is_ground() && std::abs(exp() - 1) < 1e-12) {
 			new_operands.push_back(base.root);
 			continue;
 		}
@@ -646,7 +646,7 @@ const detail::node* detail::multiplication::expanded() const {
 	for (const auto& prod : products) {
 		std::vector<const node*> final_group_terms;
 		for (const auto& factor : prod) {
-			if (factor && !(factor->is_ground() && std::abs(factor->eval(nullptr) - 1) < 1e-9)) {
+			if (factor && !(factor->is_ground() && std::abs(factor->eval(nullptr) - 1) < 1e-12)) {
 				final_group_terms.push_back(factor);
 			}
 		}

@@ -1,28 +1,6 @@
 #include "symaths/expressions_manip.hpp"
 
-#include "symaths/detail/nodes.h"
-
-/*bool is_simplifyable(sym::detail::NodePtr) {
-	// First check if there are numbers (no variables)
-	if (auto constant = )
-	if (auto sum = std::dynamic_pointer_cast<>())
-}
-
-sym::expression sym::detail::simplify_additions(NodePtr parent) {
-	if (auto sum = std::dynamic_pointer_cast<objs::addition>(parent)) {
-		sum->
-	}
-}
-
-sym::expression sym::detail::simplify_multiplications(NodePtr parent) {
-
-}
-
-
-
-bool sym::is_constant(expression expr) {
-	if
-}*/
+#include "symaths/symaths.hpp"
 
 sym::expression sym::reduce(const expression& expr) {
 	return sort(std::visit([&](const auto& x) {
@@ -64,17 +42,6 @@ inline void hash_combine(std::size_t& seed, const T& v)
 	std::hash<T> hasher;
 	seed ^= hasher(v) + 0x9e3779b9 + (seed<<6) + (seed>>2);
 }
-
-/*size_t sym::hash(const expression& expr) {
-	auto h1 = std::hash<int>{}(static_cast<int>(expr.root->kind()));
-	auto h2 = std::hash<int>{}(static_cast<int>(expr.root->priority()));
-}*/
-
-/*double sym::get_power(const expression& expr) {
-	if (auto pow = std::dynamic_pointer_cast<objs::power>(expr.root)) {
-
-	}
-}*/
 
 sym::detail::term sym::detail::extract_term(const node* node) {
 	return std::visit([&](const auto& x) {

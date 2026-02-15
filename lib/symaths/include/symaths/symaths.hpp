@@ -1,7 +1,9 @@
-#ifndef SYMATHS_LIBRARY_H
-#define SYMATHS_LIBRARY_H
+#ifndef SYMATHS_LIBRARY_HPP
+#define SYMATHS_LIBRARY_HPP
 
-#include "base_functions.hpp"
+#include "symaths/base_functions.hpp"
+#include "symaths/differentiation.hpp"
+#include "symaths/expressions_manip.hpp"
 
 namespace sym {
 	struct print_policies_t {
@@ -42,11 +44,6 @@ namespace sym {
 	void make_context_current(library& ctx);
 	library* get_current_context();
 
-	class expression;
-	expression reduce(const expression&);
-	expression sort(const expression&);
-	expression expand(const expression&);
-
 	const detail::node* make_constant(double val);
 	const detail::node* make_symbol(const std::string& name);
 	const detail::node* make_negation(const detail::node* node);
@@ -79,12 +76,6 @@ namespace sym {
 		 */
 		[[nodiscard]] bool is_ground() const { return root->is_ground(); }
 
-		friend expression sym::reduce(const expression& expr);
-		friend expression sym::sort(const expression& expr);
-		friend expression sym::expand(const expression& expr);
-		//friend size_t sym::hash(const expression& expr);
-		friend double get_power(const expression& expr);
-
 		friend expression operator+(const expression& lhs, const expression& rhs) {
 			auto add = make_addition({lhs.root, rhs.root});
 			return {add};
@@ -113,12 +104,25 @@ namespace sym {
 	};
 
 	inline expression pow(const expression& lhs, const expression& rhs) {
-		return {make_power(lhs.root, rhs.root)};
+		return make_power(lhs.root, rhs.root);
 	}
 
-	namespace detail {
+	class variable {
+		const detail::node* m_ref;
 
-	}
+		friend expression sym::differentiate(const expression& expr, const variable& symbol);
+
+	public:
+		variable();
+		variable(const std::string& name);
+		variable(const char* name);
+		variable(const expression& expr);
+
+		[[nodiscard]] const std::string& name() const;
+		const std::string& name(const std::string& new_name);
+
+		operator expression() const;
+	};
 }
 
 #endif

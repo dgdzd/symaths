@@ -3,8 +3,9 @@
 add_library(symaths_lib STATIC)
 
 set(SYMATHS_LIB_SOURCES
-        src/expressions_manip.cpp
         src/symaths.cpp
+        src/expressions_manip.cpp
+        src/differentiation.cpp
         src/detail/nodes.cpp
 )
 

@@ -1,9 +1,11 @@
 #ifndef EXPRESSIONS_MANIP_HPP
 #define EXPRESSIONS_MANIP_HPP
 
-#include "symaths.hpp"
-
 namespace sym {
+	class expression;
+	namespace detail {
+		class node;
+	}
 
 	/**
 	 * @brief This function takes an expression and removes redundant operations between known values.
