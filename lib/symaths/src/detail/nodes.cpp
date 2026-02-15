@@ -223,6 +223,9 @@ const detail::node* detail::negation::reduced() const {
 		if constexpr (std::is_same_v<T, addition> || std::is_same_v<T, multiplication> || std::is_same_v<T, power> || std::is_same_v<T, negation>) {
 			return current_context->node_manager().make_negation(x.reduced());
 		}
+
+		// TODO: eliminate a maximum of "-" signs in the expression (--x becomes x, ---x becomes -x, etc...)
+
 		return current_context->node_manager().make_negation(child);
 	}, child->p_data);
 }
@@ -231,7 +234,7 @@ const detail::node* detail::negation::expanded() const {
 	return std::visit([&](const auto& x) {
 		using T = std::decay_t<decltype(x)>;
 
-		if constexpr (std::is_same_v<T, multiplication> || std::is_same_v<T, power> || std::is_same_v<T, negation>) {
+		if constexpr (std::is_same_v<T, addition> || std::is_same_v<T, multiplication> || std::is_same_v<T, power> || std::is_same_v<T, negation>) {
 			return current_context->node_manager().make_negation(x.expanded());
 		}
 		return current_context->node_manager().make_negation(child);
@@ -379,7 +382,7 @@ const detail::node* detail::addition::reduced() const {
 
 		// If it is (almost) equal to 1, don't create a multiplication
 		if (std::abs(coeff - 1.0) < 1e-9) {
-			new_expr.push_back(make_symbol(name));
+			new_expr.push_back(reduce(expr).root);
 			continue;
 		}
 
@@ -485,9 +488,12 @@ const detail::node* detail::multiplication::sorted() const {
 struct product_term {
 	expression base = 1;
 	expression exp = 1;
+	bool negated = false;
 };
 
 // Internal helper function
+// Note that in case of negative symbols :
+// -x^2 --> base : -x | exp : 2
 product_term extract_products(const detail::node* op) {
 	return std::visit([&](auto& x) {
 		using T = std::decay_t<decltype(x)>;
@@ -497,7 +503,7 @@ product_term extract_products(const detail::node* op) {
 		// If it's a negation, extract the child's exponent then negate the base
 		if constexpr (std::is_same_v<T, detail::negation>) {
 			auto term = extract_products(x.child);
-			term.base = -term.base;
+			term.negated = true;
 			return term;
 		}
 		return product_term{op, 1};
@@ -507,11 +513,12 @@ product_term extract_products(const detail::node* op) {
 const detail::node* detail::multiplication::reduced() const {
 	// Same function as addition::reduced
 	std::map<std::string, product_term> coefficients;
+	double global_coeff = 1.0;
 
 	for (auto op : operands) {
+		// First reduce sub expressions
 		op = std::visit([&](auto& x) {
 			using T = std::decay_t<decltype(x)>;
-
 			if constexpr (std::is_same_v<T, addition> || std::is_same_v<T, multiplication> || std::is_same_v<T, power> ||std::is_same_v<T, negation>) {
 				return x.reduced();
 			}
@@ -522,23 +529,16 @@ const detail::node* detail::multiplication::reduced() const {
 			if (std::abs(op->eval(nullptr)) < 1e-10) {
 				return current_context->node_manager().make_constant(0);
 			}
-			if (coefficients.contains("")) {
-				coefficients[""].base = coefficients[""].base * op->eval(nullptr);
-			}
-			else {
-				coefficients[""] = {op->eval(nullptr), 1};
-			}
+			global_coeff *= op->eval(nullptr);
 		}
 		else {
 			product_term result = extract_products(op);
-			std::string name = std::visit([&](auto& x) {
-				using T = std::decay_t<decltype(x)>;
-				if constexpr (std::is_same_v<T, negation>) {
-					return expression(x.child).string();
-				}
-				return result.base.string();
-			}, result.base.root->p_data);
+			std::string name = result.base.string();
+			if (result.negated) {
+				global_coeff *= -1;
+			}
 			if (coefficients.contains(name)) {
+				// a^b * a^c = a^(b+c)
 				coefficients[name].exp = coefficients[name].exp + result.exp;
 			}
 			else {
@@ -550,8 +550,11 @@ const detail::node* detail::multiplication::reduced() const {
 	// Now, create a new sorted branch
 
 	std::vector<const node*> new_operands;
+	if (std::abs(global_coeff - 1.0) > 1e-12 && std::abs(global_coeff + 1.0)) {
+		new_operands.push_back(current_context->node_manager().make_constant(std::abs(global_coeff)));
+	}
 	for (auto& [name, val] : coefficients) {
-		auto [base, exp] = val;
+		auto [base, exp, neg] = val;
 
 		std::visit([&](auto& x) {
 			using T = std::decay_t<decltype(x)>;
@@ -577,9 +580,16 @@ const detail::node* detail::multiplication::reduced() const {
 		return current_context->node_manager().make_constant(1);
 	}
 	if (new_operands.size() == 1) {
+		if (global_coeff < 0) {
+			return current_context->node_manager().make_negation(new_operands.front());
+		}
 		return new_operands.front();
 	}
-	return current_context->node_manager().make_mul(new_operands);
+	const node* result = current_context->node_manager().make_mul(new_operands);
+	if (global_coeff < 0) {
+		return current_context->node_manager().make_negation(result);
+	}
+	return result;
 }
 
 const detail::node* detail::multiplication::expanded() const {
@@ -602,13 +612,14 @@ const detail::node* detail::multiplication::expanded() const {
 			using T = std::decay_t<decltype(x)>;
 
 			// Expand all subexpressions
-			if constexpr (std::is_same_v<T, multiplication> || std::is_same_v<T, power> || std::is_same_v<T, negation>) {
+			if constexpr (std::is_same_v<T, addition> || std::is_same_v<T, multiplication> || std::is_same_v<T, power> || std::is_same_v<T, negation>) {
 				expanded = x.expanded();
-				all_operands.push_back({expanded});
 			}
-			else if constexpr (std::is_same_v<T, addition>) {
-				expanded = x.expanded();
-				all_operands.push_back(x.operands);
+			if (std::holds_alternative<addition>(expanded->p_data)) {
+				all_operands.push_back(std::get<addition>(expanded->p_data).operands);
+			}
+			else {
+				all_operands.push_back({expanded});
 			}
 		}, op->p_data);
 	}
@@ -719,6 +730,14 @@ std::vector<const detail::node*> flatten(const std::vector<const detail::node*>&
 	return flat;
 }
 
+detail::node::internal_data_t reduce_negations(detail::negation arg) {
+	// 2 negations = +
+	if (std::holds_alternative<detail::negation>(arg.child->p_data)) {
+		return std::get<detail::negation>(arg.child->p_data).child->p_data;
+	}
+	return arg;
+}
+
 const detail::node* node_manager_t::make_symbol(const std::string& name) {
 	return intern(detail::symbol{name});
 }
@@ -728,7 +747,7 @@ const detail::node* node_manager_t::make_constant(double v) {
 }
 
 const detail::node* node_manager_t::make_negation(const detail::node* node) {
-	return intern(detail::negation{node});
+	return intern(reduce_negations(detail::negation{node}));
 }
 
 const detail::node* node_manager_t::make_add(const std::vector<const detail::node*>& operands) {

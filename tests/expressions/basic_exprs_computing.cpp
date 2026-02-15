@@ -68,12 +68,14 @@ TEST(basic_exprs_computing, reduce_multiplications) {
 	sym::expression expr3 = x * x * x;
 	sym::expression expr4 = y * y * x * x;
 	sym::expression expr5 = 5 * 5 * y * y * x * x;
+	sym::expression expr6 = x * -x;
 
 	ASSERT_EQ(sym::reduce(expr1).string(), "18x");
 	ASSERT_EQ(sym::reduce(expr2).string(), "x^2");
 	ASSERT_EQ(sym::reduce(expr3).string(), "x^3");
 	ASSERT_EQ(sym::reduce(expr4).string(), "x^2y^2");
 	ASSERT_EQ(sym::reduce(expr5).string(), "25x^2y^2");
+	ASSERT_EQ(sym::reduce(expr6).string(), "-x^2");
 }
 
 TEST(basic_exprs_computing, sort_expressions) {
@@ -106,7 +108,7 @@ TEST(basic_exprs_computing, expand_products) {
 
 	ASSERT_EQ(sym::reduce(sym::expand(expr1)).string(), "x^2-4");
 	ASSERT_EQ(sym::reduce(sym::expand(expr2)).string(), "2x^3+6x^2+-8x-24");
-	ASSERT_EQ(sym::reduce(sym::expand(sym::expand(expr3))).string(), "x^3+-5x^2+4");
+	ASSERT_EQ(sym::reduce(sym::expand(expr3)).string(), "x^3+-5x^2+4x");
 }
 
 /*TEST(ct_expressions_value_test, simple_addition) {
