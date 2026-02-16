@@ -1,5 +1,6 @@
 #include "symaths/detail/nodes.hpp"
 
+#include "symaths/base_functions.hpp"
 #include "symaths/expressions_manip.hpp"
 #include "symaths/symaths.hpp"
 
@@ -48,12 +49,45 @@ double detail::node::eval(const Context* ctx) const {
 			return m;
 		}
 
-		else if constexpr(std::is_same_v<T, power>) {
+		else if constexpr (std::is_same_v<T, power>) {
 			return std::pow(x.base->eval(ctx), x.exponent->eval(ctx));
+		}
+
+		else if constexpr (std::is_same_v<T, function_call>) {
+			const auto& func = get_func(funcs::builtin_fn_id{x.f_id});
+			return func.eval(x.args);
 		}
 
 		return 0.0;
 	}, p_data);
+}
+
+bool should_be_preceeded_by_star(const detail::node* parent, const detail::node* node) {
+	return std::visit([&](const auto& x) {
+		using T = std::decay_t<decltype(x)>;
+
+		if constexpr (std::is_same_v<T, detail::constant> || std::is_same_v<T, detail::function_call>) {
+			return parent->priority() > node->priority();
+		}
+
+		if constexpr (std::is_same_v<T, detail::symbol>) {
+			return false;
+		}
+
+		if constexpr (std::is_same_v<T, detail::negation>) {
+			return parent->priority() > node->priority();
+		}
+
+		if constexpr (std::is_same_v<T, detail::addition> || std::is_same_v<T, detail::multiplication>) {
+			return should_be_preceeded_by_star(parent, x.operands[0]);
+		}
+
+		if constexpr (std::is_same_v<T, detail::power>) {
+			return should_be_preceeded_by_star(parent, x.base);
+		}
+
+		return true;
+	}, node->p_data);
 }
 
 std::string detail::node::string(const node* parent, bool first) const {
@@ -147,6 +181,19 @@ std::string detail::node::string(const node* parent, bool first) const {
 			return x.base->string(this, false) + "^" + x.exponent->string(this, false);
 		}
 
+		else if constexpr (std::is_same_v<T, function_call>) {
+			const auto& func = get_func(funcs::builtin_fn_id{x.f_id});
+			std::string s = std::string(func.name) + "(";
+			for (int i = 0; i < x.args.size(); ++i) {
+				auto& arg = x.args[i];
+				if (i != 0) {
+					s += ", ";
+				}
+				s += arg->string(this, i == 0);
+			}
+			return s + ")";
+		}
+
 		return "";
 	}, p_data);
 }
@@ -173,6 +220,41 @@ bool detail::node::is_ground() const {
 
 		if constexpr (std::is_same_v<T, power>) {
 			return x.base->is_ground() && x.exponent->is_ground();
+		}
+
+		if constexpr (std::is_same_v<T, function_call>) {
+			return std::ranges::all_of(x.args, [](const auto& arg) { return arg->is_ground(); });
+		}
+
+		return false;
+	}, p_data);
+}
+
+bool detail::node::depends_on(const node* n) const {
+	return std::visit([&](const auto& x) {
+		using T = std::decay_t<decltype(x)>;
+		if constexpr (std::is_same_v<T, constant>) {
+			return false;
+		}
+
+		if constexpr (std::is_same_v<T, symbol>) {
+			return this == n;
+		}
+
+		if constexpr (std::is_same_v<T, negation>) {
+			return x.child->depends_on(n);
+		}
+
+		if constexpr (std::is_same_v<T, addition> || std::is_same_v<T, multiplication>) {
+			return std::ranges::any_of(x.operands, [&](const auto& op) { return op->depends_on(n); });
+		}
+
+		if constexpr (std::is_same_v<T, power>) {
+			return x.base->depends_on(n) || x.exponent->depends_on(n);
+		}
+
+		if constexpr (std::is_same_v<T, function_call>) {
+			return std::ranges::any_of(x.args, [&](const auto& arg) { return arg->depends_on(n); });
 		}
 
 		return false;
@@ -764,4 +846,12 @@ const detail::node* node_manager_t::make_div(const detail::node* a, const detail
 
 const detail::node* node_manager_t::make_pow(const detail::node* b, const detail::node* e) {
 	return intern(detail::power{b, e});
+}
+
+const detail::node* node_manager_t::make_func(uint32_t f_id, const std::vector<const detail::node*>& args) {
+	return intern(detail::function_call{f_id, args});
+}
+
+const detail::node* node_manager_t::make_func(funcs::builtin_fn_id f_id, const std::vector<const detail::node*>& args) {
+	return intern(detail::function_call{static_cast<uint32_t>(f_id), args});
 }

@@ -112,7 +112,7 @@ TEST(basic_exprs_computing, expand_products) {
 	ASSERT_EQ(sym::reduce(sym::expand(expr3)).string(), "x^3+-5x^2+4x");
 }
 
-TEST(basic_expr_computing, differentiate_simple) {
+TEST(basic_expr_computing, differentiate_base_operations) {
 	sym::expression x("x");
 	sym::expression y("y");
 	sym::expression expr1 = 7;
@@ -120,12 +120,37 @@ TEST(basic_expr_computing, differentiate_simple) {
 	sym::expression expr3 = 7 + x + 3 * x + 6;
 	sym::expression expr4 = x * y;
 	sym::expression expr5 = 2 * x * y * 4;
+	sym::expression expr6 = sym::pow(x, 2);
+	sym::expression expr7 = sym::pow(x, 6);
+	sym::expression expr8 = sym::pow(2, x);
+	sym::expression expr9 = sym::pow(2, 3 * x);
 
 	ASSERT_EQ(sym::differentiate(expr1, x).string(), "0");
 	ASSERT_EQ(sym::differentiate(expr2, x).string(), "2");
 	ASSERT_EQ(sym::differentiate(expr3, x).string(), "4");
 	ASSERT_EQ(sym::differentiate(expr4, x).string(), "y");
 	ASSERT_EQ(sym::differentiate(expr5, y).string(), "8x");
+	ASSERT_EQ(sym::differentiate(expr6, x).string(), "2x");
+	ASSERT_EQ(sym::differentiate(expr7, x).string(), "6x^5");
+	ASSERT_EQ(sym::differentiate(expr8, x).string(), "0.6931471805599453*2^x");
+	ASSERT_EQ(sym::differentiate(expr9, x).string(), "2.0794415416798357*2^(3x)");
+}
+
+TEST(basic_expr_computing, differentiate_functions) {
+	sym::expression x("x");
+	sym::expression expr1 = sym::cos(x);
+	sym::expression expr2 = sym::sin(2 * x);
+	sym::expression expr3 = sym::tan(sym::pow(x, 2));
+	sym::expression expr4 = sym::exp(x);
+	sym::expression expr5 = sym::ln(3 * x);
+	sym::expression expr6 = sym::sqrt(5 * sym::pow(x, 2));
+
+	ASSERT_EQ(sym::differentiate(expr1, x).string(), "-sin(x)");
+	ASSERT_EQ(sym::differentiate(expr2, x).string(), "2cos(2x)");
+	ASSERT_EQ(sym::differentiate(expr3, x).string(), "2x(tan(x^2)^2+1)");
+	ASSERT_EQ(sym::differentiate(expr4, x), expr4);
+	ASSERT_EQ(sym::differentiate(expr5, x).string(), "3(3x)^(-1)");
+	ASSERT_EQ(sym::differentiate(expr6, x).string(), "10x(2sqrt(5x^2))^(-1)");
 }
 
 /*TEST(ct_expressions_value_test, simple_addition) {

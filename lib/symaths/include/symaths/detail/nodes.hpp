@@ -1,6 +1,8 @@
 #ifndef SYM_NODE_HPP
 #define SYM_NODE_HPP
 
+#include "symaths/base_functions.hpp"
+
 #include <unordered_map>
 #include <memory>
 #include <string>
@@ -74,11 +76,19 @@ namespace sym {
 			bool operator==(const power&) const = default;
 		};
 
+		struct function_call {
+			static constexpr unsigned int priority = 0;
+			uint32_t f_id;
+			std::vector<const node*> args;
+
+			bool operator==(const function_call&) const = default;
+		};
+
 
 		// Base node
 		class node {
 		public:
-			using internal_data_t = std::variant<symbol, constant, negation, addition, multiplication, power>;
+			using internal_data_t = std::variant<symbol, constant, negation, addition, multiplication, power, function_call>;
 			friend node_manager_t;
 
 			internal_data_t p_data;
@@ -91,6 +101,7 @@ namespace sym {
 			[[nodiscard]] double eval(const Context* ctx) const;
 			[[nodiscard]] std::string string(const node* parent, bool first = true) const;
 			[[nodiscard]] bool is_ground() const;
+			[[nodiscard]] bool depends_on(const node* n) const;
 		};
 	}
 
@@ -118,6 +129,8 @@ namespace sym {
 		const detail::node* make_mul(const std::vector<const detail::node*>& operands);
 		const detail::node* make_div(const detail::node* a, const detail::node* b);
 		const detail::node* make_pow(const detail::node* b, const detail::node* e);
+		const detail::node* make_func(uint32_t f_id, const std::vector<const detail::node*>& args);
+		const detail::node* make_func(funcs::builtin_fn_id f_id, const std::vector<const detail::node*>& args);
 
 	private:
 		const detail::node* intern(detail::node::internal_data_t data);

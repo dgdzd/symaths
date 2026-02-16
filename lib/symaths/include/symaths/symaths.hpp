@@ -1,7 +1,7 @@
 #ifndef SYMATHS_LIBRARY_HPP
 #define SYMATHS_LIBRARY_HPP
 
-#include "symaths/base_functions.hpp"
+#include "symaths/detail/nodes.hpp"
 #include "symaths/differentiation.hpp"
 #include "symaths/expressions_manip.hpp"
 
@@ -51,6 +51,8 @@ namespace sym {
 	const detail::node* make_multiplication(const std::vector<const detail::node*>& operands);
 	const detail::node* make_div(const detail::node* numerator, const detail::node* denominator);
 	const detail::node* make_power(const detail::node* base, const detail::node* exponent);
+	const detail::node* make_func(uint32_t f_id, const detail::node* arg);
+	const detail::node* make_func(uint32_t f_id, const std::vector<const detail::node*>& args);
 
 	class expression {
 	public:
@@ -75,6 +77,8 @@ namespace sym {
 		 * @return Whether the expression is ground
 		 */
 		[[nodiscard]] bool is_ground() const { return root->is_ground(); }
+
+		[[nodiscard]] bool operator==(const expression& other) const { return root == other.root; }
 
 		friend expression operator+(const expression& lhs, const expression& rhs) {
 			auto add = make_addition({lhs.root, rhs.root});
@@ -103,9 +107,21 @@ namespace sym {
 		friend expression pow(const expression& lhs, const expression& rhs);
 	};
 
-	inline expression pow(const expression& lhs, const expression& rhs) {
-		return make_power(lhs.root, rhs.root);
-	}
+	expression pow(const expression& lhs, const expression& rhs);
+	expression cos(const expression& arg);
+	expression sin(const expression& arg);
+	expression tan(const expression& arg);
+	expression acos(const expression& arg);
+	expression asin(const expression& arg);
+	expression atan(const expression& arg);
+	expression exp(const expression& arg);
+	expression ln(const expression& arg);
+	expression log10(const expression& arg);
+	expression cosh(const expression& arg);
+	expression sinh(const expression& arg);
+	expression tanh(const expression& arg);
+	expression sqrt(const expression& arg);
+	expression abs(const expression& arg);
 
 	class variable {
 		const detail::node* m_ref;
@@ -117,6 +133,7 @@ namespace sym {
 		variable(const std::string& name);
 		variable(const char* name);
 		variable(const expression& expr);
+		variable(const detail::node* root);
 
 		[[nodiscard]] const std::string& name() const;
 		const std::string& name(const std::string& new_name);
