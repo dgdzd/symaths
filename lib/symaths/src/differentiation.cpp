@@ -5,7 +5,7 @@
 
 using namespace sym;
 
-expression sym::differentiate(const expression& expr, const variable& symbol) {
+expression sym::differentiate(const expression& expr, const symbol& symbol) {
 	return reduce(std::visit([&](const auto& x) -> expression {
 		using T = std::decay_t<decltype(x)>;
 

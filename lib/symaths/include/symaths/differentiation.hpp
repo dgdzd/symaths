@@ -3,7 +3,7 @@
 
 namespace sym {
 	class expression;
-	class variable;
+	class symbol;
 
 	/**
 	 *	@brief Computes the derivative of an expression with respect to a variable.
@@ -12,7 +12,7 @@ namespace sym {
 	 * @param symbol The symbol to differentiate the expression with respect to
 	 * @return An expression representing the derivative of the input expression
 	 */
-	expression differentiate(const expression& expr, const variable& symbol);
+	expression differentiate(const expression& expr, const symbol& symbol);
 }
 
 #endif

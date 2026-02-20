@@ -54,18 +54,22 @@ namespace sym {
 	const detail::node* make_func(uint32_t f_id, const detail::node* arg);
 	const detail::node* make_func(uint32_t f_id, const std::vector<const detail::node*>& args);
 
+	class symbol;
+	class function;
+
 	class expression {
 	public:
 		const detail::node* root;
 
-		expression(double val) : root(make_constant(val)) {}
-		expression(const std::string& name) : root(make_symbol(name)) {}
-		expression(const char* name) : root(make_symbol(name)) {}
-		expression(const detail::node* node) : root(node) {}
+		expression(double val);
+		expression(const symbol& var);
+		expression(const std::string& name);
+		expression(const char* name);
+		expression(const detail::node* node);
 
-		double operator()(const detail::Context& ctx) const { return root->eval(&ctx); }
-		double operator()() const { return root->eval(nullptr); }
-		[[nodiscard]] std::string string() const { return root->string(nullptr); }
+		double operator()(const detail::Context& ctx) const;
+		double operator()() const;
+		[[nodiscard]] std::string string() const;
 
 		/**
 		 * @brief Checks if the expression is composed of constants only
@@ -79,33 +83,13 @@ namespace sym {
 		[[nodiscard]] bool is_ground() const { return root->is_ground(); }
 
 		[[nodiscard]] bool operator==(const expression& other) const { return root == other.root; }
-
-		friend expression operator+(const expression& lhs, const expression& rhs) {
-			auto add = make_addition({lhs.root, rhs.root});
-			return {add};
-		}
-
-		friend expression operator-(const expression& lhs, const expression& rhs) {
-			auto nrhs = make_negation(rhs.root);
-			return lhs + nrhs;
-		}
-
-		friend expression operator*(const expression& lhs, const expression& rhs) {
-			auto mul = make_multiplication({lhs.root, rhs.root});
-			return {mul};
-		}
-
-		friend expression operator/(const expression& lhs, const expression& rhs) {
-			auto div = make_div(lhs.root, rhs.root);
-			return {div};
-		}
-
-		friend expression operator-(const expression& e) {
-			return make_negation(e.root);
-		}
-
-		friend expression pow(const expression& lhs, const expression& rhs);
 	};
+
+	expression operator+(const expression& lhs, const expression& rhs);
+	expression operator-(const expression& lhs, const expression& rhs);
+	expression operator*(const expression& lhs, const expression& rhs);
+	expression operator/(const expression& lhs, const expression& rhs);
+	expression operator-(const expression& e);
 
 	expression pow(const expression& lhs, const expression& rhs);
 	expression cos(const expression& arg);
@@ -123,22 +107,33 @@ namespace sym {
 	expression sqrt(const expression& arg);
 	expression abs(const expression& arg);
 
-	class variable {
+	class symbol {
 		const detail::node* m_ref;
 
-		friend expression sym::differentiate(const expression& expr, const variable& symbol);
+		friend expression;
+		friend expression sym::differentiate(const expression& expr, const symbol& symbol);
 
 	public:
-		variable();
-		variable(const std::string& name);
-		variable(const char* name);
-		variable(const expression& expr);
-		variable(const detail::node* root);
+		symbol();
+		symbol(const std::string& name);
+		symbol(const char* name);
+		symbol(const expression& expr);
+		symbol(const detail::node* root);
 
 		[[nodiscard]] const std::string& name() const;
 		const std::string& name(const std::string& new_name);
+	};
 
-		operator expression() const;
+	/**
+	 * @brief Class representing a single-argument mathematical function
+	 */
+	class function {
+		const detail::node* m_ref;
+
+		friend expression;
+
+	public:
+		function()
 	};
 }
 

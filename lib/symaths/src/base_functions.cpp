@@ -519,6 +519,7 @@ const detail::node* abs_reduce(const std::vector<const detail::node*>& args) {
 
 const detail::node* abs_derivative(const std::vector<const detail::node*>& args, const detail::node* wrt) {
 	// abs'(u(x)) = u(x) < 0 ? -u'(x) : u'(x)
+	// TODO : multi-parts functions
 	if (args.size() > 1) {
 		throw std::invalid_argument("funcs:builtin: abs only supports 1 argument");
 	}

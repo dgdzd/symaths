@@ -7,6 +7,7 @@ set(SYMATHS_LIB_SOURCES
         src/base_functions.cpp
         src/expressions_manip.cpp
         src/differentiation.cpp
+        src/parser.cpp
         src/detail/nodes.cpp
 )
 
