@@ -5,10 +5,11 @@ add_library(symaths_lib STATIC)
 set(SYMATHS_LIB_SOURCES
         src/symaths.cpp
         src/base_functions.cpp
+        src/expression.cpp
         src/expressions_manip.cpp
         src/differentiation.cpp
-        src/parser.cpp
         src/detail/nodes.cpp
+        src/parsing/lexer.cpp
 )
 
 target_include_directories(symaths_lib PUBLIC include)

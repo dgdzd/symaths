@@ -1,9 +1,10 @@
 #ifndef SYMATHS_LIBRARY_HPP
 #define SYMATHS_LIBRARY_HPP
 
-#include "symaths/detail/nodes.hpp"
 #include "symaths/differentiation.hpp"
+#include "symaths/expression.hpp"
 #include "symaths/expressions_manip.hpp"
+#include "symaths/parsing/parser.hpp"
 
 namespace sym {
 	struct print_policies_t {
@@ -54,43 +55,6 @@ namespace sym {
 	const detail::node* make_func(uint32_t f_id, const detail::node* arg);
 	const detail::node* make_func(uint32_t f_id, const std::vector<const detail::node*>& args);
 
-	class symbol;
-	class function;
-
-	class expression {
-	public:
-		const detail::node* root;
-
-		expression(double val);
-		expression(const symbol& var);
-		expression(const std::string& name);
-		expression(const char* name);
-		expression(const detail::node* node);
-
-		double operator()(const detail::Context& ctx) const;
-		double operator()() const;
-		[[nodiscard]] std::string string() const;
-
-		/**
-		 * @brief Checks if the expression is composed of constants only
-		 *
-		 * For example :
-		 * - is_ground(3 + ln(4)) == true
-		 * - is_ground(3 + 4x) == false
-		 *
-		 * @return Whether the expression is ground
-		 */
-		[[nodiscard]] bool is_ground() const { return root->is_ground(); }
-
-		[[nodiscard]] bool operator==(const expression& other) const { return root == other.root; }
-	};
-
-	expression operator+(const expression& lhs, const expression& rhs);
-	expression operator-(const expression& lhs, const expression& rhs);
-	expression operator*(const expression& lhs, const expression& rhs);
-	expression operator/(const expression& lhs, const expression& rhs);
-	expression operator-(const expression& e);
-
 	expression pow(const expression& lhs, const expression& rhs);
 	expression cos(const expression& arg);
 	expression sin(const expression& arg);
@@ -133,7 +97,7 @@ namespace sym {
 		friend expression;
 
 	public:
-		function()
+		function();
 	};
 }
 

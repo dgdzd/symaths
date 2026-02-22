@@ -153,3 +153,10 @@ TEST(basic_expr_computing, differentiate_builtin_functions) {
 	ASSERT_EQ(sym::differentiate(expr5, x).string(), "3(3x)^(-1)");
 	ASSERT_EQ(sym::differentiate(expr6, x).string(), "10x(2sqrt(5x^2))^(-1)");
 }
+
+
+
+TEST(basic_exprs_computing, lexer_tokenize) {
+	sym::lexer lexer;
+	lexer.tokenize("val0 + val1 * 3val2( 3+ b)");
+}
