@@ -1,6 +1,7 @@
 #ifndef SYM_BASE_FUNCTIONS_HPP
 #define SYM_BASE_FUNCTIONS_HPP
 
+#include <string>
 #include <vector>
 
 namespace sym {
@@ -33,6 +34,8 @@ namespace sym {
 		};
 
 		const builtin_func_descriptor& get_func(funcs::builtin_fn_id id);
+
+		funcs::builtin_fn_id get_func_id(const std::string& name);
 	}
 }
 

@@ -117,6 +117,52 @@ const detail::builtin_func_descriptor& detail::get_func(funcs::builtin_fn_id id)
 	return builtin_table[static_cast<size_t>(id)];
 }
 
+funcs::builtin_fn_id detail::get_func_id(const std::string& name) {
+	if (name == "cos") {
+		return funcs::cos;
+	}
+	if (name == "sin") {
+		return funcs::sin;
+	}
+	if (name == "tan") {
+		return funcs::tan;
+	}
+	if (name == "acos") {
+		return funcs::acos;
+	}
+	if (name == "asin") {
+		return funcs::asin;
+	}
+	if (name == "atan") {
+		return funcs::atan;
+	}
+	if (name == "exp") {
+		return funcs::exp;
+	}
+	if (name == "ln") {
+		return funcs::ln;
+	}
+	if (name == "log10") {
+		return funcs::log10;
+	}
+	if (name == "cosh") {
+		return funcs::cosh;
+	}
+	if (name == "sinh") {
+		return funcs::sinh;
+	}
+	if (name == "tanh") {
+		return funcs::tanh;
+	}
+	if (name == "sqrt") {
+		return funcs::sqrt;
+	}
+	if (name == "abs") {
+		return funcs::abs;
+	}
+	return funcs::LEN;
+}
+
 
 double cos_eval(const std::vector<const detail::node*>& args) {
 	if (args.size() > 1) {

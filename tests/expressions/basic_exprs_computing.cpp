@@ -160,3 +160,23 @@ TEST(basic_exprs_computing, lexer_tokenize) {
 	sym::lexer lexer;
 	lexer.tokenize("val0 + val1 * 3val2( 3+ b)");
 }
+
+TEST(basic_exprs_computing, parser_parse) {
+	sym::expression expr1 = sym::parse("3*x+2*y");
+	sym::expression expr2 = sym::parse("3*(x+y+z)*4");
+	sym::expression expr3 = sym::parse("3(x+y+z)*4");
+	sym::expression expr4 = sym::parse("sin(x)");
+	sym::expression expr5 = sym::parse("sin(x)cos(x)");
+	sym::expression expr6 = sym::parse("sin(x)cos(x)+3a");
+	sym::expression expr7 = sym::parse("sin(1+tan(x))x");
+	sym::expression expr8 = sym::parse("cos(x)^2+sin(x)^2");
+
+	ASSERT_EQ(expr1.string(), "3x+2y");
+	ASSERT_EQ(expr2.string(), "3(x+y+z)*4");
+	ASSERT_EQ(expr3.string(), "3(x+y+z)*4");
+	ASSERT_EQ(expr4.string(), "sin(x)");
+	ASSERT_EQ(expr5.string(), "sin(x)cos(x)");
+	ASSERT_EQ(expr6.string(), "sin(x)cos(x)+3a");
+	ASSERT_EQ(expr7.string(), "sin(1+tan(x))x");
+	ASSERT_EQ(expr8.string(), "cos(x)^2+sin(x)^2");
+}

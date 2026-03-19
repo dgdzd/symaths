@@ -10,6 +10,7 @@ set(SYMATHS_LIB_SOURCES
         src/differentiation.cpp
         src/detail/nodes.cpp
         src/parsing/lexer.cpp
+        src/parsing/parser.cpp
 )
 
 target_include_directories(symaths_lib PUBLIC include)
