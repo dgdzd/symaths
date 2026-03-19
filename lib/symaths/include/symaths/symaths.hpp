@@ -25,10 +25,15 @@ namespace sym {
 		power_t power;
 	};
 
+	struct refactoring_rules_t {
+		bool keep_ground_functions = true;
+	};
+
 
 	class library {
 		print_policies_t m_print_policies;
 		node_manager_t m_node_manager;
+		refactoring_rules_t m_refactoring_rules;
 
 	public:
 		library();
@@ -38,6 +43,8 @@ namespace sym {
 		[[nodiscard]] print_policies_t& print_policies();
 		[[nodiscard]] const node_manager_t& node_manager() const;
 		[[nodiscard]] node_manager_t& node_manager();
+		[[nodiscard]] const refactoring_rules_t& refactoring_rules() const;
+		[[nodiscard]] refactoring_rules_t& refactoring_rules();
 	};
 
 	extern library* current_context;

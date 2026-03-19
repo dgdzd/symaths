@@ -607,7 +607,8 @@ const detail::node* detail::multiplication::reduced() const {
 			return op;
 		}, op->p_data);
 
-		if (op->is_ground()) {
+		bool is_func = std::holds_alternative<function_call>(op->p_data);
+		if (op->is_ground() && (!is_func || (is_func && !current_context->refactoring_rules().keep_ground_functions))) {
 			if (std::abs(op->eval(nullptr)) < 1e-12) {
 				return current_context->node_manager().make_constant(0);
 			}

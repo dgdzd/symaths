@@ -44,6 +44,14 @@ const sym::node_manager_t& sym::library::node_manager() const {
 	return m_node_manager;
 }
 
+sym::refactoring_rules_t& sym::library::refactoring_rules() {
+	return m_refactoring_rules;
+}
+
+const sym::refactoring_rules_t& sym::library::refactoring_rules() const {
+	return m_refactoring_rules;
+}
+
 const sym::detail::node* sym::make_constant(double val) {
 	if (!current_context) {
 		throw std::runtime_error("sym::make_constant: current context is null");

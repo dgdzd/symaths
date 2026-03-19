@@ -132,8 +132,8 @@ TEST(basic_expr_computing, differentiate_base_operations) {
 	ASSERT_EQ(sym::differentiate(expr5, y).string(), "8x");
 	ASSERT_EQ(sym::differentiate(expr6, x).string(), "2x");
 	ASSERT_EQ(sym::differentiate(expr7, x).string(), "6x^5");
-	ASSERT_EQ(sym::differentiate(expr8, x).string(), "0.6931471805599453*2^x");
-	ASSERT_EQ(sym::differentiate(expr9, x).string(), "2.0794415416798357*2^(3x)");
+	ASSERT_EQ(sym::differentiate(expr8, x).string(), "ln(2)2^x");
+	ASSERT_EQ(sym::differentiate(expr9, x).string(), "3ln(2)2^(3x)");
 	ASSERT_EQ(sym::differentiate(expr10, x).string(), "3x^2+4x-1");
 }
 
@@ -173,7 +173,7 @@ TEST(basic_exprs_computing, parser_parse) {
 
 	ASSERT_EQ(expr1.string(), "3x+2y");
 	ASSERT_EQ(expr2.string(), "3(x+y+z)*4");
-	ASSERT_EQ(expr3.string(), "3(x+y+z)*4");
+	ASSERT_EQ(expr2, expr3);
 	ASSERT_EQ(expr4.string(), "sin(x)");
 	ASSERT_EQ(expr5.string(), "sin(x)cos(x)");
 	ASSERT_EQ(expr6.string(), "sin(x)cos(x)+3a");

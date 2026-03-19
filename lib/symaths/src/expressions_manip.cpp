@@ -52,7 +52,8 @@ sym::detail::term sym::detail::extract_term(const node* node) {
 			t.coefficient = 1.0;
 			std::vector<const detail::node*> final_operands;
 			for (auto& op : x.operands) {
-				if (op->is_ground()) {
+				bool is_func = std::holds_alternative<function_call>(op->p_data);
+				if (op->is_ground() && (!is_func || (is_func && !current_context->refactoring_rules().keep_ground_functions))) {
 					t.coefficient *= op->eval(nullptr);
 				}
 				else {
