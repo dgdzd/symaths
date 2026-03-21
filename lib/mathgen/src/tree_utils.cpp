@@ -99,7 +99,7 @@ NodePtr mutateSubtree(NodePtr node, int maxDepth, const std::vector<std::string>
 
 void mutateConstants(Node* node, double sigma) {
     if (auto* c = dynamic_cast<ConstNode*>(node)) {
-        c->value = safeClip(c->value + randGauss(0.0, sigma), -100.0, 100.0);
+        c->value = clamp(c->value + randGauss(0.0, sigma), -100.0, 100.0);
         return;
     }
     if (auto* u = dynamic_cast<UnaryNode*>(node)) {

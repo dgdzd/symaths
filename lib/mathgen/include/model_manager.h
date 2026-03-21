@@ -26,7 +26,6 @@ enum class ERRORCODE {
     POPULATION_EMPTY, //population empty, happens when you don't initialize the population
     ELITE_SIZE_OUT_OF_BOUNDS, //elite size out of bounds, when eliteSize isn't in between 1 and maxPop
     DATASET_EMPTY, //dataset empty, you tried to fit() but the given X or Y variables is empty
-    SHOULD_STOP //should stop, the fit process was interrupted by the user
 };
 
 class ModelManager {
@@ -41,7 +40,7 @@ public:
     Dataset X;
     std::vector<double> Y;
     Operators ops;
-    unsigned int convergence;
+    unsigned int k;
 
     ModelManager(
         std::vector<std::string> variables_ = {"x"},
@@ -50,13 +49,13 @@ public:
         double penalty_ = 0.01,
         double mutationProb_ = 0.3,
         const std::tuple<double,double,double>& probs_ = {0.25, 0.25, 0.25},
-        unsigned int convergence_ = 7
+        unsigned int k_ = 7
     );
 
     void updateData(Dataset x, std::vector<double> y);
 
     void initPopulation(BinaryMap binaryOperators, UnaryMap unaryOperators, UnaryMap extraUnaryOperators = {});
-    void loadPopulation(std::vector<NodePtr> population_, BinaryMap binaryOperators, UnaryMap unaryOperators, UnaryMap extraUnaryOperators = {});
+    void loadPopulation(std::vector<NodePtr> population_, BinaryMap binaryOperators, UnaryMap unaryOperators, UnaryMap extraUnaryOperators = {}, bool fillPop = false);
     std::vector<NodePtr> getPopulation(bool sortFitness = true);
 
     std::vector<double> residuals(const Node* tree) const;
@@ -64,9 +63,8 @@ public:
     static std::vector<double> denormalizePrediction(const std::vector<double>& res, double scale) ;
 
 
-    ERRORCODE fit(size_t generations = 10, size_t maxPop = 100, size_t eliteSize = 10, bool debug = false, unsigned int timeoutSeconds = 60, const std::function<bool(double)>& earlyStopCondition = nullptr);
-
-
+    ERRORCODE fit(size_t generations = 10, size_t maxPop = 100, size_t eliteSize = 10, size_t newbornSize = 10, double lr = 0.05, unsigned int cstOptiStep = 50,
+        bool debug = false, unsigned int timeoutSeconds = 60, const std::function<bool(double)>& earlyStopCondition = nullptr);
 
 private:
     double evalFitness(const Node* tree, size_t gen, size_t maxGen) const;

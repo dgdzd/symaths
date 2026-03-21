@@ -9,10 +9,9 @@
 #include <utility>
 
 ModelManager::ModelManager(std::vector<std::string> variables_, size_t populationSize_, unsigned int maxDepth_, double penalty_,
-    double mutationProb_, const std::tuple<double,double,double>& probs_, unsigned int convergence_) :
+    double mutationProb_, const std::tuple<double,double,double>& probs_, unsigned int k_) :
     variables(std::move(variables_)) , populationSize(populationSize_) , maxDepth(maxDepth_) , penalty(penalty_) , mutationProb(mutationProb_) , probs(probs_),
-    convergence(convergence_)
-    {
+    k(k_) {
 
     seedRng(0);
 }
@@ -22,9 +21,9 @@ void ModelManager::updateData(Dataset x, std::vector<double> y) {
     Y = std::move(y);
 }
 
-void ModelManager::initPopulation(BinaryMap binaryOperators, UnaryMap  unaryOperators, UnaryMap  extraUnaryOperators){
-    for (auto& [k, v] : extraUnaryOperators)
-        unaryOperators[k] = v;
+void ModelManager::initPopulation(BinaryMap binaryOperators, UnaryMap unaryOperators, UnaryMap extraUnaryOperators){
+    for (auto& [k_, v] : extraUnaryOperators)
+        unaryOperators[k_] = v;
 
     if (binaryOperators.empty() || unaryOperators.empty())
         ops = Operators();
@@ -39,30 +38,49 @@ void ModelManager::initPopulation(BinaryMap binaryOperators, UnaryMap  unaryOper
     }
 }
 
-void ModelManager::loadPopulation(std::vector<NodePtr> population_, BinaryMap binaryOperators, UnaryMap unaryOperators, UnaryMap extraUnaryOperators) {
-    for (auto& [k, v] : extraUnaryOperators)
-        unaryOperators[k] = v;
+void ModelManager::loadPopulation(std::vector<NodePtr> population_, BinaryMap binaryOperators, UnaryMap unaryOperators, UnaryMap extraUnaryOperators, bool fillPop) {
+    for (auto& [k_, v] : extraUnaryOperators)
+        unaryOperators[k_] = v;
 
     if (binaryOperators.empty() || unaryOperators.empty())
         ops = Operators();
     else
         ops = Operators(std::move(binaryOperators), std::move(unaryOperators));
 
-    population = std::move(population_);
+    population.clear();
+
+    for (auto& tree : population_) {
+        if (!isMostlyConstants(tree.get()))
+            population.push_back(std::move(tree));
+    }
+
+    if (fillPop) {
+        while (static_cast<int>(population.size()) < populationSize) {
+            auto tree = randomTree(static_cast<int>(maxDepth), variables, probs, ops.unary, ops.binary);
+            if (!isMostlyConstants(tree.get()))
+                population.push_back(std::move(tree));
+        }
+    }
 }
 
 std::vector<NodePtr> ModelManager::getPopulation(bool sortFitness) {
-    std::ranges::sort(population, [&](const NodePtr& a, const NodePtr& b) {
-        return evalFitness(a.get(), 0, 0) < evalFitness(b.get(), 0, 0);
-    });
-    return std::move(population);
+    if (sortFitness) {
+        std::ranges::sort(population, [&](const NodePtr& a, const NodePtr& b) {
+            return evalFitness(a.get(), 0, 0) < evalFitness(b.get(), 0, 0);
+        });
+    }
+    std::vector<NodePtr> out;
+    out.reserve(population.size());
+    for (const auto& t : population)
+        out.push_back(t->clone());
+    return out;
 }
 
 
 std::vector<double> ModelManager::residuals(const Node* tree) const {
     std::vector<double> res;
     res.reserve(Y.size());
-    for (std::size_t i = 0; i < Y.size(); ++i)
+    for (std::size_t i = 0; i < Y.size(); i++)
         res.push_back(Y[i] - tree->eval(X[i]));
     return res;
 }
@@ -99,7 +117,7 @@ const Node* ModelManager::tournamentSelect(size_t gen, size_t maxGen) const {
     const Node* best = nullptr;
     double bestFit = std::numeric_limits<double>::max();
 
-    for (int i = 0; i < convergence; ++i) {
+    for (int i = 0; i < k; i++) {
         const Node* candidate = population[randInt(0, n - 1)].get();
         double f = evalFitness(candidate, gen, maxGen);
         if (f < bestFit) {
@@ -110,7 +128,8 @@ const Node* ModelManager::tournamentSelect(size_t gen, size_t maxGen) const {
     return best;
 }
 
-ERRORCODE ModelManager::fit(size_t generations, size_t maxPop, size_t eliteSize, bool debug, unsigned int timeoutSeconds, const std::function<bool(double)>& earlyStopCondition) {
+ERRORCODE ModelManager::fit(size_t generations, size_t maxPop, size_t eliteSize, size_t newbornSize, double lr, unsigned int cstOptiStep, bool debug, unsigned int timeoutSeconds,
+    const std::function<bool(double)>& earlyStopCondition) {
     if (population.empty())
         return ERRORCODE::POPULATION_EMPTY;
     if (eliteSize < 1 || eliteSize >= maxPop)
@@ -139,9 +158,9 @@ ERRORCODE ModelManager::fit(size_t generations, size_t maxPop, size_t eliteSize,
         if (debug) {
             std::cout << "Gen " << gen << "\n";
             size_t printCount = std::min(eliteSize, population.size());
-            for (size_t i = 0; i < printCount; ++i) {
+            for (size_t i = 0; i < printCount; i++) {
                 Node* tree = population[i].get();
-                optimizeConstants(tree, X, Y, 0.05, 50); //A CHANGER
+                optimizeConstants(tree, X, Y, lr, cstOptiStep);
                 double f = evalFitness(tree, gen, generations);
                 std::cout << "  expr " << std::setw(2) << (i + 1) << ": " << printTree(tree) << " | fitness: " << std::fixed << std::setprecision(4) << f << "\n";
             }
@@ -150,10 +169,10 @@ ERRORCODE ModelManager::fit(size_t generations, size_t maxPop, size_t eliteSize,
 
         std::vector<NodePtr> newPop;
         newPop.reserve(maxPop);
-        for (int i = 0; i < eliteSize && i < static_cast<int>(population.size()); ++i)
+        for (int i = 0; i < eliteSize && i < static_cast<int>(population.size()); i++)
             newPop.push_back(population[i]->clone());
 
-        while (static_cast<int>(newPop.size()) < maxPop) {
+        while (static_cast<int>(newPop.size()) < (maxPop - newbornSize - eliteSize)) {
             const Node* p1 = tournamentSelect(gen, generations);
             const Node* p2 = tournamentSelect(gen, generations);
 
@@ -167,6 +186,12 @@ ERRORCODE ModelManager::fit(size_t generations, size_t maxPop, size_t eliteSize,
 
             if (!isMostlyConstants(child.get()))
                 newPop.push_back(std::move(child));
+        }
+
+        while (newPop.size() < maxPop) {
+            auto newborn = randomTree(static_cast<int>(maxDepth), variables, probs, ops.unary, ops.binary);
+            if (!isMostlyConstants(newborn.get()))
+                newPop.push_back(std::move(newborn));
         }
 
         population = std::move(newPop);
