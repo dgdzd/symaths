@@ -33,15 +33,15 @@ struct Operators {
 
     static UnaryMap defaultUnary() {
         return {
-            {"sin",    [](double x){ return std::sin(x); }},
-            {"cos",    [](double x){ return std::cos(x); }},
-            {"tanh",   [](double x){ return std::tanh(x); }},
-            {"log",    [](double x){ return std::log(std::abs(x) + 1e-12); }},
-            {"exp",    [](double x){ return std::abs(x) < 10.0 ? std::exp(x) : 0.0; }},
-            {"abs",    [](double x){ return std::abs(x); }},
+            {"sin", [](double x){ return std::sin(x); }},
+            {"cos", [](double x){ return std::cos(x); }},
+            {"tanh", [](double x){ return std::tanh(x); }},
+            {"log", [](double x){ return std::log(std::abs(x) + 1e-12); }},
+            {"exp", [](double x){ return std::abs(x) < 10.0 ? std::exp(x) : 0.0; }},
+            {"abs", [](double x){ return std::abs(x); }},
             {"square", [](double x){ return x * x; }},
-            {"cube",   [](double x){ return x * x * x; }},
-            {"sqrt",   [](double x){ return std::sqrt(std::abs(x)); }},
+            {"cube", [](double x){ return x * x * x; }},
+            {"sqrt", [](double x){ return std::sqrt(std::abs(x)); }},
         };
     }
 

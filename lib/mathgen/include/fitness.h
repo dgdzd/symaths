@@ -10,6 +10,6 @@ using Dataset = std::vector<Sample>;
 double fitness(Node* tree, const Dataset& X, const std::vector<double>& Y, double penalty, size_t gen, size_t maxGen);
 
 // fine tune algo
-void optimizeConstants(Node* tree, const Dataset& X, const std::vector<double>& Y, double lr = 0.05, size_t steps = 50);
+void optimizeConstants(Node* tree, const Dataset& X, const std::vector<double>& Y, double lr = 0.05, unsigned int steps = 50);
 
 #endif

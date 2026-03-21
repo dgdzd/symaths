@@ -18,6 +18,7 @@ set_target_properties(basic_exprs_computing_test
 target_link_libraries(basic_exprs_computing_test PRIVATE
         gtest_main
         symaths_lib
+        mathgen_lib
 )
 
 include(GoogleTest)
@@ -37,6 +38,7 @@ set_target_properties(expressions_value_test
 target_link_libraries(expressions_value_test PRIVATE
         gtest_main
         symaths_lib
+        mathgen_lib
 )
 
 include(GoogleTest)

@@ -13,7 +13,7 @@
 using Sample = std::unordered_map<std::string, double>;
 
 
-inline double safeClip(double v, double lo = -1e6, double hi = 1e6) {
+inline double clamp(double v, double lo = -1e12, double hi = 1e12) {
     if (std::isnan(v) || std::isinf(v)) return 0.0;
     return std::clamp(v, lo, hi);
 }
@@ -68,7 +68,7 @@ struct UnaryNode final : Node {
     UnaryNode(std::string n, UnaryFunc f, NodePtr c) : name(std::move(n)), func(std::move(f)), child(std::move(c)) {}
 
     [[nodiscard]] double eval(const Sample& x) const override {
-        return safeClip(func(child->eval(x)));
+        return clamp(func(child->eval(x)));
     }
     [[nodiscard]] NodePtr clone() const override {
         return std::make_unique<UnaryNode>(name, func, child->clone());
@@ -94,7 +94,7 @@ struct BinaryNode final : Node {
     BinaryNode(std::string o, BinaryFunc f, NodePtr l, NodePtr r) : op(std::move(o)), func(std::move(f)), left(std::move(l)), right(std::move(r)) {}
 
     [[nodiscard]] double eval(const Sample& x) const override {
-        return safeClip(func(left->eval(x), right->eval(x)));
+        return clamp(func(left->eval(x), right->eval(x)));
     }
     [[nodiscard]] NodePtr clone() const override {
         return std::make_unique<BinaryNode>(op, func, left->clone(), right->clone());
