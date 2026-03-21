@@ -6,11 +6,13 @@
 #include <iostream>
 #include <iomanip>
 #include <numeric>
-#include <stdexcept>
 #include <utility>
 
-ModelManager::ModelManager(std::vector<std::string> variables_, size_t populationSize_, unsigned int maxDepth_, double penalty_, double mutationProb_, const std::tuple<double,double,double>& probs_) :
-    variables(std::move(variables_)) , populationSize(populationSize_) , maxDepth(maxDepth_) , penalty(penalty_) , mutationProb(mutationProb_) , probs(probs_) {
+ModelManager::ModelManager(std::vector<std::string> variables_, size_t populationSize_, unsigned int maxDepth_, double penalty_,
+    double mutationProb_, const std::tuple<double,double,double>& probs_, unsigned int convergence_) :
+    variables(std::move(variables_)) , populationSize(populationSize_) , maxDepth(maxDepth_) , penalty(penalty_) , mutationProb(mutationProb_) , probs(probs_),
+    convergence(convergence_)
+    {
 
     seedRng(0);
 }
@@ -92,6 +94,22 @@ double ModelManager::evalFitness(const Node* tree, size_t gen, size_t maxGen) co
     return fitness(const_cast<Node*>(tree), X, Y, penalty, gen, maxGen);
 }
 
+const Node* ModelManager::tournamentSelect(size_t gen, size_t maxGen) const {
+    const int n = static_cast<int>(population.size());
+    const Node* best = nullptr;
+    double bestFit = std::numeric_limits<double>::max();
+
+    for (int i = 0; i < convergence; ++i) {
+        const Node* candidate = population[randInt(0, n - 1)].get();
+        double f = evalFitness(candidate, gen, maxGen);
+        if (f < bestFit) {
+            bestFit = f;
+            best = candidate;
+        }
+    }
+    return best;
+}
+
 ERRORCODE ModelManager::fit(size_t generations, size_t maxPop, size_t eliteSize, bool debug, unsigned int timeoutSeconds, const std::function<bool(double)>& earlyStopCondition) {
     if (population.empty())
         return ERRORCODE::POPULATION_EMPTY;
@@ -118,38 +136,31 @@ ERRORCODE ModelManager::fit(size_t generations, size_t maxPop, size_t eliteSize,
                 return ERRORCODE::EARLY_CONDITION_MET;
         }
 
-        if (shouldStop)
-            return ERRORCODE::SHOULD_STOP;
-
-        if (debug) std::cout << "Gen " << gen << "\n";
-        size_t printCount = std::min(eliteSize, population.size());
-        for (size_t i = 0; i < printCount; ++i) {
-            Node* tree = population[i].get();
-            optimizeConstants(tree, X, Y, 0.05, 50); //A CHANGER
-            double f = evalFitness(tree, gen, generations);
-            if (debug) std::cout << "  expr " << std::setw(2) << (i + 1) << ": "
-                                 << printTree(tree)
-                                 << " | fitness: " << std::fixed << std::setprecision(4) << f
-                                 << "\n";
+        if (debug) {
+            std::cout << "Gen " << gen << "\n";
+            size_t printCount = std::min(eliteSize, population.size());
+            for (size_t i = 0; i < printCount; ++i) {
+                Node* tree = population[i].get();
+                optimizeConstants(tree, X, Y, 0.05, 50); //A CHANGER
+                double f = evalFitness(tree, gen, generations);
+                std::cout << "  expr " << std::setw(2) << (i + 1) << ": " << printTree(tree) << " | fitness: " << std::fixed << std::setprecision(4) << f << "\n";
+            }
+            std::cout << "----------------\n";
         }
-        if (debug) std::cout << "----------------\n";
 
         std::vector<NodePtr> newPop;
         newPop.reserve(maxPop);
         for (int i = 0; i < eliteSize && i < static_cast<int>(population.size()); ++i)
             newPop.push_back(population[i]->clone());
 
-        // Gene pool for tournament: top 50 (or full population if smaller) A CHANGER
-        int poolSize = std::min(50, static_cast<int>(population.size()));
+        while (static_cast<int>(newPop.size()) < maxPop) {
+            const Node* p1 = tournamentSelect(gen, generations);
+            const Node* p2 = tournamentSelect(gen, generations);
 
-        while (newPop.size() < maxPop) {
-            int idx1 = randInt(0, poolSize - 1);
-            int idx2;
-            do { idx2 = randInt(0, poolSize - 1); } while (idx2 == idx1);
-
-            NodePtr child = crossover(population[idx1].get(), population[idx2].get());
+            NodePtr child = crossover(p1, p2);
             child = prune(std::move(child));
             child = mutateSubtree(std::move(child), static_cast<int>(maxDepth), variables, mutationProb, probs, ops.unary, ops.binary);
+
             mutateConstants(child.get());
             mutateOperator(child.get(), mutationProb, ops.binary, ops.unary);
             child = prune(std::move(child));

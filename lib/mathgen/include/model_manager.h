@@ -41,6 +41,7 @@ public:
     Dataset X;
     std::vector<double> Y;
     Operators ops;
+    unsigned int convergence;
 
     ModelManager(
         std::vector<std::string> variables_ = {"x"},
@@ -48,7 +49,8 @@ public:
         unsigned int maxDepth_ = 5,
         double penalty_ = 0.01,
         double mutationProb_ = 0.3,
-        const std::tuple<double,double,double>& probs_ = {0.25, 0.25, 0.25}
+        const std::tuple<double,double,double>& probs_ = {0.25, 0.25, 0.25},
+        unsigned int convergence_ = 7
     );
 
     void updateData(Dataset x, std::vector<double> y);
@@ -68,6 +70,7 @@ public:
 
 private:
     double evalFitness(const Node* tree, size_t gen, size_t maxGen) const;
+    [[nodiscard]] const Node* tournamentSelect(size_t gen, size_t maxGen) const;
 };
 
 
