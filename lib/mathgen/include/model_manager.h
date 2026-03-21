@@ -20,14 +20,13 @@
 //- CMA-ES + AJUSTEMENT AU 10^-i où i est choisit (en faisant une fonction à part)
 
 enum class ERRORCODE {
-    OK,
-    TIMEOUT,
-    EARLY_CONDITION_REACHED,
-    POPULATION_EMPTY,
-    GEN_THRESHOLD_REACHED,
-    ELITE_SIZE_OUT_OF_BOUNDS,
-    DATASET_EMPTY,
-    SHOULD_STOP
+    OK, //no error
+    TIMEOUT, //time out reached
+    EARLY_CONDITION_MET, //early condition met, your earlyStopCondition function returned true
+    POPULATION_EMPTY, //population empty, happens when you don't initialize the population
+    ELITE_SIZE_OUT_OF_BOUNDS, //elite size out of bounds, when eliteSize isn't in between 1 and maxPop
+    DATASET_EMPTY, //dataset empty, you tried to fit() but the given X or Y variables is empty
+    SHOULD_STOP //should stop, the fit process was interrupted by the user
 };
 
 class ModelManager {
@@ -55,13 +54,15 @@ public:
     void updateData(Dataset x, std::vector<double> y);
 
     void initPopulation(BinaryMap binaryOperators, UnaryMap unaryOperators, UnaryMap extraUnaryOperators = {});
+    void loadPopulation(std::vector<NodePtr> population_, BinaryMap binaryOperators, UnaryMap unaryOperators, UnaryMap extraUnaryOperators = {});
+    std::vector<NodePtr> getPopulation(bool sortFitness = true);
 
     std::vector<double> residuals(const Node* tree) const;
     std::pair<std::vector<double>, double> normalizedResiduals(const Node* tree) const;
     static std::vector<double> denormalizePrediction(const std::vector<double>& res, double scale) ;
 
-    //returns ok, timeout or stopCondition
-    ERRORCODE fit(std::atomic<bool>& shouldStop, size_t generations = 10, size_t maxPop = 100, size_t eliteSize = 10, bool debug = false, unsigned int timeoutSeconds = 60, const std::function<bool(double)>& earlyStopCondition = nullptr);
+
+    ERRORCODE fit(size_t generations = 10, size_t maxPop = 100, size_t eliteSize = 10, bool debug = false, unsigned int timeoutSeconds = 60, const std::function<bool(double)>& earlyStopCondition = nullptr);
 
 
 

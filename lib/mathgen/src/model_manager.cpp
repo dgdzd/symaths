@@ -7,6 +7,7 @@
 #include <iomanip>
 #include <numeric>
 #include <stdexcept>
+#include <utility>
 
 ModelManager::ModelManager(std::vector<std::string> variables_, size_t populationSize_, unsigned int maxDepth_, double penalty_, double mutationProb_, const std::tuple<double,double,double>& probs_) :
     variables(std::move(variables_)) , populationSize(populationSize_) , maxDepth(maxDepth_) , penalty(penalty_) , mutationProb(mutationProb_) , probs(probs_) {
@@ -34,6 +35,25 @@ void ModelManager::initPopulation(BinaryMap binaryOperators, UnaryMap  unaryOper
         if (!isMostlyConstants(tree.get()))
             population.push_back(std::move(tree));
     }
+}
+
+void ModelManager::loadPopulation(std::vector<NodePtr> population_, BinaryMap binaryOperators, UnaryMap unaryOperators, UnaryMap extraUnaryOperators) {
+    for (auto& [k, v] : extraUnaryOperators)
+        unaryOperators[k] = v;
+
+    if (binaryOperators.empty() || unaryOperators.empty())
+        ops = Operators();
+    else
+        ops = Operators(std::move(binaryOperators), std::move(unaryOperators));
+
+    population = std::move(population_);
+}
+
+std::vector<NodePtr> ModelManager::getPopulation(bool sortFitness) {
+    std::ranges::sort(population, [&](const NodePtr& a, const NodePtr& b) {
+        return evalFitness(a.get(), 0, 0) < evalFitness(b.get(), 0, 0);
+    });
+    return std::move(population);
 }
 
 
@@ -72,11 +92,9 @@ double ModelManager::evalFitness(const Node* tree, size_t gen, size_t maxGen) co
     return fitness(const_cast<Node*>(tree), X, Y, penalty, gen, maxGen);
 }
 
-ERRORCODE ModelManager::fit(std::atomic<bool>& shouldStop, size_t generations, size_t maxPop, size_t eliteSize, bool debug, unsigned int timeoutSeconds, const std::function<bool(double)>& earlyStopCondition) {
+ERRORCODE ModelManager::fit(size_t generations, size_t maxPop, size_t eliteSize, bool debug, unsigned int timeoutSeconds, const std::function<bool(double)>& earlyStopCondition) {
     if (population.empty())
         return ERRORCODE::POPULATION_EMPTY;
-    if (generations < 1)
-        return ERRORCODE::GEN_THRESHOLD_REACHED;
     if (eliteSize < 1 || eliteSize >= maxPop)
        return ERRORCODE::ELITE_SIZE_OUT_OF_BOUNDS;
     if (X.empty() || Y.empty())
@@ -85,7 +103,7 @@ ERRORCODE ModelManager::fit(std::atomic<bool>& shouldStop, size_t generations, s
     using Clock = std::chrono::steady_clock;
     auto timeStart = Clock::now();
 
-    for (size_t gen = 0; gen < generations; ++gen) {
+    for (size_t gen = 0; gen < generations; gen++) {
         std::ranges::sort(population, [&](const NodePtr& a, const NodePtr& b) {
             return evalFitness(a.get(), gen, generations) < evalFitness(b.get(), gen, generations);
         });
@@ -97,7 +115,7 @@ ERRORCODE ModelManager::fit(std::atomic<bool>& shouldStop, size_t generations, s
         if (earlyStopCondition) {
             double bestFit = evalFitness(population[0].get(), gen, generations);
             if (earlyStopCondition(bestFit))
-                return ERRORCODE::EARLY_CONDITION_REACHED;
+                return ERRORCODE::EARLY_CONDITION_MET;
         }
 
         if (shouldStop)
