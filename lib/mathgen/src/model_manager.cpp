@@ -32,7 +32,7 @@ void ModelManager::initPopulation(BinaryMap binaryOperators, UnaryMap unaryOpera
     population.clear();
 
     while (static_cast<int>(population.size()) < populationSize) {
-        auto tree = randomTree(static_cast<int>(maxDepth), variables, probs, ops.unary, ops.binary);
+        auto tree = randomTree(maxDepth, variables, probs, ops.unary, ops.binary);
         if (!isMostlyConstants(tree.get()))
             population.push_back(std::move(tree));
     }
@@ -56,7 +56,7 @@ void ModelManager::loadPopulation(std::vector<NodePtr> population_, BinaryMap bi
 
     if (fillPop) {
         while (static_cast<int>(population.size()) < populationSize) {
-            auto tree = randomTree(static_cast<int>(maxDepth), variables, probs, ops.unary, ops.binary);
+            auto tree = randomTree(maxDepth, variables, probs, ops.unary, ops.binary);
             if (!isMostlyConstants(tree.get()))
                 population.push_back(std::move(tree));
         }
@@ -178,7 +178,7 @@ ERRORCODE ModelManager::fit(size_t generations, size_t maxPop, size_t eliteSize,
 
             NodePtr child = crossover(p1, p2);
             child = prune(std::move(child));
-            child = mutateSubtree(std::move(child), static_cast<int>(maxDepth), variables, mutationProb, probs, ops.unary, ops.binary);
+            child = mutateSubtree(std::move(child), maxDepth, variables, mutationProb, probs, ops.unary, ops.binary);
 
             mutateConstants(child.get());
             mutateOperator(child.get(), mutationProb, ops.binary, ops.unary);
@@ -189,7 +189,7 @@ ERRORCODE ModelManager::fit(size_t generations, size_t maxPop, size_t eliteSize,
         }
 
         while (newPop.size() < maxPop) {
-            auto newborn = randomTree(static_cast<int>(maxDepth), variables, probs, ops.unary, ops.binary);
+            auto newborn = randomTree(maxDepth, variables, probs, ops.unary, ops.binary);
             if (!isMostlyConstants(newborn.get()))
                 newPop.push_back(std::move(newborn));
         }

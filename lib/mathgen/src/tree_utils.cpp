@@ -36,13 +36,13 @@ static void replaceChild(Node* parent, Node* oldChild, NodePtr replacement) {
 NodePtr randomTree(unsigned int maxDepth, const std::vector<std::string>& variables, std::tuple<double, double, double> probs, const UnaryMap& unaryFuncs, const BinaryMap& binaryFuncs) {
     const auto [constProb, varProb, binaryProb] = probs;
 
-    if (maxDepth <= 0)
-        return std::make_unique<ConstNode>(randDouble(-5.0, 5.0));
+    if (maxDepth == 0)
+        return std::make_unique<ConstNode>(randDouble(-10.0, 10.0));
 
     double r = randDouble(0.0, 1.0);
 
     if (r < constProb)
-        return std::make_unique<ConstNode>(randDouble(-5.0, 5.0));
+        return std::make_unique<ConstNode>(randDouble(-10.0, 10.0));
     if (r < constProb + varProb)
         return std::make_unique<VarNode>(randChoice(variables));
     if (r < constProb + varProb + binaryProb) {
@@ -81,7 +81,7 @@ std::string printTree(const Node* node) {
     return "?";
 }
 
-NodePtr mutateSubtree(NodePtr node, int maxDepth, const std::vector<std::string>& variables, double mutProb, const std::tuple<double, double, double>& probs, const UnaryMap& unaryFuncs,
+NodePtr mutateSubtree(NodePtr node, unsigned int maxDepth, const std::vector<std::string>& variables, double mutProb, const std::tuple<double, double, double>& probs, const UnaryMap& unaryFuncs,
     const BinaryMap& binaryFuncs) {
 
     if (randBool(mutProb))
