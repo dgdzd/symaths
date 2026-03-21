@@ -105,7 +105,9 @@ int main() {
         /*maxPop*/ 400,
         /*eliteSize*/ 40,
         /*newbornSize*/ 30,
-        /*timeoutSecs*/ 3600
+        /*lr*/ 0.05,
+        /*cstOptiStep*/ 50,
+        /*timeoutSecs*/ 90
     );
 }
 ```
