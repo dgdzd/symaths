@@ -13,10 +13,7 @@
 #include <stdexcept>
 
 //A FAIRE:
-//- CHANGER LES STD::COUT POUR QUE RIEN NE SOIT AFFICHER SUR CMD ->MODE DEBUG SEULEMENT
 //- MULTI THREADING (GPU ?)
-//-POUVOIR CHANGER LA LR
-//- CHANGER LA POOLSIZE
 //- ISLAND CLASS/STRUCT
 //- CMA-ES + AJUSTEMENT AU 10^-i où i est choisit (en faisant une fonction à part)
 
@@ -58,6 +55,7 @@ public:
     void initPopulation(BinaryMap binaryOperators, UnaryMap unaryOperators, UnaryMap extraUnaryOperators = {});
     void loadPopulation(std::vector<NodePtr> population_, BinaryMap binaryOperators, UnaryMap unaryOperators, UnaryMap extraUnaryOperators = {}, bool fillPop = false);
     std::vector<NodePtr> getPopulation(bool sortFitness = true);
+    std::string getTree(size_t idx);
 
     std::vector<double> residuals(const Node* tree) const;
     std::pair<std::vector<double>, double> normalizedResiduals(const Node* tree) const;
