@@ -7,6 +7,7 @@
 #include <iomanip>
 #include <numeric>
 #include <utility>
+#include <thread>
 
 ModelManager::ModelManager(std::vector<std::string> variables_, size_t populationSize_, unsigned int maxDepth_, double penalty_,
     double mutationProb_, const std::tuple<double,double,double>& probs_, unsigned int k_) :
@@ -141,9 +142,35 @@ ERRORCODE ModelManager::fit(size_t generations, size_t maxPop, size_t eliteSize,
     auto timeStart = Clock::now();
 
     for (size_t gen = 0; gen < generations; gen++) {
-        std::ranges::sort(population, [&](const NodePtr& a, const NodePtr& b) {
-            return evalFitness(a.get(), gen, generations) < evalFitness(b.get(), gen, generations);
-        });
+        const size_t nThreads = std::thread::hardware_concurrency();
+        std::vector<double> fitCache(population.size());
+
+        auto evalRange = [&](size_t from, size_t to) {
+            for (size_t i = from; i < to; i++)
+                fitCache[i] = evalFitness(population[i].get(), gen, generations);
+        };
+
+        std::vector<std::thread> threads;
+        threads.reserve(nThreads);
+        size_t chunkSize = population.size() / nThreads;
+
+        for (size_t t = 0; t < nThreads; t++) {
+            size_t from = t * chunkSize;
+            size_t to   = (t == nThreads - 1) ? population.size() : from + chunkSize;
+            threads.emplace_back(evalRange, from, to);
+        }
+        for (auto& t : threads) t.join();
+
+        std::vector<size_t> idx(population.size());
+        std::iota(idx.begin(), idx.end(), 0);
+        std::sort(idx.begin(), idx.end(), [&](size_t a, size_t b){ return fitCache[a] < fitCache[b]; });
+
+        std::vector<NodePtr> sorted;
+        sorted.reserve(population.size());
+        for (size_t i : idx)
+            sorted.push_back(std::move(population[i]));
+        population = std::move(sorted);
+
 
         auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(Clock::now() - timeStart).count();
         if (elapsed >= timeoutSeconds)

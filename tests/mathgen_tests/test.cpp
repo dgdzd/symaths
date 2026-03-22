@@ -15,7 +15,7 @@ int main() {
         {"exp", [](double x){return std::exp(x); } },
     };
 
-    //2. Build dataset  →  y = x * sin(x) + sin(x^2)
+    //2. Build dataset
     Dataset X;
     std::vector<double> Y;
     double from = -2;
@@ -41,9 +41,9 @@ int main() {
     manager.updateData(X, Y);
     manager.fit(
         /*generations*/ 20,
-        /*maxPop*/ 100,
+        /*maxPop*/ 1000,
         /*eliteSize*/ 10,
-        /*newbornSize*/ 15,
+        /*newbornSize*/ 200,
                         0.05,
                         20,
                         true,
