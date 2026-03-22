@@ -78,6 +78,17 @@ std::vector<NodePtr> ModelManager::getPopulation(bool sortFitness) {
     return out;
 }
 
+std::string ModelManager::getTree(size_t idx) {
+    if (idx > population.size()) return "";
+
+    Node* tree = population[idx].get();
+    double f = evalFitness(tree, 0, 0);
+
+    std::ostringstream s;
+    s << "  expr " << std::setw(2) << (idx + 1) << ": " << printTree(tree) << " | fitness: " << std::fixed << std::setprecision(4) << f << "\n";
+    return s.str();
+}
+
 
 std::vector<double> ModelManager::residuals(const Node* tree) const {
     std::vector<double> res;

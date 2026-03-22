@@ -55,6 +55,7 @@ public:
     void initPopulation(BinaryMap binaryOperators, UnaryMap unaryOperators, UnaryMap extraUnaryOperators = {});
     void loadPopulation(std::vector<NodePtr> population_, BinaryMap binaryOperators, UnaryMap unaryOperators, UnaryMap extraUnaryOperators = {}, bool fillPop = false);
     std::vector<NodePtr> getPopulation(bool sortFitness = true);
+    std::string getTree(size_t idx);
 
     std::vector<double> residuals(const Node* tree) const;
     std::pair<std::vector<double>, double> normalizedResiduals(const Node* tree) const;

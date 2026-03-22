@@ -11,13 +11,13 @@ double fitness(Node* tree, const Dataset& X, const std::vector<double>& Y, doubl
 
     for (std::size_t i = 0; i < n; i++) {
         double pred = tree->eval(X[i]);
-        if (std::isinf(pred) || std::isnan(pred)) return 1e20;
         err += std::abs(pred - Y[i]);
     }
     err /= static_cast<double>(n);
 
     double genRatio = (maxGen != 0) ? static_cast<double>(gen) / static_cast<double>(maxGen) : 0.0;
-    return err + penalty * genRatio * tree->complexity();
+    double f_fitness = err + penalty * genRatio * tree->complexity();
+    return (std::isnan(f_fitness) || std::isinf(f_fitness)) ? 1e20 : f_fitness;
 }
 
 void optimizeConstants(Node* tree, const Dataset& X, const std::vector<double>& Y, double lr, unsigned int steps) {
