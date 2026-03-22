@@ -10,28 +10,29 @@ int main() {
         {"/", [](double a, double b){ return std::abs(b) > 1e-12 ? a / b : 0.0; }},
     };
     UnaryMap unaryFunc = {
-        {"sin", [](double x){ return std::sin(x); }},
-        {"square", [](double x){ return x * x; }},
-        {"exp", [](double x){return std::exp(x); } },
+        { "sin", [](double x){ return std::sin(x); }},
+        { "cos", [](double x) { return std::cos(x); }},
+        { "square", [](double x){ return x * x; }},
+        { "exp", [](double x){return std::exp(x); } },
     };
 
     //2. Build dataset
     Dataset X;
     std::vector<double> Y;
-    double from = -2;
-    double to = 5;
+    double from = -10;
+    double to = 10;
     double precision = 1e-3;
     for (int i = static_cast<int>(from / precision); i < static_cast<int>(to / precision); i++) {
         double x_v = i * precision;
         X.push_back({ { "x", x_v } });
-        Y.push_back(std::exp(std::sin(x_v + exp(x_v))));
+        Y.push_back(std::sin(x_v) * std::exp(std::cos(x_v * x_v)));
     }
 
     //3. Configure and run
     ModelManager manager(
         { "x" }, //variable names
-        1000, //population size
-        12, //max tree depth
+        2000, //population size
+        14, //max tree depth
         1e-6, //complexity penalty
         0.4, //mutation probability
         { 0.15, 0.25, 0.25 }, //(const_prob, var_prob, binary_prob)
@@ -41,7 +42,7 @@ int main() {
     manager.updateData(X, Y);
     manager.fit(
         /*generations*/ 20,
-        /*maxPop*/ 1000,
+        /*maxPop*/ 2000,
         /*eliteSize*/ 10,
         /*newbornSize*/ 200,
                         0.05,

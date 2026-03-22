@@ -1,5 +1,6 @@
 #include "model_manager.h"
 #include "random.h"
+#include "threading.h"
 
 #include <algorithm>
 #include <chrono>
@@ -137,30 +138,18 @@ ERRORCODE ModelManager::fit(size_t generations, size_t maxPop, size_t eliteSize,
        return ERRORCODE::ELITE_SIZE_OUT_OF_BOUNDS;
     if (X.empty() || Y.empty())
         return ERRORCODE::DATASET_EMPTY;
+    if (newbornSize + eliteSize >= maxPop)
+        return ERRORCODE::ELITE_SIZE_OUT_OF_BOUNDS;
 
     using Clock = std::chrono::steady_clock;
     auto timeStart = Clock::now();
 
     for (size_t gen = 0; gen < generations; gen++) {
-        const size_t nThreads = std::thread::hardware_concurrency();
         std::vector<double> fitCache(population.size());
-
-        auto evalRange = [&](size_t from, size_t to) {
+        parallelFor(population.size(), [&](size_t from, size_t to) {
             for (size_t i = from; i < to; i++)
                 fitCache[i] = evalFitness(population[i].get(), gen, generations);
-        };
-
-        std::vector<std::thread> threads;
-        threads.reserve(nThreads);
-        size_t chunkSize = population.size() / nThreads;
-
-        for (size_t t = 0; t < nThreads; t++) {
-            size_t from = t * chunkSize;
-            size_t to   = (t == nThreads - 1) ? population.size() : from + chunkSize;
-            threads.emplace_back(evalRange, from, to);
-        }
-        for (auto& t : threads) t.join();
-
+        });
         std::vector<size_t> idx(population.size());
         std::iota(idx.begin(), idx.end(), 0);
         std::sort(idx.begin(), idx.end(), [&](size_t a, size_t b){ return fitCache[a] < fitCache[b]; });
@@ -170,6 +159,11 @@ ERRORCODE ModelManager::fit(size_t generations, size_t maxPop, size_t eliteSize,
         for (size_t i : idx)
             sorted.push_back(std::move(population[i]));
         population = std::move(sorted);
+
+        parallelFor(eliteSize, [&](size_t from, size_t to) {
+            for (size_t i = from; i < to; i++)
+                optimizeConstants(population[i].get(), X, Y, lr, cstOptiStep);
+        });
 
 
         auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(Clock::now() - timeStart).count();
@@ -182,16 +176,16 @@ ERRORCODE ModelManager::fit(size_t generations, size_t maxPop, size_t eliteSize,
                 return ERRORCODE::EARLY_CONDITION_MET;
         }
 
-
-        if (debug) std::cout << "Gen " << gen << "\n";
         size_t printCount = std::min(eliteSize, population.size());
-        for (size_t i = 0; i < printCount; i++) {
-            Node* tree = population[i].get();
-            optimizeConstants(tree, X, Y, lr, cstOptiStep);
-            double f = evalFitness(tree, gen, generations);
-            if (debug) std::cout << "  expr " << std::setw(2) << (i + 1) << ": " << printTree(tree) << " | fitness: " << std::fixed << std::setprecision(4) << f << "\n";
+        if (debug) {
+            std::cout << "Gen " << gen << "\n";
+            for (size_t i = 0; i < printCount; i++) {
+                Node* tree = population[i].get();
+                double f = evalFitness(tree, gen, generations);
+                std::cout << "  expr " << std::setw(2) << (i + 1) << ": " << printTree(tree) << " | fitness: " << std::fixed << std::setprecision(4) << f << "\n";
+            }
+            std::cout << "----------------\n";
         }
-        if (debug) std::cout << "----------------\n";
 
         std::vector<NodePtr> newPop;
         newPop.reserve(maxPop);
@@ -213,6 +207,27 @@ ERRORCODE ModelManager::fit(size_t generations, size_t maxPop, size_t eliteSize,
             if (!isMostlyConstants(child.get()))
                 newPop.push_back(std::move(child));
         }
+
+
+        const size_t nThreads = std::thread::hardware_concurrency();
+        const size_t newbornsPerThread = newbornSize / nThreads;
+
+        std::vector<std::vector<NodePtr>> localPops(nThreads);
+
+        parallelFor(nThreads, [&](size_t from, size_t to) {
+            for (size_t t = from; t < to; t++) {
+                localPops[t].reserve(newbornsPerThread + 1);
+                while (localPops[t].size() < newbornsPerThread) {
+                    auto newborn = randomTree(maxDepth, variables, probs, ops.unary, ops.binary);
+                    if (!isMostlyConstants(newborn.get()))
+                        localPops[t].push_back(std::move(newborn));
+                }
+            }
+        });
+
+        for (auto& local : localPops)
+            for (auto& tree : local)
+                newPop.push_back(std::move(tree));
 
         while (newPop.size() < maxPop) {
             auto newborn = randomTree(maxDepth, variables, probs, ops.unary, ops.binary);
