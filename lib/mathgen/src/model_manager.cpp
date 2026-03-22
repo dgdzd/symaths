@@ -141,16 +141,16 @@ const Node* ModelManager::tournamentSelect(size_t gen, size_t maxGen) const {
     return best;
 }
 
-ERRORCODE ModelManager::fit(size_t generations, size_t maxPop, size_t eliteSize, size_t newbornSize, double lr, unsigned int cstOptiStep, bool debug, unsigned int timeoutSeconds,
+void ModelManager::fit(size_t generations, size_t maxPop, size_t eliteSize, size_t newbornSize, double lr, unsigned int cstOptiStep, bool debug, unsigned int timeoutSeconds,
     const std::function<bool(double)>& earlyStopCondition) {
     if (population.empty())
-        return ERRORCODE::POPULATION_EMPTY;
+        throw std::invalid_argument("population is empty");
     if (eliteSize < 1 || eliteSize >= maxPop)
-       return ERRORCODE::ELITE_SIZE_OUT_OF_BOUNDS;
+        throw std::invalid_argument("incorrect eliteSize");
     if (X.empty() || Y.empty())
-        return ERRORCODE::DATASET_EMPTY;
+        throw std::invalid_argument("dataset empty");
     if (newbornSize + eliteSize >= maxPop)
-        return ERRORCODE::ELITE_SIZE_OUT_OF_BOUNDS;
+        throw std::invalid_argument("incorrect eliteSize");
 
     using Clock = std::chrono::steady_clock;
     auto timeStart = Clock::now();
@@ -179,12 +179,12 @@ ERRORCODE ModelManager::fit(size_t generations, size_t maxPop, size_t eliteSize,
 
         auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(Clock::now() - timeStart).count();
         if (elapsed >= timeoutSeconds)
-            return ERRORCODE::TIMEOUT;
+            return;
 
         if (earlyStopCondition) {
             double bestFit = evalFitness(population[0].get(), gen, generations);
             if (earlyStopCondition(bestFit))
-                return ERRORCODE::EARLY_CONDITION_MET;
+                return;
         }
 
         size_t printCount = std::min(eliteSize, population.size());
@@ -248,6 +248,4 @@ ERRORCODE ModelManager::fit(size_t generations, size_t maxPop, size_t eliteSize,
 
         population = std::move(newPop);
     }
-
-    return ERRORCODE::OK;
 }

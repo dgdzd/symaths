@@ -6,6 +6,7 @@ set(MATHGEN_LIB_SOURCES
         src/fitness.cpp
         src/model_manager.cpp
         src/tree_utils.cpp
+        src/island_manager.cpp
 )
 
 target_include_directories(mathgen_lib PUBLIC include)
