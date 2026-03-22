@@ -155,17 +155,16 @@ ERRORCODE ModelManager::fit(size_t generations, size_t maxPop, size_t eliteSize,
                 return ERRORCODE::EARLY_CONDITION_MET;
         }
 
-        if (debug) {
-            std::cout << "Gen " << gen << "\n";
-            size_t printCount = std::min(eliteSize, population.size());
-            for (size_t i = 0; i < printCount; i++) {
-                Node* tree = population[i].get();
-                optimizeConstants(tree, X, Y, lr, cstOptiStep);
-                double f = evalFitness(tree, gen, generations);
-                std::cout << "  expr " << std::setw(2) << (i + 1) << ": " << printTree(tree) << " | fitness: " << std::fixed << std::setprecision(4) << f << "\n";
-            }
-            std::cout << "----------------\n";
+
+        if (debug) std::cout << "Gen " << gen << "\n";
+        size_t printCount = std::min(eliteSize, population.size());
+        for (size_t i = 0; i < printCount; i++) {
+            Node* tree = population[i].get();
+            optimizeConstants(tree, X, Y, lr, cstOptiStep);
+            double f = evalFitness(tree, gen, generations);
+            if (debug) std::cout << "  expr " << std::setw(2) << (i + 1) << ": " << printTree(tree) << " | fitness: " << std::fixed << std::setprecision(4) << f << "\n";
         }
+        if (debug) std::cout << "----------------\n";
 
         std::vector<NodePtr> newPop;
         newPop.reserve(maxPop);

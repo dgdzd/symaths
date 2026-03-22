@@ -12,36 +12,40 @@ int main() {
     UnaryMap unaryFunc = {
         {"sin", [](double x){ return std::sin(x); }},
         {"square", [](double x){ return x * x; }},
+        {"exp", [](double x){return std::exp(x); } },
     };
 
     //2. Build dataset  →  y = x * sin(x) + sin(x^2)
     Dataset X;
     std::vector<double> Y;
-    for (int i = -1000; i < 1000; i++) {
-        double xv = i / 20.0;
-        X.push_back({{"x", xv}});
-        Y.push_back(xv * std::sin(xv) + std::sin(xv * xv));
+    double from = -2;
+    double to = 5;
+    double precision = 1e-3;
+    for (int i = static_cast<int>(from / precision); i < static_cast<int>(to / precision); i++) {
+        double x_v = i * precision;
+        X.push_back({ { "x", x_v } });
+        Y.push_back(std::exp(std::sin(x_v + exp(x_v))));
     }
 
     //3. Configure and run
     ModelManager manager(
-        {"x"}, //variable names
+        { "x" }, //variable names
         1000, //population size
-        7, //max tree depth
-        1e-5, //complexity penalty
+        12, //max tree depth
+        1e-6, //complexity penalty
         0.4, //mutation probability
-        {0.1, 0.3, 0.3}, //(const_prob, var_prob, binary_prob)
+        { 0.15, 0.25, 0.25 }, //(const_prob, var_prob, binary_prob)
         7
     );
     manager.initPopulation(binaryFunc, unaryFunc);
     manager.updateData(X, Y);
     manager.fit(
         /*generations*/ 20,
-        /*maxPop*/ 1000,
-        /*eliteSize*/ 20,
-        /*newbornSize*/ 120,
+        /*maxPop*/ 100,
+        /*eliteSize*/ 10,
+        /*newbornSize*/ 15,
                         0.05,
-                        50,
+                        20,
                         true,
         /*timeoutSecs*/ 3600
 

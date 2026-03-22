@@ -11,6 +11,7 @@ double fitness(Node* tree, const Dataset& X, const std::vector<double>& Y, doubl
 
     for (std::size_t i = 0; i < n; i++) {
         double pred = tree->eval(X[i]);
+        if (std::isinf(pred) || std::isnan(pred)) return 1e20;
         err += std::abs(pred - Y[i]);
     }
     err /= static_cast<double>(n);

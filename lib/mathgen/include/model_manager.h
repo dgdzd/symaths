@@ -13,10 +13,7 @@
 #include <stdexcept>
 
 //A FAIRE:
-//- CHANGER LES STD::COUT POUR QUE RIEN NE SOIT AFFICHER SUR CMD ->MODE DEBUG SEULEMENT
 //- MULTI THREADING (GPU ?)
-//-POUVOIR CHANGER LA LR
-//- CHANGER LA POOLSIZE
 //- ISLAND CLASS/STRUCT
 //- CMA-ES + AJUSTEMENT AU 10^-i où i est choisit (en faisant une fonction à part)
 
