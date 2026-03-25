@@ -15,7 +15,7 @@ expression sym::differentiate(const expression& expr, const symbol& symbol) {
 		}
 
 		else if constexpr (std::is_same_v<T, detail::symbol>) {
-			if (symbol.m_ref == expr.root) {
+			if (symbol.ref == expr.root) {
 				return nm.make_constant(1);
 			}
 			return nm.make_constant(0);
@@ -52,9 +52,9 @@ expression sym::differentiate(const expression& expr, const symbol& symbol) {
 
 		// Power rule : (x^y)' = yx^(y-1) OR logarithm
 		else if constexpr (std::is_same_v<T, detail::power>) {
-			if (x.base->depends_on(symbol.m_ref)) {
+			if (x.base->depends_on(symbol.ref)) {
 				// (f(x)^(g(x)))' = (f(x)^(g(x)))(g'(x) ln(f(x)) + f'(x)/f(x))
-				if (x.exponent->depends_on(symbol.m_ref)) {
+				if (x.exponent->depends_on(symbol.ref)) {
 					auto df = sym::differentiate(x.base, symbol).root; // f'(x)
 					auto dg = sym::differentiate(x.exponent, symbol).root; // g'(x)
 
@@ -82,7 +82,7 @@ expression sym::differentiate(const expression& expr, const symbol& symbol) {
 			}
 
 			// Kind : a^(f(x)) : (a^(f(x)))' = (a^(f(x))) f'(x) ln(a)
-			if (x.exponent->depends_on(symbol.m_ref)) {
+			if (x.exponent->depends_on(symbol.ref)) {
 				auto df = sym::differentiate(x.exponent, symbol).root;
 				return nm.make_mul({
 					expr.root,
@@ -95,7 +95,7 @@ expression sym::differentiate(const expression& expr, const symbol& symbol) {
 
 		else if constexpr (std::is_same_v<T, detail::function_call>) {
 			auto& f = detail::get_func(funcs::builtin_fn_id{x.f_id});
-			return f.derivative(x.args, symbol.m_ref);
+			return f.derivative(x.args, symbol.ref);
 		}
 
 		return expr.root;

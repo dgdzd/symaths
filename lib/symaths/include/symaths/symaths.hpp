@@ -79,12 +79,12 @@ namespace sym {
 	expression abs(const expression& arg);
 
 	class symbol {
-		const detail::node* m_ref;
-
 		friend expression;
 		friend expression sym::differentiate(const expression& expr, const symbol& symbol);
 
 	public:
+		const detail::node* ref;
+
 		symbol();
 		symbol(const std::string& name);
 		symbol(const char* name);

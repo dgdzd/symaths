@@ -261,6 +261,48 @@ bool detail::node::depends_on(const node* n) const {
 	}, p_data);
 }
 
+void find_all_paths_r(const detail::node* current, const detail::node* target, detail::node_path_t& current_path, std::vector<detail::node_path_t>& paths) {
+	if (!current) return;
+
+	current_path.push_back(current);
+	if (current == target) {
+		paths.push_back(current_path);
+	}
+
+	std::visit([&](const auto& x) {
+		using T = std::decay_t<decltype(x)>;
+
+		if constexpr (std::is_same_v<T, detail::negation>) {
+			find_all_paths_r(x.child, target, current_path, paths);
+		}
+
+		if constexpr (std::is_same_v<T, detail::addition> || std::is_same_v<T, detail::multiplication>) {
+			for (auto* c : x.operands) {
+				find_all_paths_r(c, target, current_path, paths);
+			}
+		}
+
+		if constexpr (std::is_same_v<T, detail::power>) {
+			find_all_paths_r(x.base, target, current_path, paths);
+			find_all_paths_r(x.exponent, target, current_path, paths);
+		}
+
+		if constexpr (std::is_same_v<T, detail::function_call>) {
+			for (auto* c : x.args) {
+				find_all_paths_r(c, target, current_path, paths);
+			}
+		}
+	}, current->p_data);
+	current_path.pop_back();
+}
+
+std::vector<detail::node_path_t> detail::search_node(const node* parent, const node* to_search) {
+	std::vector<node_path_t> paths;
+	node_path_t current_path;
+	find_all_paths_r(parent, to_search, current_path, paths);
+	return paths;
+}
+
 
 std::size_t node_hash::operator()(const node_key& k) const {
 	return std::visit([](const auto& x) {
@@ -286,6 +328,7 @@ std::size_t node_hash::operator()(const node_key& k) const {
 		return h;
 	}, k.data);
 }
+
 
 const detail::node* detail::negation::sorted() const {
 	return std::visit([&](const auto& x) {

@@ -178,36 +178,36 @@ sym::expression sym::abs(const expression& arg) {
 
 
 sym::symbol::symbol() {
-	m_ref = make_symbol("x");
+	ref = make_symbol("x");
 }
 
 sym::symbol::symbol(const std::string& name) {
-	m_ref = make_symbol(name);
+	ref = make_symbol(name);
 }
 
 sym::symbol::symbol(const char* name) {
-	m_ref = make_symbol(name);
+	ref = make_symbol(name);
 }
 
 sym::symbol::symbol(const expression& expr) {
 	if (!std::holds_alternative<detail::symbol>(expr.root->p_data)) {
 		throw std::invalid_argument("sym::symbol: expression is not a symbol");
 	}
-	m_ref = expr.root;
+	ref = expr.root;
 }
 
 sym::symbol::symbol(const detail::node* root) {
 	if (!std::holds_alternative<detail::symbol>(root->p_data)) {
 		throw std::invalid_argument("sym::symbol: expression is not a symbol");
 	}
-	m_ref = root;
+	ref = root;
 }
 
 const std::string& sym::symbol::name() const {
-	return std::get<detail::symbol>(m_ref->p_data).name;
+	return std::get<detail::symbol>(ref->p_data).name;
 }
 
 const std::string& sym::symbol::name(const std::string& new_name) {
-	m_ref = make_symbol(new_name);
-	return std::get<detail::symbol>(m_ref->p_data).name;
+	ref = make_symbol(new_name);
+	return std::get<detail::symbol>(ref->p_data).name;
 }

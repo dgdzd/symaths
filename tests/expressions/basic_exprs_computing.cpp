@@ -180,3 +180,18 @@ TEST(basic_exprs_computing, parser_parse) {
 	ASSERT_EQ(expr7.string(), "sin(1+tan(x))x");
 	ASSERT_EQ(expr8.string(), "cos(x)^2+sin(x)^2");
 }
+
+TEST(basic_exprs_computing, find_node_paths) {
+	sym::symbol x("x");
+	sym::expression expr1 = x;
+	sym::expression expr2 = 1 + x;
+	sym::expression expr3 = 2 * x + 1;
+	sym::expression expr4 = 2 - x;
+	sym::expression expr5 = 3 * x + 6 * sym::pow(x, 2);
+
+	auto p1 = sym::detail::search_node(expr1.root, x.ref);
+	auto p2 = sym::detail::search_node(expr2.root, x.ref);
+	auto p3 = sym::detail::search_node(expr3.root, x.ref);
+	auto p4 = sym::detail::search_node(expr4.root, x.ref);
+	auto p5 = sym::detail::search_node(expr5.root, x.ref);
+}

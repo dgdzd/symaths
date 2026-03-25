@@ -24,6 +24,7 @@ namespace sym {
 	expression reduce(const expression& expr);
 	expression sort(const expression& expr);
 	expression expand(const expression& expr);
+	expression find_and_express(const expression& expr, const expression& to_find);
 	//size_t hash(const expression& expr);
 
 	namespace detail {

@@ -3,6 +3,7 @@
 
 #include "symaths/base_functions.hpp"
 
+#include <deque>
 #include <unordered_map>
 #include <memory>
 #include <string>
@@ -103,6 +104,10 @@ namespace sym {
 			[[nodiscard]] bool is_ground() const;
 			[[nodiscard]] bool depends_on(const node* n) const;
 		};
+
+		using node_path_t = std::deque<const node*>;
+
+		std::vector<node_path_t> search_node(const node* parent, const node* to_search);
 	}
 
 	struct node_key {

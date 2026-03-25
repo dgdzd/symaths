@@ -8,7 +8,7 @@ sym::expression::expression(double val) {
 }
 
 sym::expression::expression(const symbol& var) {
-	root = var.m_ref;
+	root = var.ref;
 }
 
 sym::expression::expression(const std::string& name) {
