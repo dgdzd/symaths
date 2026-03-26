@@ -9,19 +9,19 @@
 
 
 struct CMAESConfig {
-    int lambda = -1; //-1 = auto; else 4 + floor(3 * log(n))
-    int mu = -1; //-1 = auto; else floor(lambda / 2)
-    double sigma0   = 0.3; // standard deviation
+    int lambda = -1; //-1 = auto (pop size)
+    int mu = -1; //-1 = auto (number of selected parents)
+    double sigma0 = 1.0; // initial step size
     unsigned int max_iter = 1000;
-    double tol_fun = 1e-11; // stops if delta_f < tol
-    double tol_x = 1e-11; // stops if delta_mean < tol
+    double tol_fun = 1e-10; // stops if delta_f < tol
+    double tol_x = 1e-10; // stops if delta_mean < tol
     bool debug = false;
 };
 
 struct CMAESParams {
-    int n; //dimensions
-    int lambda; //pop size
-    int mu; //selected parents size
+    int n;
+    int lambda;
+    int mu;
 
     std::vector<double> weights;
     double mu_eff;

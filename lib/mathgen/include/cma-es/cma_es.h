@@ -15,7 +15,7 @@
 class CMAES {
 public:
 
-    CMAES(int n, const CMAESConfig& cfg = {}) : params(n, cfg), n(n), sigma(cfg.sigma0), gen(std::random_device{}()), normal(0.0, 1.0)
+    CMAES(size_t n, const CMAESConfig& cfg = {}) : params(n, cfg), n(n), sigma(cfg.sigma0), gen(std::random_device{}()), normal(0.0, 1.0)
         , iter(0), eigen_iter(0), stall_count(0), best_fit(std::numeric_limits<double>::infinity()) {
 
         mean = Vector(n, 0.0);
@@ -32,7 +32,7 @@ public:
     }
 
     void set_mean(const Vector& x0) {
-        if (static_cast<int>(x0.size()) != n)
+        if (x0.size() != n)
             throw std::invalid_argument("set_mean: wrong dimensions");
         mean = x0;
         best_x = x0;
@@ -42,12 +42,12 @@ public:
     const std::vector<Vector>& ask() {
         for (int k = 0; k < params.lambda; k++) {
             Vector z(n);
-            for (int i = 0; i < n; i++)
+            for (size_t i = 0; i < n; i++)
                 z[i] = normal(gen);
 
             ys[k] = mv_mul(BD, z);
 
-            for (int i = 0; i < n; i++)
+            for (size_t i = 0; i < n; i++)
                 population[k][i] = mean[i] + sigma * ys[k][i];
         }
         return population;
@@ -73,27 +73,27 @@ public:
         Vector old_mean = mean;
         mean = Vector(n, 0.0);
         for (int i = 0; i < mu; i++)
-            for (int d = 0; d < n; d++)
+            for (size_t d = 0; d < n; d++)
                 mean[d] += w[i] * population[idx[i]][d];
 
         Vector y_mean(n, 0.0);
         for (int i = 0; i < mu; i++)
-            for (int d = 0; d < n; d++)
+            for (size_t d = 0; d < n; d++)
                 y_mean[d] += w[i] * ys[idx[i]][d];
 
         Vector v(n, 0.0);
-        for (int i = 0; i < n; i++)
-            for (int j = 0; j < n; j++)
+        for (size_t i = 0; i < n; i++)
+            for (size_t j = 0; j < n; j++)
                 v[i] += vectors[j][i] * y_mean[j];
 
-        for (int i = 0; i < n; i++)
+        for (size_t i = 0; i < n; i++)
             v[i] /= std::sqrt(values[i]);
 
         Vector invcSqrt_y = mv_mul(vectors, v);
 
         double c1  = params.cs;
         double damp = std::sqrt(c1 * (2.0 - c1) * params.mu_eff);
-        for (int d = 0; d < n; d++)
+        for (size_t d = 0; d < n; d++)
             p_sigma[d] = (1.0 - params.cs) * p_sigma[d] + damp * invcSqrt_y[d];
 
         double ps_norm = norm(p_sigma);
@@ -105,7 +105,7 @@ public:
         int h_sigma = (ps_norm / std::sqrt(1.0 - std::pow(1.0 - params.cs, 2.0 * (iter + 1)))) < h_thresh ? 1 : 0;
 
         double damp_c = std::sqrt(params.cc * (2.0 - params.cc) * params.mu_eff);
-        for (int d = 0; d < n; d++)
+        for (size_t d = 0; d < n; d++)
             p_c[d] = (1.0 - params.cc) * p_c[d] + h_sigma * damp_c * y_mean[d];
 
         double coeff_keep = 1.0 - params.c1 - params.cmu;
@@ -116,13 +116,13 @@ public:
         Matrix rank_mu = make_matrix(n, 0.0);
         for (int i = 0; i < mu; i++) {
             Matrix yyt = outer(ys[idx[i]], ys[idx[i]]);
-            for (int r = 0; r < n; r++)
-                for (int c = 0; c < n; c++)
+            for (size_t r = 0; r < n; r++)
+                for (size_t c = 0; c < n; c++)
                     rank_mu[r][c] += w[i] * yyt[r][c];
         }
 
-        for (int r = 0; r < n; r++)
-            for (int c = 0; c < n; c++)
+        for (size_t r = 0; r < n; r++)
+            for (size_t c = 0; c < n; c++)
                 C[r][c] = coeff_keep * C[r][c] + params.c1  * (rank_1[r][c] + delta_h * C[r][c]) + params.cmu * rank_mu[r][c];
 
         eigen_iter++;
@@ -179,7 +179,7 @@ public:
 
 private:
     CMAESParams params;
-    int n;
+    size_t n;
 
     Vector mean;
     double sigma;

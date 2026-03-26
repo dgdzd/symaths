@@ -21,32 +21,7 @@ double fitness(Node* tree, const Dataset& X, const std::vector<double>& Y, doubl
 }
 
 void optimizeConstants(Node* tree, const Dataset& X, const std::vector<double>& Y, double lr, unsigned int steps) {
-    std::vector<ConstNode*> constNodes;
-    for (Node* n : tree->nodes())
-        if (auto* c = dynamic_cast<ConstNode*>(n))
-            constNodes.push_back(c); //false error
-    if (constNodes.empty()) return;
 
-    auto evalFit = [&]() { return fitness(tree, X, Y, 0.0, 0, 1); };
 
-    for (unsigned int s = 0; s < steps; s++) {
-        double step = lr / (1.0 + 0.1 * (double)s);
 
-        for (ConstNode* c : constNodes) {
-            double base = c->value;
-            double f0   = evalFit();
-
-            c->value = base + step;
-            double f1 = evalFit();
-
-            if (f1 < f0) continue;
-
-            c->value = base - step;
-            double f2 = evalFit();
-
-            if (f2 < f0) continue;
-
-            c->value = base;
-        }
-    }
 }
