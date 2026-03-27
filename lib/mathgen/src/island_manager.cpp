@@ -115,7 +115,7 @@ std::vector<NodePtr> IslandManager::collectMigrants(const Isle& src) const {
     const auto& pop = src.population;
     if (pop.empty()) return migrants;
 
-    unsigned int nElites  = static_cast<unsigned int>(std::round(migrantCount * eliteFraction));
+    auto nElites  = static_cast<unsigned int>(std::round(migrantCount * eliteFraction));
     unsigned int nNormals = migrantCount - nElites;
 
     unsigned int eliteEnd = std::min(nElites, static_cast<unsigned int>(pop.size()));
@@ -123,10 +123,10 @@ std::vector<NodePtr> IslandManager::collectMigrants(const Isle& src) const {
         migrants.push_back(pop[i]->clone());
 
     unsigned int normalStart = eliteEnd;
-    unsigned int normalEnd = static_cast<unsigned int>(pop.size());
+    auto normalEnd = static_cast<unsigned int>(pop.size());
     if (normalStart < normalEnd) {
         for (unsigned int i = 0; i < nNormals; i++) {
-            int idx = randInt(normalStart, normalEnd - 1);
+            int idx = randInt((int)normalStart, (int)normalEnd - 1);
             migrants.push_back(pop[idx]->clone());
         }
     }
@@ -194,7 +194,7 @@ void IslandManager::runMigration() {
         injectMigrants(isleAt(ev.dest), std::move(ev.migrants));
 }
 
-void IslandManager::run(unsigned int totalGenerations, size_t maxPop, size_t eliteSize, size_t newbornSize, double lr, unsigned int cstOptiStep, bool debug,
+void IslandManager::run(unsigned int totalGenerations, size_t maxPop, size_t eliteSize, size_t newbornSize, CMAESConfig cmaesCfg, bool debug,
     unsigned int timeoutSeconds, const std::function<bool(double)>& earlyStop) {
 
     using Clock = std::chrono::steady_clock;
@@ -213,13 +213,13 @@ void IslandManager::run(unsigned int totalGenerations, size_t maxPop, size_t eli
         for (const auto& addr : flatAddresses_) {
             threads.emplace_back([&, addr]() {
                 Isle& isle = isleAt(addr);
-                isle.fit(migrationInterval, maxPop, eliteSize, newbornSize, lr, cstOptiStep, false, timeoutSeconds, nullptr);
+                isle.fit(migrationInterval, maxPop, eliteSize, newbornSize, cmaesCfg, false, timeoutSeconds, nullptr);
             });
         }
         for (auto& t : threads) t.join();
 
         if (debug) {
-            int gensRun = (cycle + 1) * migrationInterval;
+            unsigned int gensRun = (cycle + 1) * migrationInterval;
             std::cout << "=== Migration cycle: " << cycle
                       << "  (Gen " << gensRun << ") ===\n";
 

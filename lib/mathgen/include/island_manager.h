@@ -25,7 +25,7 @@ public:
 
     void updateData(const Dataset& X, const std::vector<double>& Y);
 
-    void run(unsigned int totalGenerations, size_t maxPop, size_t eliteSize, size_t newbornSize, double lr = 0.05, unsigned int cstOptiStep = 50, bool debug = false,
+    void run(unsigned int totalGenerations, size_t maxPop, size_t eliteSize, size_t newbornSize, CMAESConfig cmaesCfg = { }, bool debug = false,
         unsigned int timeoutSeconds = 3600, const std::function<bool(double)>& earlyStop = nullptr);
 
     [[nodiscard]] NodePtr bestTree() const;

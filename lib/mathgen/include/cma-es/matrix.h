@@ -1,7 +1,6 @@
 #ifndef SYMATHS_MATRIX_H
 #define SYMATHS_MATRIX_H
 
-#include <cmath>
 #include <vector>
 
 using Vector = std::vector<double>;
@@ -82,6 +81,9 @@ inline void matrix_copy_into(const Matrix& A, Matrix& B) {
 inline void decomp(const Matrix& C, Vector& values, Matrix& vecs) {
     size_t n = C.size();
 
+    if (C.empty() || C[0].size() < 2)
+        return;
+
     Matrix A = C;
     vecs = make_identity(n);
 
@@ -101,22 +103,23 @@ inline void decomp(const Matrix& C, Vector& values, Matrix& vecs) {
         if (max_val < eps) break;
 
         //angle de la rotation de Givens
-        double theta = 0.5 * std::atan2(2.0 * A[p][q], A[q][q] - A[p][p]);
+        double theta = 0.5 * std::atan2(2.0 * A[p][q], A[p][p] - A[q][q]);
         double c = std::cos(theta);
         double s = std::sin(theta);
 
         Matrix temp_A = A;
-        for (int i = 0; i < n; ++i) {
+        for (size_t i = 0; i < n; i++) {
             if (i == p || i == q) continue;
-            temp_A[i][p] = temp_A[p][i] =  c * A[i][p] + s * A[i][q];
-            temp_A[i][q] = temp_A[q][i] = -s * A[i][p] + c * A[i][q];
+            double aip = A[i][p], aiq = A[i][q];
+            temp_A[i][p] = temp_A[p][i] =  c * aip + s * aiq;
+            temp_A[i][q] = temp_A[q][i] = -s * aip + c * aiq;
         }
-        temp_A[p][p] =  c*c*A[p][p] + 2*s*c*A[p][q] + s*s*A[q][q];
-        temp_A[q][q] =  s*s*A[p][p] - 2*s*c*A[p][q] + c*c*A[q][q];
+        temp_A[p][p] = c * c * A[p][p] + 2 * s * c * A[p][q] + s * s * A[q][q];
+        temp_A[q][q] = s * s * A[p][p] - 2 * s * c * A[p][q] + c * c * A[q][q];
         temp_A[p][q] = temp_A[q][p] = 0.0;
         A = temp_A;
 
-        for (int i = 0; i < n; ++i) {
+        for (size_t i = 0; i < n; i++) {
             double vip = vecs[i][p];
             double viq = vecs[i][q];
             vecs[i][p] =  c * vip + s * viq;
@@ -129,7 +132,7 @@ inline void decomp(const Matrix& C, Vector& values, Matrix& vecs) {
         values[i] = std::max(A[i][i], 1e-20);
 }
 
-Matrix make_BD(const Matrix& vecs, const Vector& values) {
+inline Matrix make_BD(const Matrix& vecs, const Vector& values) {
     size_t n = values.size();
     Matrix BD = make_matrix(n);
     for (size_t i = 0; i < n; i++)

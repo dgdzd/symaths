@@ -12,9 +12,7 @@
 #include <tuple>
 #include <stdexcept>
 
-//A FAIRE:
-//- CMA-ES + AJUSTEMENT AU 10^-i où i est choisit (en faisant une fonction à part)
-
+#include "cma-es/params.h"
 
 class ModelManager {
 public:
@@ -30,9 +28,9 @@ public:
     Operators ops;
     unsigned int k = 7;
 
-    ModelManager(std::vector<std::string> variables_ = {"x"}, size_t populationSize_ = 100, unsigned int maxDepth_ = 5, double penalty_ = 0.01, double mutationProb_ = 0.3,
+    ModelManager(std::vector<std::string> variables_ = { "x" }, size_t populationSize_ = 100, unsigned int maxDepth_ = 5, double penalty_ = 0.01, double mutationProb_ = 0.3,
         const std::tuple<double,double,double>& probs_ = {0.25, 0.25, 0.25}, unsigned int k_ = 7);
-    ModelManager(ModelManager&&)  noexcept = default;
+    ModelManager(ModelManager&&) noexcept = default;
     ModelManager& operator=(ModelManager&&) = default;
     ModelManager(const ModelManager&) = delete;
     ModelManager& operator=(const ModelManager&) = delete;
@@ -49,7 +47,7 @@ public:
     static std::vector<double> denormalizePrediction(const std::vector<double>& res, double scale) ;
 
 
-    void fit(size_t generations = 10, size_t maxPop = 100, size_t eliteSize = 10, size_t newbornSize = 10, double lr = 0.05, unsigned int cstOptiStep = 50,
+    void fit(size_t generations = 10, size_t maxPop = 100, size_t eliteSize = 10, size_t newbornSize = 10, CMAESConfig cmaesCfg = { },
         bool debug = false, unsigned int timeoutSeconds = 60, const std::function<bool(double)>& earlyStopCondition = nullptr);
 
 private:

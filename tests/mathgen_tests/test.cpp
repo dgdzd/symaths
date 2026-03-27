@@ -7,17 +7,17 @@
 void test_model_manager() {
     //1. Define operators
     BinaryMap binaryFunc = {
-        {"+", [](double a, double b){ return a + b; }},
-        {"-", [](double a, double b){ return a - b; }},
-        {"*", [](double a, double b){ return a * b; }},
-        {"/", [](double a, double b){ return std::abs(b) > 1e-12 ? a / b : 0.0; }},
+        { "+", [](double a, double b){ return a + b; } },
+        { "-", [](double a, double b){ return a - b; } },
+        { "*", [](double a, double b){ return a * b; } },
+        { "/", [](double a, double b){ return std::abs(b) > 1e-12 ? a / b : 0.0; } },
     };
     UnaryMap unaryFunc = {
-        { "sin", [](double x){ return std::sin(x); }},
-        { "cos", [](double x) { return std::cos(x); }},
-        { "square", [](double x){ return x * x; }},
-        {"exp", [](double x){ return std::abs(x) < 10.0 ? std::exp(x) : 0.0; }},
-        { "log", [](double x) { return x <= 0.0 ? 0.0 : std::log(x); }}
+        { "sin", [](double x){ return std::sin(x); } },
+        { "cos", [](double x) { return std::cos(x); } },
+        { "square", [](double x){ return x * x; } },
+        { "exp", [](double x){ return std::abs(x) < 10.0 ? std::exp(x) : 0.0; } },
+        { "log", [](double x) { return x <= 0.0 ? 0.0 : std::log(x); } }
     };
 
     //2. Build dataset
@@ -49,8 +49,7 @@ void test_model_manager() {
         /*maxPop*/ 2000,
         /*eliteSize*/ 100,
         /*newbornSize*/ 200,
-        /*lr*/ 0.05,
-        /*optimisation steps*/ 20,
+        /*config for cma-es*/ { },
         /*debug*/ true,
         /*timeoutSecs*/ 3600,
         [](double fitness) { return fitness < 1e-3; }
@@ -108,8 +107,8 @@ void test_island_manager() {
     group0.intraSubgroupProb = 0.60;
     group0.interSubgroupProb = 0.25;
     group0.subgroups = {
-        SubGroupConfig{3, std::nullopt},// SG 0.0 — inherit baseCfg0
-        SubGroupConfig{2, exploreCfg},  // SG 0.1 — explorative override
+        SubGroupConfig{3, std::nullopt}, // SG 0.0 — inherit baseCfg0
+        SubGroupConfig{2, exploreCfg}, // SG 0.1 — explorative override
     };
 
     // Group 1
@@ -122,13 +121,17 @@ void test_island_manager() {
     group1.intraSubgroupProb = 0.70;
     group1.interSubgroupProb = 0.20;
     group1.subgroups = {
-        SubGroupConfig{ 3, std::nullopt },   // SG 1.0
+        SubGroupConfig{ 3, std::nullopt }, // SG 1.0
     };
+
+    CMAESConfig cfg;
+    cfg.max_iter = 10;
+    cfg.sigma0 = 1.0;
 
     // Run
     IslandManager manager({ group0, group1 }, 10, 10, 0.6);
     manager.updateData(X, Y);
-    manager.run(1000, 1000, 100, 100, 0.05, 50, true, 3600);
+    manager.run(1000, 1000, 100, 100, cfg, true, 3600);
 
     NodePtr best = manager.bestTree();
     if (best)

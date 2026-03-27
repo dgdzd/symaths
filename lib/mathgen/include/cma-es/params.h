@@ -13,8 +13,8 @@ struct CMAESConfig {
     int mu = -1; //-1 = auto (number of selected parents)
     double sigma0 = 1.0; // initial step size
     unsigned int max_iter = 1000;
-    double tol_fun = 1e-10; // stops if delta_f < tol
-    double tol_x = 1e-10; // stops if delta_mean < tol
+    double tol_fun = 1e-6; // stops if delta_f < tol
+    double tol_x = 1e-6; // stops if delta_mean < tol
     bool debug = false;
 };
 

@@ -141,7 +141,7 @@ const Node* ModelManager::tournamentSelect(size_t gen, size_t maxGen) const {
     return best;
 }
 
-void ModelManager::fit(size_t generations, size_t maxPop, size_t eliteSize, size_t newbornSize, double lr, unsigned int cstOptiStep, bool debug, unsigned int timeoutSeconds,
+void ModelManager::fit(size_t generations, size_t maxPop, size_t eliteSize, size_t newbornSize, CMAESConfig cmaesCfg, bool debug, unsigned int timeoutSeconds,
     const std::function<bool(double)>& earlyStopCondition) {
     if (population.empty())
         throw std::invalid_argument("population is empty");
@@ -173,7 +173,7 @@ void ModelManager::fit(size_t generations, size_t maxPop, size_t eliteSize, size
 
         parallelFor(eliteSize, [&](size_t from, size_t to) {
             for (size_t i = from; i < to; i++)
-                optimizeConstants(population[i].get(), X, Y, lr, cstOptiStep);
+                optimizeConstants(population[i].get(), X, Y, cmaesCfg);
         });
 
 
