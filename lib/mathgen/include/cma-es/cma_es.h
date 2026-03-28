@@ -101,7 +101,7 @@ public:
 
         sigma = std::clamp(sigma, 1e-12, 1e6);
 
-        double h_thresh = (1.4 + 2.0 / (n + 1.0)) * params.chiN;
+        double h_thresh = (1.4 + 2.0 / (static_cast<double>(n) + 1.0)) * params.chiN;
         int h_sigma = (ps_norm / std::sqrt(1.0 - std::pow(1.0 - params.cs, 2.0 * (iter + 1)))) < h_thresh ? 1 : 0;
 
         double damp_c = std::sqrt(params.cc * (2.0 - params.cc) * params.mu_eff);
@@ -161,19 +161,19 @@ public:
     }
 
 
-    const Vector& best() const {
+    [[nodiscard]] const Vector& best() const {
         return best_x;
     }
-    double best_fitness() const {
+    [[nodiscard]] double best_fitness() const {
         return best_fit;
     }
-    int generation() const {
+    [[nodiscard]] int generation() const {
         return iter;
     }
-    double step_size() const {
+    [[nodiscard]] double step_size() const {
         return sigma;
     }
-    bool converged() const {
+    [[nodiscard]] bool converged() const {
         return converged_;
     }
 

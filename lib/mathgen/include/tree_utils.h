@@ -4,6 +4,7 @@
 #include "node.h"
 #include "operators.h"
 #include "random.h"
+#include "fitness.h"
 
 #include <string>
 #include <vector>
@@ -24,6 +25,8 @@ void mutateOperator(Node* node, double prob, const BinaryMap& binaryFuncs, const
 NodePtr crossover(const Node* parent1, const Node* parent2);
 
 NodePtr prune(NodePtr node);
+
+void cropSimilarTrees(const Dataset& X);
 
 
 #endif

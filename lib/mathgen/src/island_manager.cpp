@@ -8,6 +8,7 @@
 #include <iomanip>
 #include <limits>
 #include <chrono>
+#include <utility>
 
 static Isle makeIsle(const IsleConfig& cfg) {
     Isle isle(cfg.variables, cfg.populationSize, cfg.maxDepth, cfg.penalty, cfg.mutationProb, cfg.probs, cfg.k);
@@ -15,8 +16,8 @@ static Isle makeIsle(const IsleConfig& cfg) {
     return isle;
 }
 
-IslandManager::IslandManager(const std::vector<GroupConfig>& groupConfigs, unsigned int migrationInterval_, unsigned int migrantCount_, double eliteFraction_) :
-    migrationInterval(migrationInterval_), migrantCount(migrantCount_), eliteFraction(eliteFraction_) {
+IslandManager::IslandManager(const std::vector<GroupConfig>& groupConfigs, HallOfFame hallOfFame_, unsigned int migrationInterval_, unsigned int migrantCount_,
+    double eliteFraction_) : migrationInterval(migrationInterval_), migrantCount(migrantCount_), eliteFraction(eliteFraction_), hallOfFame(std::move(hallOfFame_)) {
 
     if (groupConfigs.empty())
         throw std::invalid_argument("group config empty");
@@ -135,7 +136,7 @@ std::vector<NodePtr> IslandManager::collectMigrants(const Isle& src) const {
 }
 
 
-void IslandManager::injectMigrants(Isle& dest, std::vector<NodePtr> migrants) const {
+void IslandManager::injectMigrants(Isle& dest, std::vector<NodePtr> migrants) {
     if (migrants.empty() || dest.population.empty()) return;
 
     auto& pop = dest.population;
@@ -187,7 +188,7 @@ void IslandManager::runMigration() {
         const Isle& src = isleAt(srcAddr);
         IsleAddress destAddr = pickDestination(srcAddr);
         auto migrants = collectMigrants(src);
-        events.push_back({destAddr, std::move(migrants)});
+        events.push_back({ destAddr, std::move(migrants) });
     }
 
     for (auto& ev : events)

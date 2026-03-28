@@ -129,7 +129,7 @@ void test_island_manager() {
     cfg.sigma0 = 1.0;
 
     // Run
-    IslandManager manager({ group0, group1 }, 10, 10, 0.6);
+    IslandManager manager({ group0, group1 }, { }, 10, 10, 0.6);
     manager.updateData(X, Y);
     manager.run(1000, 1000, 100, 100, cfg, true, 3600);
 
@@ -141,6 +141,10 @@ void test_island_manager() {
 
 
 int main() {
+    //A FAIRE
+    //- meilleur algo de BGFS (dans fitness.cpp)
+    //- détection de convergence avancée
+    //-
 
     test_island_manager();
 }

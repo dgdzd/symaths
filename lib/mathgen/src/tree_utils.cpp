@@ -1,10 +1,10 @@
 #include "tree_utils.h"
+#include "fitness.h"
+#include "random.h"
 
 #include <sstream>
 #include <iomanip>
 #include <algorithm>
-
-#include "random.h"
 
 
 struct NodeWithParent {
@@ -187,4 +187,20 @@ NodePtr prune(NodePtr node) {
     }
 
     return node;
+}
+
+void cropSimilarTrees(std::vector<std::unique_ptr<Node>> trees, const Dataset& X) {
+    for (size_t i = 0; i < trees.size(); i++) {
+        for (size_t j = i + 1; j < trees.size(); j++) {
+            double similarity = 0.0;
+            for (const Sample& k : X)
+                similarity += std::abs(trees[i]->eval(k) - trees[j]->eval(k));
+
+            if (similarity < 1e3) {
+                trees.erase(trees.begin() + i);
+                i++;
+                j = i + 1;
+            }
+        }
+    }
 }

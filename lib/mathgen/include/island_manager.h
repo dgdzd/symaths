@@ -3,6 +3,7 @@
 
 #include "island.h"
 #include "node.h"
+#include "convergence.h"
 
 #include <vector>
 #include <thread>
@@ -21,7 +22,8 @@ struct Group {
 
 class IslandManager {
 public:
-    IslandManager(const std::vector<GroupConfig>& groupConfigs, unsigned int migrationInterval_ = 5, unsigned int migrantSize_ = 5, double eliteFraction_ = 0.6);
+    IslandManager(const std::vector<GroupConfig>& groupConfigs, HallOfFame hallOfFame_, unsigned int migrationInterval_ = 5, unsigned int migrantSize_ = 5,
+        double eliteFraction_ = 0.6);
 
     void updateData(const Dataset& X, const std::vector<double>& Y);
 
@@ -39,6 +41,8 @@ private:
     unsigned int migrantCount;
     double eliteFraction;
 
+    HallOfFame hallOfFame;
+
     struct IsleAddress {
         size_t group;
         size_t subgroup;
@@ -53,7 +57,7 @@ private:
 
     [[nodiscard]] std::vector<NodePtr> collectMigrants(const Isle& src) const;
 
-    void injectMigrants(Isle& dest, std::vector<NodePtr> migrants) const;
+    void injectMigrants(Isle& dest, std::vector<NodePtr> migrants) ;
 
     static NodePtr adaptTree(NodePtr tree, const Operators& destOps);
 
