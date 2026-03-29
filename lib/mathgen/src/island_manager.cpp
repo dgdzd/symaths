@@ -8,6 +8,7 @@
 #include <iomanip>
 #include <limits>
 #include <chrono>
+#include <ranges>
 #include <utility>
 
 static Isle makeIsle(const IsleConfig& cfg) {
@@ -46,11 +47,17 @@ IslandManager::IslandManager(const std::vector<GroupConfig>& groupConfigs, HallO
             }
             group.subgroups.push_back(std::move(sg));
         }
-        groups_.push_back(std::move(group));
+        groups.push_back(std::move(group));
     }
 
     if (flatAddresses_.empty())
         throw std::invalid_argument("IslandManager: no isles were created.");
+
+    convergenceTrackers_.resize(flatAddresses_.size());
+    for (size_t gi = 0; gi < groupConfigs.size(); gi++) {
+        groups[gi].backupMaxSize = groupConfigs[gi].backupSize;
+        groups[gi].isPrimary = groupConfigs[gi].isPrimary;
+    }
 }
 
 void IslandManager::updateData(const Dataset& X, const std::vector<double>& Y) {
@@ -60,20 +67,20 @@ void IslandManager::updateData(const Dataset& X, const std::vector<double>& Y) {
 
 
 Isle& IslandManager::isleAt(const IsleAddress& a) {
-    return groups_[a.group].subgroups[a.subgroup].isles[a.isle];
+    return groups[a.group].subgroups[a.subgroup].isles[a.isle];
 }
 const Isle& IslandManager::isleAt(const IsleAddress& a) const {
-    return groups_[a.group].subgroups[a.subgroup].isles[a.isle];
+    return groups[a.group].subgroups[a.subgroup].isles[a.isle];
 }
 
 IslandManager::IsleAddress
 
 IslandManager::pickDestination(const IsleAddress& src) const {
-    const Group& srcGroup = groups_[src.group];
+    const Group& srcGroup = groups[src.group];
     double r = randDouble(0.0, 1.0);
 
     auto pickFromSubgroup = [&](size_t gi, size_t si) -> IsleAddress {
-        const SubGroup& sg = groups_[gi].subgroups[si];
+        const SubGroup& sg = groups[gi].subgroups[si];
         std::vector<size_t> candidates;
         for (size_t ii = 0; ii < sg.isles.size(); ii++)
             if (gi != src.group || si != src.subgroup || ii != src.isle)
@@ -97,7 +104,7 @@ IslandManager::pickDestination(const IsleAddress& src) const {
         return pickFromSubgroup(src.group, destSG);
     }
 
-    const size_t numGroups = groups_.size();
+    const size_t numGroups = groups.size();
     if (numGroups <= 1)
         return pickFromSubgroup(src.group, src.subgroup);
 
@@ -105,7 +112,7 @@ IslandManager::pickDestination(const IsleAddress& src) const {
     for (size_t gi = 0; gi < numGroups; gi++)
         if (gi != src.group) gCandidates.push_back(gi);
     size_t destG = randChoice(gCandidates);
-    size_t destSG = randInt(0, static_cast<int>(groups_[destG].subgroups.size()) - 1);
+    size_t destSG = randInt(0, static_cast<int>(groups[destG].subgroups.size()) - 1);
     return pickFromSubgroup(destG, destSG);
 }
 
@@ -195,8 +202,149 @@ void IslandManager::runMigration() {
         injectMigrants(isleAt(ev.dest), std::move(ev.migrants));
 }
 
-void IslandManager::run(unsigned int totalGenerations, size_t maxPop, size_t eliteSize, size_t newbornSize, CMAESConfig cmaesCfg, bool debug,
-    unsigned int timeoutSeconds, const std::function<bool(double)>& earlyStop) {
+void IslandManager::refreshBackup() {
+    for (auto& group : groups) {
+        std::vector<std::pair<double, const Node*>> candidates;
+
+        for (const auto& subgroup : group.subgroups) {
+            for (const auto& isle : subgroup.isles) {
+                if (isle.population.empty()) continue;
+                for (const auto& tree : isle.population) {
+                    double f = fitness(const_cast<Node*>(tree.get()), isle.X, isle.Y, isle.penalty, 0, 1);
+                    candidates.emplace_back(f, tree.get());
+                }
+            }
+        }
+        if (candidates.empty()) continue;
+
+        std::ranges::sort(candidates, [](const auto& a, const auto& b){ return a.first < b.first; });
+
+        const Dataset& X = group.subgroups[0].isles[0].X;
+        const size_t nSample = std::min<size_t>(20, X.size());
+        const size_t step = std::max<size_t>(1, X.size() / nSample);
+
+        auto fingerprint = [&](const Node* tree) {
+            std::vector<double> preds(nSample);
+            for (size_t i = 0; i < nSample; i++)
+                preds[i] = tree->eval(X[i * step]);
+            return preds;
+        };
+
+        auto correlation = [&](const std::vector<double>& a, const std::vector<double>& b) {
+            double ma = 0, mb = 0;
+            for (size_t i = 0; i < nSample; i++) {
+                ma += a[i]; mb += b[i];
+            }
+            ma /= (double)nSample;
+            mb /= (double)nSample;
+            double num = 0, da = 0, db = 0;
+            for (size_t i = 0; i < nSample; i++) {
+                num += (a[i] - ma)*(b[i] - mb);
+                da  += (a[i] - ma)*(a[i] - ma);
+                db  += (b[i] - mb)*(b[i] - mb);
+            }
+            double denom = std::sqrt(da * db);
+            return denom < 1e-12 ? 1.0 : std::abs(num / denom);
+        };
+
+        auto eliteSlots   = static_cast<size_t>(static_cast<double>(group.backupMaxSize) * 0.7);
+
+        std::vector<NodePtr> newBackup;
+        newBackup.reserve(group.backupMaxSize);
+        std::vector<std::vector<double>> fingerprints;
+
+        for (const auto& node : candidates | std::views::values) {
+            if (newBackup.size() >= eliteSlots) break;
+            auto fp = fingerprint(node);
+            bool tooSimilar = false;
+            for (const auto& existing : fingerprints)
+                if (correlation(fp, existing) > 0.999) {
+                    tooSimilar = true;
+                    break;
+                }
+
+            if (!tooSimilar) {
+                newBackup.push_back(node->clone());
+                fingerprints.push_back(std::move(fp));
+            }
+        }
+
+        for (const auto& [f, node] : candidates) {
+            if (newBackup.size() >= group.backupMaxSize) break;
+            auto fp = fingerprint(node);
+            double minCorr = 1.0;
+            for (const auto& existing : fingerprints)
+                minCorr = std::min(minCorr, correlation(fp, existing));
+            if (minCorr < 0.95) {
+                newBackup.push_back(node->clone());
+                fingerprints.push_back(std::move(fp));
+            }
+        }
+        group.backup = std::move(newBackup);
+    }
+}
+
+void IslandManager::refreshHallOfFame(size_t cycle) {
+    for (size_t i = 0; i < flatAddresses_.size(); i++) {
+        const Isle& isle = isleAt(flatAddresses_[i]);
+        if (isle.population.empty()) continue;
+
+        size_t topN = std::min<size_t>(5, isle.population.size());
+        for (size_t j = 0; j < topN; j++) {
+            const Node* tree = isle.population[j].get();
+            double f = fitness(const_cast<Node*>(tree), isle.X, isle.Y, isle.penalty, 0, 1);
+            hallOfFame.tryInsert(tree->clone(), f, cycle, i, isle.X);
+        }
+    }
+}
+
+void IslandManager::injectHallOfFame() {
+    if (hallOfFame.fames.empty()) return;
+
+    for (auto& group : groups) {
+        if (!group.isPrimary) continue;
+        for (auto& subgroup : group.subgroups) {
+            for (auto& isle : subgroup.isles) {
+                if (isle.population.empty()) continue;
+                auto samples = hallOfFame.sample();
+
+                size_t replaceFrom = isle.population.size() > samples.size() ? isle.population.size() - samples.size() : 0;
+                for (size_t i = 0; i < samples.size(); i++) {
+                    size_t idx = replaceFrom + i;
+                    if (idx < isle.population.size())
+                        isle.population[idx] = std::move(samples[i]);
+                }
+            }
+        }
+    }
+}
+
+void IslandManager::handleConvergence(const IsleAddress& addr, size_t eliteSize) {
+    Isle& isle = isleAt(addr);
+    Group& group = groups[addr.group];
+
+    std::vector<NodePtr> newPop;
+    newPop.reserve(isle.populationSize);
+
+    for (size_t i = 0; i < eliteSize && i < isle.population.size(); i++)
+        newPop.push_back(isle.population[i]->clone());
+
+    auto backupInject = static_cast<size_t>(static_cast<double>(isle.populationSize) * 0.2);
+    backupInject = std::min(backupInject, group.backup.size());
+    auto backupIndices = sampleIndices(static_cast<int>(group.backup.size()), static_cast<int>(backupInject));
+    for (int idx : backupIndices)
+        newPop.push_back(group.backup[idx]->clone());
+
+    while (newPop.size() < isle.populationSize) {
+        auto nb = randomTree(isle.maxDepth, isle.variables, isle.probs, isle.ops.unary, isle.ops.binary);
+        if (!isMostlyConstants(nb.get()))
+            newPop.push_back(std::move(nb));
+    }
+    isle.population = std::move(newPop);
+}
+
+void IslandManager::run(unsigned int totalGenerations, size_t maxPop, size_t eliteSize, size_t newbornSize, CMAESConfig cmaesCfg, bool debug, unsigned int timeoutSeconds,
+    const std::function<bool(double)>& earlyStop) {
 
     using Clock = std::chrono::steady_clock;
     auto timeStart = Clock::now();
@@ -224,10 +372,10 @@ void IslandManager::run(unsigned int totalGenerations, size_t maxPop, size_t eli
             std::cout << "=== Migration cycle: " << cycle
                       << "  (Gen " << gensRun << ") ===\n";
 
-            for (size_t gi = 0; gi < groups_.size(); gi++) {
-                for (size_t si = 0; si < groups_[gi].subgroups.size(); si++) {
-                    for (size_t ii = 0; ii < groups_[gi].subgroups[si].isles.size(); ii++) {
-                        const Isle& isle = groups_[gi].subgroups[si].isles[ii];
+            for (size_t gi = 0; gi < groups.size(); gi++) {
+                for (size_t si = 0; si < groups[gi].subgroups.size(); si++) {
+                    for (size_t ii = 0; ii < groups[gi].subgroups[si].isles.size(); ii++) {
+                        const Isle& isle = groups[gi].subgroups[si].isles[ii];
                         if (isle.population.empty()) continue;
                         const Node* best = isle.population[0].get();
                         double f = fitness(const_cast<Node*>(best), isle.X, isle.Y, isle.penalty, 0, 1);
@@ -245,7 +393,46 @@ void IslandManager::run(unsigned int totalGenerations, size_t maxPop, size_t eli
                 return;
         }
 
+        refreshBackup();
+        refreshHallOfFame(cycle);
+
+        for (size_t i = 0; i < flatAddresses_.size(); i++) {
+            const Isle& isle = isleAt(flatAddresses_[i]);
+            if (isle.population.empty()) continue;
+
+            std::vector<double> fits;
+            for (const auto& t : isle.population)
+                fits.push_back(fitness(const_cast<Node*>(t.get()), isle.X, isle.Y, isle.penalty, 0, 1));
+            double mean = std::accumulate(fits.begin(), fits.end(), 0.0) / (double)fits.size();
+            double var  = 0.0;
+            for (double f : fits) var += (f - mean) * (f - mean);
+            double cur_std = (mean > 1e-12) ? std::sqrt(var / (double)fits.size()) / mean : 0.0;
+
+            const Dataset& X = isle.X;
+            const size_t nSample = std::min<size_t>(50, X.size());
+            const size_t step = std::max<size_t>(1, X.size() / nSample);
+            double cur_p = 0.0;
+            for (size_t s = 0; s < nSample; s++) {
+                std::vector<double> preds;
+                preds.reserve(isle.population.size());
+                for (const auto& t : isle.population)
+                    preds.push_back(t->eval(X[s * step]));
+                double pm = std::accumulate(preds.begin(), preds.end(), 0.0) / (double)preds.size();
+                double pv = 0.0;
+                for (double p : preds) pv += (p - pm) * (p - pm);
+                cur_p += pv / (double)preds.size();
+            }
+            cur_p /= (double)nSample;
+
+            convergenceTrackers_[i].update(fits[0]);
+            if (convergenceTrackers_[i].hasConverged(cur_std, cur_p)) {
+                handleConvergence(flatAddresses_[i], eliteSize);
+                convergenceTrackers_[i].reset();
+            }
+        }
+
         runMigration();
+        injectHallOfFame();
     }
 }
 
