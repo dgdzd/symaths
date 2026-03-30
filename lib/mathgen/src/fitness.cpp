@@ -21,7 +21,7 @@ double fitness(Node* tree, const Dataset& X, const std::vector<double>& Y, doubl
     return (std::isnan(f_fitness) || std::isinf(f_fitness)) ? 1e20 : f_fitness;
 }
 
-void optimizeConstants(Node* tree, const Dataset& X, const std::vector<double>& Y, const CMAESConfig& cfg) {
+void optimizeConstants(Node* tree, const Dataset& X, const std::vector<double>& Y, const CMAESConfig& cfg, size_t k) {
     std::vector<ConstNode*> constNodes;
     for (Node* n : tree->nodes())
         if (auto* c = dynamic_cast<ConstNode*>(n))
@@ -52,7 +52,7 @@ void optimizeConstants(Node* tree, const Dataset& X, const std::vector<double>& 
         }
         x[0] = (lo + hi) / 2.0;
     }
-    else if (n < 5) {
+    else if (n < k) {
         optiBFGS(x, applyAndEval, n, cfg.tol_fun, cfg.max_iter);
     }
     else {

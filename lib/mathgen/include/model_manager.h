@@ -47,7 +47,7 @@ public:
     static std::vector<double> denormalizePrediction(const std::vector<double>& res, double scale) ;
 
 
-    void fit(size_t generations = 10, size_t maxPop = 100, size_t eliteSize = 10, size_t newbornSize = 10, CMAESConfig cfg = { },
+    void fit(size_t generations = 10, size_t maxPop = 100, size_t eliteSize = 10, size_t newbornSize = 10, CMAESConfig cfg = { }, size_t cmaesThreshold = 8,
         bool debug = false, unsigned int timeoutSeconds = 60, const std::function<bool(double)>& earlyStopCondition = nullptr);
 
 private:

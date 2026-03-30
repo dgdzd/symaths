@@ -143,10 +143,14 @@ void test_island_manager() {
 int main() {
     //A FAIRE
     //- meilleur algo de BGFS (dans fitness.cpp)
+    //- pouvoir changer les tol de ConvergenceIndicators et window (le nbr de gen -> TOLERANCE ADAPTIVE ?
     //- plus de fonction et d'infos pour l'uitilisateur sur Hall of Fame (print le Hall of Fame ?) et réinitialisation avec Backup ? (pouvoir obtenir/modifier Hall of Fame)
     //- pouvoir modifier les indicateurs Hall of Fame, ect ... (genre le truc de comparaison avec 0.999, ect ...)
     //- détection de convergence avancée (plus d'indicateurs de convergence ?)
-    //- reset method pour iles, sous-groupes et groupes (si convergence trop élevée)
+    //- meilleur prune()
+    //- implémenter une fonction qui convertit std::string -> Node
+    //- faire conversion dans printTree() de square(...) en (...)^2, cube(...) en (...)^3, ...
+    //- es ce que std::function est un bon choix ? (c'est pas très rapide) (fonctions alternatives: lambda, pointeurs)
 
     test_island_manager();
 }

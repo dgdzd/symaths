@@ -53,7 +53,7 @@ IslandManager::IslandManager(const std::vector<GroupConfig>& groupConfigs, HallO
     if (flatAddresses_.empty())
         throw std::invalid_argument("IslandManager: no isles were created.");
 
-    convergenceTrackers_.resize(flatAddresses_.size());
+    convergenceTrackers.resize(flatAddresses_.size());
     for (size_t gi = 0; gi < groupConfigs.size(); gi++) {
         groups[gi].backupMaxSize = groupConfigs[gi].backupSize;
         groups[gi].isPrimary = groupConfigs[gi].isPrimary;
@@ -233,15 +233,16 @@ void IslandManager::refreshBackup() {
         auto correlation = [&](const std::vector<double>& a, const std::vector<double>& b) {
             double ma = 0, mb = 0;
             for (size_t i = 0; i < nSample; i++) {
-                ma += a[i]; mb += b[i];
+                ma += a[i];
+                mb += b[i];
             }
             ma /= (double)nSample;
             mb /= (double)nSample;
             double num = 0, da = 0, db = 0;
             for (size_t i = 0; i < nSample; i++) {
-                num += (a[i] - ma)*(b[i] - mb);
-                da  += (a[i] - ma)*(a[i] - ma);
-                db  += (b[i] - mb)*(b[i] - mb);
+                num += (a[i] - ma) * (b[i] - mb);
+                da += (a[i] - ma) * (a[i] - ma);
+                db += (b[i] - mb) * (b[i] - mb);
             }
             double denom = std::sqrt(da * db);
             return denom < 1e-12 ? 1.0 : std::abs(num / denom);
@@ -343,7 +344,7 @@ void IslandManager::handleConvergence(const IsleAddress& addr, size_t eliteSize)
     isle.population = std::move(newPop);
 }
 
-void IslandManager::run(unsigned int totalGenerations, size_t maxPop, size_t eliteSize, size_t newbornSize, CMAESConfig cmaesCfg, bool debug, unsigned int timeoutSeconds,
+void IslandManager::run(unsigned int totalGenerations, size_t maxPop, size_t eliteSize, size_t newbornSize, CMAESConfig cmaesCfg, size_t cmaesThreshold, bool debug, unsigned int timeoutSeconds,
     const std::function<bool(double)>& earlyStop) {
 
     using Clock = std::chrono::steady_clock;
@@ -424,10 +425,10 @@ void IslandManager::run(unsigned int totalGenerations, size_t maxPop, size_t eli
             }
             cur_p /= (double)nSample;
 
-            convergenceTrackers_[i].update(fits[0]);
-            if (convergenceTrackers_[i].hasConverged(cur_std, cur_p)) {
+            convergenceTrackers[i].update(fits[0]);
+            if (convergenceTrackers[i].hasConverged(cur_std, cur_p)) {
                 handleConvergence(flatAddresses_[i], eliteSize);
-                convergenceTrackers_[i].reset();
+                convergenceTrackers[i].reset();
             }
         }
 

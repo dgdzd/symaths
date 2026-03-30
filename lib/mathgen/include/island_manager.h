@@ -26,12 +26,18 @@ struct Group {
 
 class IslandManager {
 public:
+    std::vector<Group> groups;
+
+    unsigned int migrationInterval;
+    unsigned int migrantCount;
+    double eliteFraction;
+
     IslandManager(const std::vector<GroupConfig>& groupConfigs, HallOfFame hallOfFame_, unsigned int migrationInterval_ = 5, unsigned int migrantSize_ = 5,
         double eliteFraction_ = 0.6);
 
     void updateData(const Dataset& X, const std::vector<double>& Y);
 
-    void run(unsigned int totalGenerations, size_t maxPop, size_t eliteSize, size_t newbornSize, CMAESConfig cmaesCfg = { }, bool debug = false,
+    void run(unsigned int totalGenerations, size_t maxPop, size_t eliteSize, size_t newbornSize, CMAESConfig cmaesCfg = { }, size_t cmaesThreshold = 8, bool debug = false,
         unsigned int timeoutSeconds = 3600, const std::function<bool(double)>& earlyStop = nullptr);
 
     [[nodiscard]] NodePtr bestTree() const;
@@ -40,12 +46,7 @@ public:
     [[nodiscard]] std::vector<const Isle*> allIsles() const;
 
 private:
-    std::vector<Group> groups;
-    unsigned int migrationInterval;
-    unsigned int migrantCount;
-    double eliteFraction;
-    std::vector<ConvergenceIndicators> convergenceTrackers_;
-
+    std::vector<ConvergenceIndicators> convergenceTrackers;
     HallOfFame hallOfFame;
 
     struct IsleAddress {
