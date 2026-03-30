@@ -173,6 +173,19 @@ Controls the shape of randomly generated trees. The unary probability is implici
 
 ---
 
+### Constants opitmizations
+
+Constants from all trees are mutated each generations with `mutateConstants` which applies a gauss offset.
+
+For elites, constants are optimized through:
+| n constants | algorithm |
+|---|---|
+| 1 | golden section search |
+| 2 - 4 | simple BFGS |
+| > 4 | complex CMA-ES |
+
+There is a complex CMA-ES librairy inside mathgen librairy, that can be used to other prurposes.
+
 ### Adding custom operators
 
 Any `std::function<double(double)>` or `std::function<double(double,double)>` works:
@@ -190,34 +203,60 @@ manager.initPopulation(binaryFunc, unaryFunc, extra);
 ### Multi-variable regression
 
 ```cpp
-// dataset for  z = x² + sin(y)
+// dataset for  z = x^2 + sin(y)
 Dataset X;
 std::vector<double> Y;
 for (double xv = -3.0; xv <= 3.0; xv += 0.5)
     for (double yv = -3.0; yv <= 3.0; yv += 0.5) {
-        X.push_back({{"x", xv}, {"y", yv}});
+        X.push_back({{ "x", xv }, { "y", yv }});
         Y.push_back(xv * xv + std::sin(yv));
     }
 
-ModelManager manager({"x", "y"}, /*...*/ );
+ModelManager manager({ "x", "y" }, /*...*/ );
 ```
 
 ---
 
 ## Island Model
 
-For harder problems, MathGen supports an Island Model: multiple independent populations (isles) evolve in parallel and periodically exchange individuals (migration). This prevents too fast convergence and allows different operator sets to let each isle to be specialized.
+For harder problems, MathGen supports an Island Model: multiple independent populations (isles) evolve in parallel and periodically exchange individuals (migration). This prevents too fast convergence and allows different operator sets to let each isle to be specialized. Island Model features a [Hall of Fame](#hall-of-fame) for the main group and [Backup](#backup) for every group. Usage of [convergence indicators](#convergence-indicators) is recommended.
 
+### Structure
 ```
 IslandManager
 ├── Group 0  (sin/cos operators)
-│   ├── Subgroup 0.0 — Isle 0, Isle 1, Isle 2   (exploitative)
-│   └── Subgroup 0.1 — Isle 3, Isle 4           (explorative, higher mutation)
-└── Group 1  (exp/log operators)
-    └── Subgroup 1.0 — Isle 5, Isle 6, Isle 7
+│   ├── Subgroup 0 — Isle 0, Isle 1, Isle 2   (exploitative)
+│   └── Subgroup 1 — Isle 3, Isle 4   (explorative, higher mutation)
+├── Group 1  (exp/log operators)
+│   └── Subgroup 0 — Isle 5, Isle 6, Isle 7
+│   └── Subgroup 1 — Isle 8, Isle 9
+└── Group 2 (all operators)
+    └── Subgroup 0 — Isle 10   (main)
 
 Every n generations → migration between isles
 ```
+
+### Hall of Fame
+
+The Hall of Fame is a universal entitiy where all best individuals get copied, it contains:
+ - a copy of all-time best trees
+ - the generation they where discovered
+ - the fitness they have
+
+A number of `injectSize` trees of the Hall of Fame get injected into the main group every `migrationInterval`.
+
+### Backup
+
+
+
+### Convergence Indicators
+
+Convergence is detected through 3 indicators:
+- a standart deviation tolerance `tol_std`
+- a fitness optimization tolerance `tol_f`
+- a diversity prediction tolerance `tol_p`
+
+A window parameter can be adjusted, increase it for better convergence history and lower it for better performance.
 
 ### Migration
 
