@@ -5,6 +5,7 @@
 #include "cma-es/cma_es.h"
 
 #include <vector>
+#include <functional>
 
 using Dataset = std::vector<Sample>;
 

@@ -50,6 +50,7 @@ void test_model_manager() {
         /*eliteSize*/ 100,
         /*newbornSize*/ 200,
         /*config for cma-es*/ { },
+        /*constant size for cma-es threshold*/ 8,
         /*debug*/ true,
         /*timeoutSecs*/ 3600,
         [](double fitness) { return fitness < 1e-3; }
@@ -131,7 +132,7 @@ void test_island_manager() {
     // Run
     IslandManager manager({ group0, group1 }, { }, 10, 10, 0.6);
     manager.updateData(X, Y);
-    manager.run(1000, 1000, 100, 100, cfg, true, 3600);
+    manager.run(1000, 1000, 100, 100, cfg, 8, true, 3600);
 
     NodePtr best = manager.bestTree();
     if (best)

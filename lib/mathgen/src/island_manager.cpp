@@ -363,7 +363,7 @@ void IslandManager::run(unsigned int totalGenerations, size_t maxPop, size_t eli
         for (const auto& addr : flatAddresses_) {
             threads.emplace_back([&, addr]() {
                 Isle& isle = isleAt(addr);
-                isle.fit(migrationInterval, maxPop, eliteSize, newbornSize, cmaesCfg, false, timeoutSeconds, nullptr);
+                isle.fit(migrationInterval, maxPop, eliteSize, newbornSize, cmaesCfg, cmaesThreshold, false, timeoutSeconds, nullptr);
             });
         }
         for (auto& t : threads) t.join();
