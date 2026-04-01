@@ -89,6 +89,18 @@ std::string ModelManager::getTree(size_t idx) {
     return s.str();
 }
 
+void ModelManager::insertIndividual(NodePtr tree) {
+    population.emplace_back(std::move(tree));
+}
+void ModelManager::removeIndividual(size_t idx) {
+    if (idx < population.size())
+        population.erase(population.begin() + static_cast<long long>(idx));
+}
+void ModelManager::replaceIndividual(size_t idx, NodePtr tree) {
+    if (idx < population.size())
+        population[idx] = std::move(tree);
+}
+
 
 std::vector<double> ModelManager::residuals(const Node* tree) const {
     std::vector<double> res;

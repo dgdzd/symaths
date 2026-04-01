@@ -30,13 +30,16 @@ struct ConvergenceIndicators {
     double tol_std = 0.01;
     double tol_fit = 1e-4;
     double tol_p = 0.01;
-    size_t window = 10;
 
+    size_t window = 10;
+};
+
+struct ConvergenceTracker {
     std::vector<double> bestFitnessHistory;
 
-    void update(double bestFit);
+    void update(const ConvergenceIndicators& convInd, double bestFit);
 
-    [[nodiscard]] bool hasConverged(double cur_std, double cur_p) const;
+    [[nodiscard]] bool hasConverged(const ConvergenceIndicators& convInd, double cur_std, double cur_p) const;
 
     void reset();
 };

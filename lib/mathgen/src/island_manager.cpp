@@ -42,7 +42,7 @@ IslandManager::IslandManager(const std::vector<GroupConfig>& groupConfigs, HallO
             const IsleConfig& isleCfg = scfg.isleOverride.has_value() ? *scfg.isleOverride : g_cfg.isleDefaults;
             SubGroup sg;
             for (size_t ii = 0; ii < scfg.numIsles; ii++) {
-                sg.isles.emplace_back(std::move(makeIsle(isleCfg)));
+                sg.isles.emplace_back(std::move(makeIsle(isleCfg))); //ERROR
                 flatAddresses_.push_back({ gi, si, ii });
             }
             group.subgroups.push_back(std::move(sg));
@@ -425,8 +425,8 @@ void IslandManager::run(unsigned int totalGenerations, size_t maxPop, size_t eli
             }
             cur_p /= (double)nSample;
 
-            convergenceTrackers[i].update(fits[0]);
-            if (convergenceTrackers[i].hasConverged(cur_std, cur_p)) {
+            convergenceTrackers[i].update(groups[flatAddresses_[i].group].convergence, fits[0]);
+            if (convergenceTrackers[i].hasConverged(groups[flatAddresses_[i].group].convergence, cur_std, cur_p)) {
                 handleConvergence(flatAddresses_[i], eliteSize);
                 convergenceTrackers[i].reset();
             }

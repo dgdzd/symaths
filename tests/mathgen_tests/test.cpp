@@ -152,6 +152,7 @@ int main() {
     //- implémenter une fonction qui convertit std::string -> Node
     //- faire conversion dans printTree() de square(...) en (...)^2, cube(...) en (...)^3, ...
     //- es ce que std::function est un bon choix ? (c'est pas très rapide) (fonctions alternatives: lambda, pointeurs)
+    //- implémenter binaryextras
 
     test_island_manager();
 }

@@ -75,23 +75,25 @@ std::vector<NodePtr> HallOfFame::sample() const {
     return out;
 }
 
-void ConvergenceIndicators::update(double bestFit) {
+void ConvergenceTracker::update(const ConvergenceIndicators& convInd, double bestFit) {
     bestFitnessHistory.push_back(bestFit);
-    if (bestFitnessHistory.size() > window) bestFitnessHistory.erase(bestFitnessHistory.begin());
+
+    if (bestFitnessHistory.size() > convInd.window)
+        bestFitnessHistory.erase(bestFitnessHistory.begin());
 }
 
-bool ConvergenceIndicators::hasConverged(double cur_std, double cur_p) const {
-    if (bestFitnessHistory.size() < window) return false;
+bool ConvergenceTracker::hasConverged(const ConvergenceIndicators& convInd, double cur_std, double cur_p) const {
+    if (bestFitnessHistory.size() < convInd.window) return false;
 
     double improvement = bestFitnessHistory.front() - bestFitnessHistory.back();
 
-    bool fit_stagnant = improvement < tol_fit;
-    bool std_low = cur_std <= tol_std;
-    bool pred_low = cur_p <= tol_p;
+    bool fit_stagnant = improvement < convInd.tol_fit;
+    bool std_low = cur_std <= convInd.tol_std;
+    bool pred_low = cur_p <= convInd.tol_p;
 
     return std_low && (fit_stagnant || pred_low);
 }
 
-void ConvergenceIndicators::reset() {
+void ConvergenceTracker::reset() {
     bestFitnessHistory.clear();
 }

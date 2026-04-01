@@ -18,6 +18,7 @@ struct Group {
     std::vector<SubGroup> subgroups;
     double intraSubgroupProb;
     double interSubgroupProb;
+    ConvergenceIndicators convergence;
 
     std::vector<NodePtr> backup;
     size_t backupMaxSize = 40;
@@ -27,6 +28,7 @@ struct Group {
 class IslandManager {
 public:
     std::vector<Group> groups;
+    HallOfFame hallOfFame;
 
     unsigned int migrationInterval;
     unsigned int migrantCount;
@@ -44,10 +46,15 @@ public:
     [[nodiscard]] const Isle& bestIsle() const;
 
     [[nodiscard]] std::vector<const Isle*> allIsles() const;
+    [[nodiscard]] Isle& isleAt(size_t group, size_t subgroup, size_t isle);
+    [[nodiscard]] const Isle& isleAt(size_t group, size_t subgroup, size_t isle) const;
+
+    void clearBackup(size_t groupIdx);
+    void injectIntoBackup(size_t groupIdx, NodePtr tree);
+    void clearHallOfFame();
 
 private:
-    std::vector<ConvergenceIndicators> convergenceTrackers;
-    HallOfFame hallOfFame;
+    std::vector<ConvergenceTracker> convergenceTrackers;
 
     struct IsleAddress {
         size_t group;
