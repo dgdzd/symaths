@@ -41,7 +41,7 @@ bool HallOfFame::tryInsert(NodePtr tree, double fit, size_t gen, size_t flatAddr
         std::vector<double> efp(nSample);
         for (size_t i = 0; i < nSample; i++)
             efp[i] = entry.tree->eval(X[i * step]);
-        if (correlation(fp, efp) > 0.999) {
+        if (correlation(fp, efp) > similarityThreshold) {
             if (fit < entry.fitness) {
                 entry.tree = tree->clone();
                 entry.fitness = fit;

@@ -136,7 +136,7 @@ void test_island_manager() {
 
     NodePtr best = manager.bestTree();
     if (best)
-        std::cout << "\nbest tree: " << printTree(best.get()) << "\n";
+        std::cout << "\nBest Tree: " << printTree(best.get()) << "\n";
 
 }
 
@@ -144,15 +144,13 @@ void test_island_manager() {
 int main() {
     //A FAIRE
     //- meilleur algo de BGFS (dans fitness.cpp)
-    //- pouvoir changer les tol de ConvergenceIndicators et window (le nbr de gen -> TOLERANCE ADAPTIVE ?
-    //- plus de fonction et d'infos pour l'uitilisateur sur Hall of Fame (print le Hall of Fame ?) et réinitialisation avec Backup ? (pouvoir obtenir/modifier Hall of Fame)
-    //- pouvoir modifier les indicateurs Hall of Fame, ect ... (genre le truc de comparaison avec 0.999, ect ...)
-    //- détection de convergence avancée (plus d'indicateurs de convergence ?)
-    //- meilleur prune()
-    //- implémenter une fonction qui convertit std::string -> Node
-    //- faire conversion dans printTree() de square(...) en (...)^2, cube(...) en (...)^3, ...
-    //- es ce que std::function est un bon choix ? (c'est pas très rapide) (fonctions alternatives: lambda, pointeurs)
-    //- implémenter binaryextras
+    //- (?) implémenter tolérance adaptive (suivant quelles variables, indicateurs, ... ?)
+    //- plus de fonction et d'infos pour l'uitilisateur sur Hall of Fame (print le Hall of Fame ?)
+    //- (?) détection de convergence avancée (plus d'indicateurs de convergence)
+    //- implémenter une fonction qui convertit std::string -> Node (pour que user implémente ses propres arbres)
+    //- faire conversion dans printTree() de square(...) en (...)^2 (puis géneraliser des alias de fonctions avec std::unordered_map<std::string, std::string> aliases)
+    //- implémenter BinaryExtras
+    //- NOMBRES COMPLEXES EN OPTION (avec des templates ?)
 
     test_island_manager();
 }

@@ -19,6 +19,7 @@ struct HallOfFame {
     std::vector<FamousTree> fames;
     size_t maxSize = 10;
     size_t injectSize = 2;
+    double similarityThreshold = 0.99;
 
     bool tryInsert(NodePtr tree, double fit, size_t gen, size_t flatAddr, const Dataset& X);
 

@@ -30,12 +30,21 @@ IslandManager::IslandManager(const std::vector<GroupConfig>& groupConfigs, HallO
 
         double intra = g_cfg.intraSubgroupProb;
         double inter = g_cfg.interSubgroupProb;
+        double eliteThreshold = g_cfg.backupEliteThreshold;
+        double diversThreshold = g_cfg.backupDiverseThreshold;
         if (intra + inter > 1.0 + 1e-9)
             throw std::invalid_argument("group " + std::to_string(gi) + ": intraSubgroupProb + interSubgroupProb must be <= 1.0");
+        if (eliteThreshold > 1.0)
+            throw std::invalid_argument("group " + std::to_string(gi) + ": backupEliteThreshold must be <= 1.0");
+        if (diversThreshold > 1.0)
+            throw std::invalid_argument("group " + std::to_string(gi) + ": diversThreshold must be <= 1.0");
 
         Group group;
         group.intraSubgroupProb = intra;
         group.interSubgroupProb = inter;
+
+        group.backupEliteThreshold = eliteThreshold;
+        group.backupDiverseThreshold = diversThreshold;
 
         for (size_t si = 0; si < g_cfg.subgroups.size(); si++) {
             const SubGroupConfig& scfg = g_cfg.subgroups[si];
@@ -259,7 +268,7 @@ void IslandManager::refreshBackup() {
             auto fp = fingerprint(node);
             bool tooSimilar = false;
             for (const auto& existing : fingerprints)
-                if (correlation(fp, existing) > 0.999) {
+                if (correlation(fp, existing) > group.backupEliteThreshold) {
                     tooSimilar = true;
                     break;
                 }
@@ -276,7 +285,7 @@ void IslandManager::refreshBackup() {
             double minCorr = 1.0;
             for (const auto& existing : fingerprints)
                 minCorr = std::min(minCorr, correlation(fp, existing));
-            if (minCorr < 0.95) {
+            if (minCorr < group.backupDiverseThreshold) {
                 newBackup.push_back(node->clone());
                 fingerprints.push_back(std::move(fp));
             }

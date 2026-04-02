@@ -41,6 +41,9 @@ struct GroupConfig {
     //interGroupProb is 1 - intra - inter
     double intraSubgroupProb = 0.70;  // migrate to isle in same subgroup
     double interSubgroupProb = 0.20;  // migrate to isle in another subgroup of this group
+
+    double backupEliteThreshold = 0.99;
+    double backupDiverseThreshold = 0.95;
 };
 
 #endif

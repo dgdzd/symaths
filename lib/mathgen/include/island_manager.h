@@ -18,6 +18,8 @@ struct Group {
     std::vector<SubGroup> subgroups;
     double intraSubgroupProb;
     double interSubgroupProb;
+    double backupEliteThreshold;
+    double backupDiverseThreshold;
     ConvergenceIndicators convergence;
 
     std::vector<NodePtr> backup;
