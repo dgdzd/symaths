@@ -23,14 +23,9 @@ void ModelManager::updateData(Dataset x, std::vector<double> y) {
     Y = std::move(y);
 }
 
-void ModelManager::initPopulation(BinaryMap binaryOperators, UnaryMap unaryOperators, UnaryMap extraUnaryOperators){
-    for (auto& [k_, v] : extraUnaryOperators)
-        unaryOperators[k_] = v;
+void ModelManager::initPopulation(const BinaryMap& binaryOperators, const UnaryMap& unaryOperators){
+    ops = Operators(binaryOperators, unaryOperators);
 
-    if (binaryOperators.empty() || unaryOperators.empty())
-        ops = Operators();
-    else
-        ops = Operators(std::move(binaryOperators), std::move(unaryOperators));
     population.clear();
 
     while (static_cast<int>(population.size()) < populationSize) {
@@ -40,14 +35,8 @@ void ModelManager::initPopulation(BinaryMap binaryOperators, UnaryMap unaryOpera
     }
 }
 
-void ModelManager::loadPopulation(std::vector<NodePtr> population_, BinaryMap binaryOperators, UnaryMap unaryOperators, UnaryMap extraUnaryOperators, bool fillPop) {
-    for (auto& [k_, v] : extraUnaryOperators)
-        unaryOperators[k_] = v;
-
-    if (binaryOperators.empty() || unaryOperators.empty())
-        ops = Operators();
-    else
-        ops = Operators(std::move(binaryOperators), std::move(unaryOperators));
+void ModelManager::loadPopulation(std::vector<NodePtr> population_, const BinaryMap& binaryOperators, const UnaryMap& unaryOperators, bool fillPop) {
+    ops = Operators(binaryOperators, unaryOperators);
 
     population.clear();
 
@@ -87,6 +76,18 @@ std::string ModelManager::getTree(size_t idx) {
     std::ostringstream s;
     s << "  expr " << std::setw(2) << (idx + 1) << ": " << printTree(tree) << " | fitness: " << std::fixed << std::setprecision(4) << f << "\n";
     return s.str();
+}
+
+void ModelManager::insertIndividual(NodePtr tree) {
+    population.emplace_back(std::move(tree));
+}
+void ModelManager::removeIndividual(size_t idx) {
+    if (idx < population.size())
+        population.erase(population.begin() + static_cast<long long>(idx));
+}
+void ModelManager::replaceIndividual(size_t idx, NodePtr tree) {
+    if (idx < population.size())
+        population[idx] = std::move(tree);
 }
 
 
@@ -141,7 +142,7 @@ const Node* ModelManager::tournamentSelect(size_t gen, size_t maxGen) const {
     return best;
 }
 
-void ModelManager::fit(size_t generations, size_t maxPop, size_t eliteSize, size_t newbornSize, double lr, unsigned int cstOptiStep, bool debug, unsigned int timeoutSeconds,
+void ModelManager::fit(size_t generations, size_t maxPop, size_t eliteSize, size_t newbornSize, CMAESConfig cfg, size_t cmaesThreshold, bool debug, unsigned int timeoutSeconds,
     const std::function<bool(double)>& earlyStopCondition) {
     if (population.empty())
         throw std::invalid_argument("population is empty");
@@ -173,7 +174,7 @@ void ModelManager::fit(size_t generations, size_t maxPop, size_t eliteSize, size
 
         parallelFor(eliteSize, [&](size_t from, size_t to) {
             for (size_t i = from; i < to; i++)
-                optimizeConstants(population[i].get(), X, Y, lr, cstOptiStep);
+                optimizeConstants(population[i].get(), X, Y, cfg, cmaesThreshold);
         });
 
 

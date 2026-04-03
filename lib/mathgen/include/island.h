@@ -3,6 +3,7 @@
 
 #include "model_manager.h"
 #include "operators.h"
+#include "convergence.h"
 
 #include <optional>
 #include <string>
@@ -34,9 +35,15 @@ struct GroupConfig {
     IsleConfig isleDefaults; // base params for every isle in this group
     std::vector<SubGroupConfig> subgroups;
 
+    ConvergenceIndicators convergence;
+    size_t backupSize = 40;
+    bool isPrimary = false;
     //interGroupProb is 1 - intra - inter
     double intraSubgroupProb = 0.70;  // migrate to isle in same subgroup
     double interSubgroupProb = 0.20;  // migrate to isle in another subgroup of this group
+
+    double backupEliteThreshold = 0.99;
+    double backupDiverseThreshold = 0.95;
 };
 
 #endif

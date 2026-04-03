@@ -1,10 +1,10 @@
 #include "tree_utils.h"
+#include "fitness.h"
+#include "random.h"
 
 #include <sstream>
 #include <iomanip>
 #include <algorithm>
-
-#include "random.h"
 
 
 struct NodeWithParent {
@@ -57,7 +57,7 @@ NodePtr randomTree(unsigned int maxDepth, const std::vector<std::string>& variab
     return std::make_unique<UnaryNode>(name, unaryFuncs.at(name), std::move(child));
 }
 
-std::string printTree(const Node* node) {
+std::string printTree(const Node* node, const std::unordered_map<std::string, std::string>& aliases) {
     if (!node) return "null";
 
     if (const auto* c = dynamic_cast<const ConstNode*>(node)) {
@@ -65,18 +65,36 @@ std::string printTree(const Node* node) {
         ss << std::fixed << std::setprecision(2) << c->value;
         return ss.str();
     }
+
     if (const auto* v = dynamic_cast<const VarNode*>(node)) {
         return v->name;
     }
+
     if (const auto* u = dynamic_cast<const UnaryNode*>(node)) {
         std::string childStr = printTree(u->child.get());
-        if (dynamic_cast<const BinaryNode*>(u->child.get()))
-            childStr = "(" + childStr + ")";
+        if (childStr.empty()) return "";
+        if (childStr.starts_with("(") && childStr.ends_with(")"))
+            childStr = childStr.substr(1, childStr.length() - 2);
+
+        auto it = aliases.find(u->name);
+        if (it != aliases.end()) {
+            const std::string& alias = it->second;
+
+            if (alias == "^2" || alias == "^3")
+                return childStr + alias;
+            if (alias == "|")
+                return "|" + childStr + "|";
+            return alias + "(" + childStr + ")";
+        }
+
         return u->name + "(" + childStr + ")";
     }
     if (const auto* b = dynamic_cast<const BinaryNode*>(node)) {
-        return "(" + printTree(b->left.get()) + " " + b->op
-             + " " + printTree(b->right.get()) + ")";
+        auto it = aliases.find(b->op);
+        if (it != aliases.end()) {
+            return "(" + printTree(b->left.get()) + " " + it->second + " " + printTree(b->right.get()) + ")";
+        }
+        return "(" + printTree(b->left.get()) + " " + b->op + " " + printTree(b->right.get()) + ")";
     }
     return "?";
 }
@@ -159,32 +177,107 @@ NodePtr prune(NodePtr node) {
     if (auto* u = dynamic_cast<UnaryNode*>(node.get())) {
         u->child = prune(std::move(u->child));
         if (isConstantSubtree(u->child.get())) {
-            Sample empty{};
+            Sample empty{ };
             return std::make_unique<ConstNode>(node->eval(empty));
         }
         return node;
     }
 
     if (auto* b = dynamic_cast<BinaryNode*>(node.get())) {
-        b->left  = prune(std::move(b->left));
+        b->left = prune(std::move(b->left));
         b->right = prune(std::move(b->right));
 
-        if (auto* rc = dynamic_cast<ConstNode*>(b->right.get())) {
+        const bool leftIsConst = b->left->type() == Node::Type::Const;
+        const bool rightIsConst = b->right->type() == Node::Type::Const;
+
+        if (isConstantSubtree(b)) {
+            Sample empty{ };
+            return std::make_unique<ConstNode>(node->eval(empty));
+        }
+
+        auto* lc = leftIsConst ? dynamic_cast<ConstNode*>(b->left.get()) : nullptr;
+        auto* rc = rightIsConst ? dynamic_cast<ConstNode*>(b->right.get()) : nullptr;
+
+        // (structural equality: same VarNode name)
+        if (auto* lv = dynamic_cast<VarNode*>(b->left.get())) {
+            if (auto* rv = dynamic_cast<VarNode*>(b->right.get())) {
+                if (lv->name == rv->name) {
+                    if (b->op == "-") return std::make_unique<ConstNode>(0.0);
+                    if (b->op == "/") return std::make_unique<ConstNode>(1.0);
+                }
+            }
+        }
+
+        if (rc) {
             if (b->op == "+" && rc->value == 0.0) return std::move(b->left);
+            if (b->op == "-" && rc->value == 0.0) return std::move(b->left);
             if (b->op == "*" && rc->value == 1.0) return std::move(b->left);
             if (b->op == "*" && rc->value == 0.0) return std::make_unique<ConstNode>(0.0);
+            if (b->op == "/" && rc->value == 1.0) return std::move(b->left);
+            if (b->op == "/" && rc->value == 0.0) return std::make_unique<ConstNode>(0.0);
+            if (b->op == "*" && rc->value == -1.0) {
+                auto zero = std::make_unique<ConstNode>(0.0);
+                return std::make_unique<BinaryNode>("-", b->func, std::move(zero), std::move(b->left));
+            }
         }
-        if (auto* lc = dynamic_cast<ConstNode*>(b->left.get())) {
+
+        if (lc) {
             if (b->op == "+" && lc->value == 0.0) return std::move(b->right);
+            if (b->op == "-" && lc->value == 0.0) { }
             if (b->op == "*" && lc->value == 1.0) return std::move(b->right);
             if (b->op == "*" && lc->value == 0.0) return std::make_unique<ConstNode>(0.0);
+            if (b->op == "/" && lc->value == 0.0) return std::make_unique<ConstNode>(0.0);
+            if (b->op == "*" && lc->value == -1.0) {
+                auto zero = std::make_unique<ConstNode>(0.0);
+                return std::make_unique<BinaryNode>("-", b->func, std::move(zero), std::move(b->right));
+            }
         }
-        if (isConstantSubtree(b)) {
-            Sample empty{};
-            return std::make_unique<ConstNode>(node->eval(empty));
+
+        if (rc && (b->op == "*" || b->op == "+")) {
+            if (auto* inner = dynamic_cast<BinaryNode*>(b->left.get())) {
+                if (inner->op == b->op) {
+                    if (auto* ic = dynamic_cast<ConstNode*>(inner->right.get())) {
+                        double merged = (b->op == "*") ? ic->value * rc->value : ic->value + rc->value;
+                        auto mergedNode = std::make_unique<ConstNode>(merged);
+                        return std::make_unique<BinaryNode>(b->op, b->func, std::move(inner->left), std::move(mergedNode));
+                    }
+                }
+            }
+        }
+
+        if (b->op == "/") {
+            if (auto* lv = dynamic_cast<VarNode*>(b->left.get())) {
+                if (auto* inner = dynamic_cast<BinaryNode*>(b->right.get())) {
+                    if (inner->op == "*") {
+                        if (auto* rv = dynamic_cast<VarNode*>(inner->left.get())) {
+                            if (lv->name == rv->name) {
+                                if (auto* ic = dynamic_cast<ConstNode*>(inner->right.get())) {
+                                    double val = std::abs(ic->value) > 1e-12 ? 1.0 / ic->value : 0.0;
+                                    return std::make_unique<ConstNode>(val);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
         return node;
     }
-
     return node;
+}
+
+void cropSimilarTrees(std::vector<std::unique_ptr<Node>> trees, const Dataset& X) {
+    for (size_t i = 0; i < trees.size(); i++) {
+        for (size_t j = i + 1; j < trees.size(); j++) {
+            double similarity = 0.0;
+            for (const Sample& k : X)
+                similarity += std::abs(trees[i]->eval(k) - trees[j]->eval(k));
+
+            if (similarity < 1e3) {
+                trees.erase(trees.begin() + static_cast<long long>(i));
+                i++;
+                j = i + 1;
+            }
+        }
+    }
 }
