@@ -147,7 +147,6 @@ int main() {
     //- (?) implémenter tolérance adaptive (suivant quelles variables, indicateurs, ... ?)
     //- (?) détection de convergence avancée (plus d'indicateurs de convergence)
     //- implémenter une fonction qui convertit std::string -> Node (pour que user implémente ses propres arbres)
-    //- implémenter BinaryExtras
     //- NOMBRES COMPLEXES EN OPTION (avec des templates ?)
     //- implémenter sommes et produits dans arbres
 

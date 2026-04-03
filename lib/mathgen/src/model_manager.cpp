@@ -23,14 +23,9 @@ void ModelManager::updateData(Dataset x, std::vector<double> y) {
     Y = std::move(y);
 }
 
-void ModelManager::initPopulation(BinaryMap binaryOperators, UnaryMap unaryOperators, UnaryMap extraUnaryOperators){
-    for (auto& [k_, v] : extraUnaryOperators)
-        unaryOperators[k_] = v;
+void ModelManager::initPopulation(const BinaryMap& binaryOperators, const UnaryMap& unaryOperators){
+    ops = Operators(binaryOperators, unaryOperators);
 
-    if (binaryOperators.empty() || unaryOperators.empty())
-        ops = Operators();
-    else
-        ops = Operators(std::move(binaryOperators), std::move(unaryOperators));
     population.clear();
 
     while (static_cast<int>(population.size()) < populationSize) {
@@ -40,14 +35,8 @@ void ModelManager::initPopulation(BinaryMap binaryOperators, UnaryMap unaryOpera
     }
 }
 
-void ModelManager::loadPopulation(std::vector<NodePtr> population_, BinaryMap binaryOperators, UnaryMap unaryOperators, UnaryMap extraUnaryOperators, bool fillPop) {
-    for (auto& [k_, v] : extraUnaryOperators)
-        unaryOperators[k_] = v;
-
-    if (binaryOperators.empty() || unaryOperators.empty())
-        ops = Operators();
-    else
-        ops = Operators(std::move(binaryOperators), std::move(unaryOperators));
+void ModelManager::loadPopulation(std::vector<NodePtr> population_, const BinaryMap& binaryOperators, const UnaryMap& unaryOperators, bool fillPop) {
+    ops = Operators(binaryOperators, unaryOperators);
 
     population.clear();
 

@@ -72,6 +72,9 @@ std::string printTree(const Node* node, const std::unordered_map<std::string, st
 
     if (const auto* u = dynamic_cast<const UnaryNode*>(node)) {
         std::string childStr = printTree(u->child.get());
+        if (childStr.empty()) return "";
+        if (childStr.starts_with("(") && childStr.ends_with(")"))
+            childStr = childStr.substr(1, childStr.length() - 2);
 
         auto it = aliases.find(u->name);
         if (it != aliases.end()) {

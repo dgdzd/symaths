@@ -38,8 +38,8 @@ public:
 
     void updateData(Dataset x, std::vector<double> y);
 
-    void initPopulation(BinaryMap binaryOperators, UnaryMap unaryOperators, UnaryMap extraUnaryOperators = {});
-    void loadPopulation(std::vector<NodePtr> population_, BinaryMap binaryOperators, UnaryMap unaryOperators, UnaryMap extraUnaryOperators = {}, bool fillPop = false);
+    void initPopulation(const BinaryMap& binaryOperators, const UnaryMap& unaryOperators);
+    void loadPopulation(std::vector<NodePtr> population_, const BinaryMap& binaryOperators, const UnaryMap& unaryOperators, bool fillPop = false);
 
     std::vector<NodePtr> getPopulation(bool sortFitness = true);
     std::string getTree(size_t idx);

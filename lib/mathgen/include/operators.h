@@ -19,8 +19,17 @@ struct Operators {
         binary = defaultBinary();
         unary = defaultUnary();
     }
+    Operators(const BinaryMap& b, const UnaryMap& u) {
+        if (b.empty())
+            binary = defaultBinary();
+        else
+            binary = b;
 
-    Operators(BinaryMap b, UnaryMap u) : binary(std::move(b)), unary(std::move(u)) {}
+        if (u.empty())
+            unary = defaultUnary();
+        else
+            unary = u;
+    }
 
     static double add(double a, double b) { return a + b; }
     static double sub(double a, double b) { return a - b; }
@@ -60,11 +69,6 @@ struct Operators {
             { "cube", cube },
             { "sqrt", sqrt_f },
         };
-    }
-
-    void mergeUnary(const UnaryMap& extra) {
-        for (const auto& [k, v] : extra)
-            unary[k] = v;
     }
 };
 
