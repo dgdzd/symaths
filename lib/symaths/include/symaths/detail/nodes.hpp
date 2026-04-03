@@ -108,6 +108,7 @@ namespace sym {
 		using node_path_t = std::deque<const node*>;
 
 		std::vector<node_path_t> search_node(const node* parent, const node* to_search);
+		std::vector<const node*> list_symbols(const node* parent);
 	}
 
 	struct node_key {

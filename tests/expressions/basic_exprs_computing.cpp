@@ -105,10 +105,14 @@ TEST(basic_exprs_computing, expand_products) {
 	sym::expression expr1 = (x - 2) * (x + 2);
 	sym::expression expr2 = (x - 2) * (x + 2) * (2 * x + 6);
 	sym::expression expr3 = (x + x * (3 - x)) * (1 - x);
+	sym::expression expr4 = (sym::pow(x, 2) + 5) * (x - 3) * (x * (x + 3)) * 2;
+	sym::expression expr5 = sym::pow(3 * x, 2) * (1 - x);
 
 	ASSERT_EQ(sym::reduce(sym::expand(expr1)).string(), "x^2-4");
 	ASSERT_EQ(sym::reduce(sym::expand(expr2)).string(), "2x^3+6x^2+-8x-24");
 	ASSERT_EQ(sym::reduce(sym::expand(expr3)).string(), "x^3+-5x^2+4x");
+	ASSERT_EQ(sym::reduce(sym::expand(expr4)).string(), "2x^5+-8x^3+-90x");
+	ASSERT_EQ(sym::reduce(sym::expand(expr5)).string(), "-9x^3+9x^2");
 }
 
 TEST(basic_expr_computing, differentiate_base_operations) {
@@ -183,15 +187,58 @@ TEST(basic_exprs_computing, parser_parse) {
 
 TEST(basic_exprs_computing, find_node_paths) {
 	sym::symbol x("x");
+	sym::symbol y("y");
 	sym::expression expr1 = x;
 	sym::expression expr2 = 1 + x;
 	sym::expression expr3 = 2 * x + 1;
 	sym::expression expr4 = 2 - x;
 	sym::expression expr5 = 3 * x + 6 * sym::pow(x, 2);
+	sym::expression expr6 = 67 * y + 3;
+	sym::expression expr7 = 3 * sym::pow(x, 2) + sym::cos(x) * sym::sin(x) * 2;
 
 	auto p1 = sym::detail::search_node(expr1.root, x.ref);
 	auto p2 = sym::detail::search_node(expr2.root, x.ref);
 	auto p3 = sym::detail::search_node(expr3.root, x.ref);
 	auto p4 = sym::detail::search_node(expr4.root, x.ref);
 	auto p5 = sym::detail::search_node(expr5.root, x.ref);
+	auto p6 = sym::detail::search_node(expr6.root, x.ref);
+	auto p7 = sym::detail::search_node(expr7.root, x.ref);
+
+	ASSERT_EQ(p1.size(), 1);
+	ASSERT_EQ(p2.size(), 1);
+	ASSERT_EQ(p3.size(), 1);
+	ASSERT_EQ(p4.size(), 1);
+	ASSERT_EQ(p5.size(), 2);
+	ASSERT_EQ(p6.size(), 0);
+	ASSERT_EQ(p7.size(), 3);
+}
+
+TEST(basic_exprs_computing, find_symbols) {
+	sym::symbol x("x");
+	sym::symbol y("y");
+	sym::symbol z("z");
+
+	sym::expression expr1 = x;
+	sym::expression expr2 = 2 * x + x;
+	sym::expression expr3 = sym::pow(x, 2);
+	sym::expression expr4 = x + y;
+	sym::expression expr5 = (x + 3) * (y - 4);
+	sym::expression expr6 = (x + 6) * (y - 7) + x;
+	sym::expression expr7 = (x - 3) * (y + 2) + z + sym::pow(x, 4);
+
+	auto s1 = sym::detail::list_symbols(expr1.root);
+	auto s2 = sym::detail::list_symbols(expr2.root);
+	auto s3 = sym::detail::list_symbols(expr3.root);
+	auto s4 = sym::detail::list_symbols(expr4.root);
+	auto s5 = sym::detail::list_symbols(expr5.root);
+	auto s6 = sym::detail::list_symbols(expr6.root);
+	auto s7 = sym::detail::list_symbols(expr7.root);
+
+	ASSERT_EQ(s1.size(), 1);
+	ASSERT_EQ(s2.size(), 1);
+	ASSERT_EQ(s3.size(), 1);
+	ASSERT_EQ(s4.size(), 2);
+	ASSERT_EQ(s5.size(), 2);
+	ASSERT_EQ(s6.size(), 2);
+	ASSERT_EQ(s7.size(), 3);
 }

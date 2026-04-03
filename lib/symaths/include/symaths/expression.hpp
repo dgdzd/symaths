@@ -5,6 +5,7 @@
 
 namespace sym {
 	class symbol;
+	class polynomial;
 	class function;
 
 	class expression {
@@ -13,6 +14,7 @@ namespace sym {
 
 		expression(double val);
 		expression(const symbol& var);
+		expression(const polynomial& var);
 		expression(const std::string& name);
 		expression(const char* name);
 		expression(const detail::node* node);

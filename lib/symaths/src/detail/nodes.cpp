@@ -296,11 +296,52 @@ void find_all_paths_r(const detail::node* current, const detail::node* target, d
 	current_path.pop_back();
 }
 
+void find_symbols_r(const detail::node* current, std::vector<const detail::node*>& result) {
+	if (!current) return;
+
+	std::visit([&](const auto& x) {
+		using T = std::decay_t<decltype(x)>;
+
+		if constexpr (std::is_same_v<T, detail::symbol>) {
+			if (std::ranges::find(result, current) == result.end()) {
+				result.push_back(current);
+			}
+		}
+
+		if constexpr (std::is_same_v<T, detail::negation>) {
+			find_symbols_r(x.child, result);
+		}
+
+		if constexpr (std::is_same_v<T, detail::addition> || std::is_same_v<T, detail::multiplication>) {
+			for (auto* c : x.operands) {
+				find_symbols_r(c, result);
+			}
+		}
+
+		if constexpr (std::is_same_v<T, detail::power>) {
+			find_symbols_r(x.base, result);
+			find_symbols_r(x.exponent, result);
+		}
+
+		if constexpr (std::is_same_v<T, detail::function_call>) {
+			for (auto* c : x.args) {
+				find_symbols_r(c, result);
+			}
+		}
+	}, current->p_data);
+}
+
 std::vector<detail::node_path_t> detail::search_node(const node* parent, const node* to_search) {
 	std::vector<node_path_t> paths;
 	node_path_t current_path;
 	find_all_paths_r(parent, to_search, current_path, paths);
 	return paths;
+}
+
+std::vector<const detail::node*> detail::list_symbols(const node* parent) {
+	std::vector<const node*> result;
+	find_symbols_r(parent, result);
+	return result;
 }
 
 
@@ -811,16 +852,26 @@ const detail::node* detail::power::reduced() const {
 }
 
 const detail::node* detail::power::expanded() const {
-	return current_context->node_manager().make_pow(base, exponent);
-	/*return std::visit([&](auto& x) {
+	return std::visit([&](auto& x) {
 		using T = std::decay_t<decltype(x)>;
 
-		// If the base is a multiplication, it's easy : distribute power to each operand
-		if constexpr (std::is_same_v<T, multiplication>) {
-			std::vector<const node*> result;
-
+		const node* expanded_base = base;
+		if constexpr (std::is_same_v<T, addition> || std::is_same_v<T, multiplication> || std::is_same_v<T, power> || std::is_same_v<T, negation>) {
+			expanded_base = x.expanded();
 		}
-	}, base->p_data);*/
+
+		// If the base is a multiplication, it's easy : distribute power to each operand
+		if (std::holds_alternative<multiplication>(expanded_base->p_data)) {
+			multiplication expanded_data = std::get<multiplication>(expanded_base->p_data);
+			std::vector<const node*> final_terms;
+			for (const auto& op : expanded_data.operands) {
+				final_terms.push_back(current_context->node_manager().make_pow(op, exponent));
+			}
+			return current_context->node_manager().make_mul(final_terms);
+		}
+
+		return current_context->node_manager().make_pow(base, exponent);
+	}, base->p_data);
 }
 
 

@@ -4,6 +4,7 @@
 #include "symaths/differentiation.hpp"
 #include "symaths/expression.hpp"
 #include "symaths/expressions_manip.hpp"
+#include "symaths/symbol.hpp"
 #include "symaths/parsing/parser.hpp"
 
 namespace sym {
@@ -77,23 +78,6 @@ namespace sym {
 	expression tanh(const expression& arg);
 	expression sqrt(const expression& arg);
 	expression abs(const expression& arg);
-
-	class symbol {
-		friend expression;
-		friend expression sym::differentiate(const expression& expr, const symbol& symbol);
-
-	public:
-		const detail::node* ref;
-
-		symbol();
-		symbol(const std::string& name);
-		symbol(const char* name);
-		symbol(const expression& expr);
-		symbol(const detail::node* root);
-
-		[[nodiscard]] const std::string& name() const;
-		const std::string& name(const std::string& new_name);
-	};
 
 	/**
 	 * @brief Class representing a single-argument mathematical function
