@@ -77,10 +77,8 @@ std::string printTree(const Node* node, const std::unordered_map<std::string, st
         if (it != aliases.end()) {
             const std::string& alias = it->second;
 
-            if (alias == "²" || alias == "³")
+            if (alias == "^2" || alias == "^3")
                 return childStr + alias;
-            if (alias == "√")
-                return "√" + childStr;
             if (alias == "|")
                 return "|" + childStr + "|";
             return alias + "(" + childStr + ")";
