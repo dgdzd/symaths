@@ -57,7 +57,7 @@ NodePtr randomTree(unsigned int maxDepth, const std::vector<std::string>& variab
     return std::make_unique<UnaryNode>(name, unaryFuncs.at(name), std::move(child));
 }
 
-std::string printTree(const Node* node) {
+std::string printTree(const Node* node, const std::unordered_map<std::string, std::string>& aliases) {
     if (!node) return "null";
 
     if (const auto* c = dynamic_cast<const ConstNode*>(node)) {
@@ -65,18 +65,35 @@ std::string printTree(const Node* node) {
         ss << std::fixed << std::setprecision(2) << c->value;
         return ss.str();
     }
+
     if (const auto* v = dynamic_cast<const VarNode*>(node)) {
         return v->name;
     }
+
     if (const auto* u = dynamic_cast<const UnaryNode*>(node)) {
         std::string childStr = printTree(u->child.get());
-        if (dynamic_cast<const BinaryNode*>(u->child.get()))
-            childStr = "(" + childStr + ")";
+
+        auto it = aliases.find(u->name);
+        if (it != aliases.end()) {
+            const std::string& alias = it->second;
+
+            if (alias == "²" || alias == "³")
+                return childStr + alias;
+            if (alias == "√")
+                return "√" + childStr;
+            if (alias == "|")
+                return "|" + childStr + "|";
+            return alias + "(" + childStr + ")";
+        }
+
         return u->name + "(" + childStr + ")";
     }
     if (const auto* b = dynamic_cast<const BinaryNode*>(node)) {
-        return "(" + printTree(b->left.get()) + " " + b->op
-             + " " + printTree(b->right.get()) + ")";
+        auto it = aliases.find(b->op);
+        if (it != aliases.end()) {
+            return "(" + printTree(b->left.get()) + " " + it->second + " " + printTree(b->right.get()) + ")";
+        }
+        return "(" + printTree(b->left.get()) + " " + b->op + " " + printTree(b->right.get()) + ")";
     }
     return "?";
 }

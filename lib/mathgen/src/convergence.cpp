@@ -54,8 +54,8 @@ bool HallOfFame::tryInsert(NodePtr tree, double fit, size_t gen, size_t flatAddr
 
     fames.emplace_back(tree->clone(), fit, gen, flatAddr);
 
+    std::ranges::sort(fames, [](const FamousTree& a, const FamousTree& b){ return a.fitness < b.fitness; });
     if (fames.size() > maxSize) {
-        std::ranges::sort(fames, [](const FamousTree& a, const FamousTree& b){ return a.fitness < b.fitness; });
         fames.resize(maxSize);
     }
     return true;
@@ -72,6 +72,24 @@ std::vector<NodePtr> HallOfFame::sample() const {
 
     for (size_t i = 0; i < std::min(injectSize, fames.size()); i++)
         out.push_back(fames[indices[i]].tree->clone());
+    return out;
+}
+
+std::vector<FamousTree> HallOfFame::sortbyGeneration() {
+    std::vector<FamousTree> copy;
+
+    std::ranges::sort(copy, [](const FamousTree& a, const FamousTree& b){ return a.generation < b.generation; });
+
+    return copy;
+}
+
+std::vector<NodePtr> HallOfFame::getBestTrees(size_t n) {
+    if (n > fames.size()) return { };
+
+    std::vector<NodePtr> out;
+    for (size_t i = 0; i < n; i++)
+        out.emplace_back(fames[i].tree->clone());
+
     return out;
 }
 

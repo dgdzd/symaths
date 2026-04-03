@@ -24,6 +24,9 @@ struct HallOfFame {
     bool tryInsert(NodePtr tree, double fit, size_t gen, size_t flatAddr, const Dataset& X);
 
     [[nodiscard]] std::vector<NodePtr> sample() const;
+
+    static std::vector<FamousTree> sortbyGeneration();
+    std::vector<NodePtr> getBestTrees(size_t n = 0);
 };
 
 

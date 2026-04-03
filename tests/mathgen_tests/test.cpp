@@ -145,12 +145,11 @@ int main() {
     //A FAIRE
     //- meilleur algo de BGFS (dans fitness.cpp)
     //- (?) implémenter tolérance adaptive (suivant quelles variables, indicateurs, ... ?)
-    //- plus de fonction et d'infos pour l'uitilisateur sur Hall of Fame (print le Hall of Fame ?)
     //- (?) détection de convergence avancée (plus d'indicateurs de convergence)
     //- implémenter une fonction qui convertit std::string -> Node (pour que user implémente ses propres arbres)
-    //- faire conversion dans printTree() de square(...) en (...)^2 (puis géneraliser des alias de fonctions avec std::unordered_map<std::string, std::string> aliases)
     //- implémenter BinaryExtras
     //- NOMBRES COMPLEXES EN OPTION (avec des templates ?)
+    //- implémenter sommes et produits dans arbres
 
     test_island_manager();
 }

@@ -14,7 +14,8 @@
 // probs = (const_prob, var_prob, binary_prob);
 NodePtr randomTree(unsigned int maxDepth, const std::vector<std::string>& variables, std::tuple<double, double, double> probs, const UnaryMap& unaryFuncs, const BinaryMap& binaryFuncs);
 
-std::string printTree(const Node* node);
+std::string printTree(const Node* node, const std::unordered_map<std::string, std::string>& aliases = { { "square", "²" }, { "cube", "³" },
+    { "sqrt", "√" }, { "abs", "|" } });
 
 NodePtr mutateSubtree(NodePtr node, unsigned int maxDepth, const std::vector<std::string>& variables, double mutProb, const std::tuple<double, double, double>& probs, const UnaryMap& unaryFuncs, const BinaryMap& binaryFuncs);
 
