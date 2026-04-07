@@ -3,10 +3,12 @@
 #include "symaths/base_functions.hpp"
 #include "symaths/expressions_manip.hpp"
 #include "symaths/symaths.hpp"
+#include "symaths/utils/maths.h"
 
 #include <algorithm>
 #include <format>
 #include <map>
+
 
 using namespace sym;
 
@@ -868,6 +870,23 @@ const detail::node* detail::power::expanded() const {
 				final_terms.push_back(current_context->node_manager().make_pow(op, exponent));
 			}
 			return current_context->node_manager().make_mul(final_terms);
+		}
+
+		// If the base is an addition, use the multinomial theorem
+		if (std::holds_alternative<addition>(expanded_base->p_data)) {
+			double nd = exponent->eval(nullptr);
+			addition expanded_data = std::get<addition>(expanded_base->p_data);
+			unsigned long long n = static_cast<unsigned long long>(nd);
+			unsigned long long m = expanded_data.operands.size();
+
+			unsigned long long terms_amount = utils::newton_binomial_coefficient(m - 1, n + m - 1);
+			if (!exponent->is_ground() ||
+				terms_amount > current_context->refactoring_rules().max_power_expansion_terms ||
+				!utils::is_integer(nd) || nd <= 0) {
+				return current_context->node_manager().make_pow(base, exponent);
+			}
+
+
 		}
 
 		return current_context->node_manager().make_pow(base, exponent);

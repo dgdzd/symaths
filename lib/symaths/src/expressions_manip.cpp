@@ -36,20 +36,6 @@ sym::expression sym::expand(const expression& expr) {
 	}, expr.root->p_data);
 }
 
-/*std::vector<const sym::detail::node*> find_node(const sym::detail::node*) {
-
-}
-
-sym::expression sym::find_and_express(const expression& expr, const expression& to_find) {
-	return std::visit([&](const auto& x) {
-		using T = std::decay_t<decltype(x)>;
-
-		if constexpr (std::is_same_v<T, detail::constant>) {
-			return to_find == expr.root;
-		}
-	}, expr.root->p_data);
-}*/
-
 
 template <class T>
 inline void hash_combine(std::size_t& seed, const T& v)
@@ -96,7 +82,42 @@ sym::detail::term sym::detail::extract_term(const node* node) {
 	}, node->p_data);
 }
 
-/*sym::detail::AdditionNodePtr sym::detail::develop(MultiplicationNodePtr node) {
+sym::detail::expr_term sym::detail::extract_term_advanced(const node* node) {
+	return std::visit([&](const auto& x) {
+		using T = std::decay_t<decltype(x)>;
 
-}*/
+		expr_term t{};
+		if constexpr (std::is_same_v<T, multiplication>) {
+			t.coefficient = current_context->node_manager().make_constant(1);
+			std::vector<const detail::node*> final_operands;
+			for (auto& op : x.operands) {
+				if (op->is_ground()) {
+					t.coefficient = current_context->node_manager().make_mul({t.coefficient, op});
+				}
+				else {
+					final_operands.push_back(op);
+				}
+			}
+
+			if (final_operands.size() == 1) {
+				t.symbolic = final_operands.front();
+			}
+			else {
+				t.symbolic = current_context->node_manager().make_mul(final_operands);
+			}
+		}
+		else if constexpr (std::is_same_v<T, negation>) {
+			t = extract_term_advanced(x.child);
+			t.coefficient = current_context->node_manager().make_negation(t.coefficient);
+		}
+		else {
+			t.coefficient = node;
+			t.symbolic = nullptr;
+		}
+
+		t.coefficient = reduce(t.coefficient).root;
+
+		return t;
+	}, node->p_data);
+}
 

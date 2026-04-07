@@ -28,6 +28,7 @@ namespace sym {
 
 	struct refactoring_rules_t {
 		bool keep_ground_functions = true;
+		unsigned int max_power_expansion_terms = 6;
 	};
 
 

@@ -12,6 +12,7 @@ set(SYMATHS_LIB_SOURCES
         src/detail/nodes.cpp
         src/parsing/lexer.cpp
         src/parsing/parser.cpp
+        src/utils/maths.cpp
 )
 
 target_include_directories(symaths_lib PUBLIC include)

@@ -24,7 +24,6 @@ namespace sym {
 	expression reduce(const expression& expr);
 	expression sort(const expression& expr);
 	expression expand(const expression& expr);
-	expression find_and_express(const expression& expr, const expression& to_find);
 	//size_t hash(const expression& expr);
 
 	namespace detail {
@@ -33,7 +32,13 @@ namespace sym {
 			const node* symbolic;
 		};
 
+		struct expr_term {
+			const node* coefficient;
+			const node* symbolic;
+		};
+
 		term extract_term(const node* node);
+		expr_term extract_term_advanced(const node* node);
 
 		const node* develop(const node* node);
 	}

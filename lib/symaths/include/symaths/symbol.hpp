@@ -6,6 +6,8 @@
 #include <string>
 
 namespace sym {
+	expression differentiate(const expression& expr, const symbol& symbol);
+
 	class symbol {
 		friend expression;
 		friend expression sym::differentiate(const expression& expr, const symbol& symbol);

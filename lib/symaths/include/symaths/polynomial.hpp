@@ -8,16 +8,16 @@
 
 namespace sym {
 	class polynomial {
-		void check_expr_validity(const detail::node* node, const detail::node* variable = nullptr) const;
+		void validate_expr(const detail::node* node, const detail::node* variable = nullptr);
 
 	public:
 		symbol symb;
-		std::vector<double> coeffs;
+		std::vector<const detail::node*> coeffs;
 		expression expr;
 
 		polynomial(const expression& root);
 
-		int get_degree() const;
+		unsigned long long get_degree() const;
 	};
 }
 
