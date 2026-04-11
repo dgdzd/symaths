@@ -1,4 +1,4 @@
-#include "symaths/utils/maths.h"
+#include "symaths/utils/maths.hpp"
 
 #include <cmath>
 

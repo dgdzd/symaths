@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <symaths/symaths.hpp>
-#include <symaths/utils/maths.h>
+#include <symaths/utils/maths.hpp>
 
 int main(int argc, char** argv) {
 	sym::library lib{};

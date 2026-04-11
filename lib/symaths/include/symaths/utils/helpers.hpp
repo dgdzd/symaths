@@ -10,31 +10,11 @@
  *
  */
 
-#ifndef COMPILE_HPP
-#define COMPILE_HPP
+#ifndef HELPERS_HPP
+#define HELPERS_HPP
 
-#include <vector>
-
-namespace sym {
-	namespace detail {
-		enum opcode : uint8_t {
-			push_cst, push_var, call_fun,
-			neg, add, sub, mul, div, pow,
-		};
-
-		struct instruction {
-			opcode op;
-			union {
-				double val;
-				size_t var_id;
-				double (*fn)(const double*);
-			};
-		};
-	}
-
-	class compiled_expression {
-
-	};
-}
+// Helper class for std::visit
+template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
+template<class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
 
 #endif

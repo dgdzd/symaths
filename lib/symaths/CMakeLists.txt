@@ -8,6 +8,7 @@ set(SYMATHS_LIB_SOURCES
         src/differentiation.cpp
         src/expression.cpp
         src/expressions_manip.cpp
+        src/numbers.cpp
         src/polynomial.cpp
         src/detail/nodes.cpp
         src/parsing/lexer.cpp

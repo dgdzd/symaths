@@ -4,7 +4,7 @@
 #include "symaths/expressions_manip.hpp"
 
 #include <stdexcept>
-#include <symaths/utils/maths.h>
+#include <symaths/utils/maths.hpp>
 
 using namespace sym;
 

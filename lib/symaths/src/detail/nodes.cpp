@@ -3,7 +3,7 @@
 #include "symaths/base_functions.hpp"
 #include "symaths/expressions_manip.hpp"
 #include "symaths/symaths.hpp"
-#include "symaths/utils/maths.h"
+#include "symaths/utils/maths.hpp"
 
 #include <algorithm>
 #include <format>

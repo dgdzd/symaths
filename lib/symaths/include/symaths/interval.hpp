@@ -10,26 +10,19 @@
  *
  */
 
-#ifndef POLYNOMIAL_HPP
-#define POLYNOMIAL_HPP
-
-#include <map>
-
-#include "symaths/expression.hpp"
-#include "symaths/symbol.hpp"
+#ifndef INTERVAL_HPP
+#define INTERVAL_HPP
 
 namespace sym {
-	class polynomial {
-		void validate_expr(const detail::node* node, const detail::node* variable = nullptr);
+	namespace detail {
+		class node;
+	}
 
-	public:
-		symbol symb;
-		std::vector<const detail::node*> coeffs;
-		expression expr;
-
-		polynomial(const expression& root);
-
-		unsigned long long get_degree() const;
+	class interval {
+		const detail::node* lower = nullptr;
+		const detail::node* upper = nullptr;
+		bool lower_included = true;
+		bool upper_included = true;
 	};
 }
 
