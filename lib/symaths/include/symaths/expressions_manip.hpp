@@ -13,6 +13,8 @@
 #ifndef EXPRESSIONS_MANIP_HPP
 #define EXPRESSIONS_MANIP_HPP
 
+#include "symaths/numbers.hpp"
+
 namespace sym {
 	class expression;
 	namespace detail {
@@ -40,7 +42,7 @@ namespace sym {
 
 	namespace detail {
 		struct term {
-			double coefficient;
+			number coefficient;
 			const node* symbolic;
 		};
 

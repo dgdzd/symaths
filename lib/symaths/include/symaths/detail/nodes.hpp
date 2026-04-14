@@ -14,6 +14,7 @@
 #define SYM_NODE_HPP
 
 #include "symaths/base_functions.hpp"
+#include "symaths/numbers.hpp"
 
 #include <deque>
 #include <unordered_map>
@@ -29,7 +30,7 @@ namespace sym {
 	}
 
 	namespace detail {
-		using Context = std::unordered_map<std::string, double>;
+		using Context = std::unordered_map<std::string, number>;
 
 		struct symbol {
 			static constexpr unsigned int priority = ~0;
@@ -40,7 +41,7 @@ namespace sym {
 
 		struct constant {
 			static constexpr unsigned int priority = ~0;
-			double value;
+			number value;
 
 			bool operator==(const constant&) const = default;
 		};
@@ -111,7 +112,7 @@ namespace sym {
 			virtual ~node() = default;
 
 			[[nodiscard]] unsigned int priority() const;
-			[[nodiscard]] double eval(const Context* ctx) const;
+			[[nodiscard]] number eval(const Context* ctx) const;
 			[[nodiscard]] std::string string(const node* parent, bool first = true) const;
 			[[nodiscard]] bool is_ground() const;
 			[[nodiscard]] bool depends_on(const node* n) const;
@@ -141,6 +142,7 @@ namespace sym {
 
 	public:
 		const detail::node* make_symbol(const std::string& name);
+		const detail::node* make_constant(const number& v);
 		const detail::node* make_constant(double v);
 		const detail::node* make_negation(const detail::node* node);
 		const detail::node* make_add(const std::vector<const detail::node*>& operands);

@@ -9,11 +9,11 @@
 using namespace sym;
 
 void polynomial::validate_expr(const detail::node* node, const detail::node* variable) {
-	std::visit([&](const auto& x) {
+	std::visit([&](const auto& x) -> void {
 		using T = std::decay_t<decltype(x)>;
 
 		if constexpr (std::is_same_v<T, detail::negation>) {
-			validate_expr(x.child);
+			validate_expr(x.child, variable);
 		}
 
 		if constexpr (std::is_same_v<T, detail::addition>) {
@@ -34,7 +34,7 @@ void polynomial::validate_expr(const detail::node* node, const detail::node* var
 					throw std::invalid_argument("Wrong polynomial variable.");
 				}
 
-				std::visit([&](const auto& x1) {
+				std::visit([&](const auto& x1) -> void {
 					using T = std::decay_t<decltype(x1)>;
 
 					if constexpr (std::is_same_v<T, detail::symbol>) {
@@ -49,11 +49,11 @@ void polynomial::validate_expr(const detail::node* node, const detail::node* var
 						if (!x1.exponent->is_ground()) {
 							throw std::logic_error("Exponent must be ground");
 						}
-						if (!utils::is_integer(x1.exponent->eval(nullptr))) {
+						if (!utils::is_integer(x1.exponent->eval(nullptr).template get<double>())) {
 							throw std::invalid_argument("Exponent is not an integer.");
 						}
 
-						auto n = static_cast<unsigned long long>(x1.exponent->eval(nullptr));
+						auto n = x1.exponent->eval(nullptr).template get<unsigned long long>();
 						if (n >= coeffs.size()) {
 							auto* zero = current_context->node_manager().make_constant(0);
 							coeffs.resize(n + 1, zero);

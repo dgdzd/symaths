@@ -50,7 +50,7 @@ sym::detail::term sym::detail::extract_term(const node* node) {
 
 		term t{};
 		if constexpr (std::is_same_v<T, multiplication>) {
-			t.coefficient = 1.0;
+			t.coefficient = numbers::natural(1);
 			std::vector<const detail::node*> final_operands;
 			for (auto& op : x.operands) {
 				bool is_func = std::holds_alternative<function_call>(op->p_data);
@@ -74,7 +74,7 @@ sym::detail::term sym::detail::extract_term(const node* node) {
 			t.coefficient = -t.coefficient;
 		}
 		else {
-			t.coefficient = 1.0;
+			t.coefficient = numbers::natural(1);
 			t.symbolic = node;
 		}
 

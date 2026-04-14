@@ -31,8 +31,8 @@ namespace sym {
 		expression(const char* name);
 		expression(const detail::node* node);
 
-		double operator()(const detail::Context& ctx) const;
-		double operator()() const;
+		number operator()(const detail::Context& ctx) const;
+		number operator()() const;
 		[[nodiscard]] std::string string() const;
 
 		/**

@@ -13,6 +13,8 @@
 #ifndef SYM_BASE_FUNCTIONS_HPP
 #define SYM_BASE_FUNCTIONS_HPP
 
+#include "symaths/numbers.hpp"
+
 #include <string>
 #include <vector>
 
@@ -35,7 +37,7 @@ namespace sym {
 		void init_builtin_functions();
 
 		struct builtin_func_descriptor {
-			using eval_t = double (*)(const std::vector<const node*>& args);
+			using eval_t = number (*)(const std::vector<const node*>& args);
 			using reduce_t = const node* (*)(const std::vector<const node*>& args);
 			using derivative_t = const node* (*)(const std::vector<const node*>& args, const node* wrt);
 

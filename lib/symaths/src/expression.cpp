@@ -23,11 +23,11 @@ sym::expression::expression(const detail::node* node) {
 	root = node;
 }
 
-double sym::expression::operator()(const detail::Context& ctx) const {
+sym::number sym::expression::operator()(const detail::Context& ctx) const {
 	return root->eval(&ctx);
 }
 
-double sym::expression::operator()() const {
+sym::number sym::expression::operator()() const {
 	return root->eval(nullptr);
 }
 

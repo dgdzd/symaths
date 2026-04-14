@@ -3,6 +3,7 @@
 #include "symaths/base_functions.hpp"
 #include "symaths/expressions_manip.hpp"
 #include "symaths/symaths.hpp"
+#include "symaths/utils/helpers.hpp"
 #include "symaths/utils/maths.hpp"
 
 #include <algorithm>
@@ -19,49 +20,35 @@ unsigned int detail::node::priority() const {
 	}, p_data);
 }
 
-double detail::node::eval(const Context* ctx) const {
-	return std::visit([&](const auto& x) {
-		using T = std::decay_t<decltype(x)>;
-
-		if constexpr (std::is_same_v<T, constant>) {
-			return x.value;
-		}
-
-		else if constexpr (std::is_same_v<T, symbol>) {
-			return ctx->at(x.name);
-		}
-
-		else if constexpr (std::is_same_v<T, negation>) {
-			return -x.child->eval(ctx);
-		}
-
-		else if constexpr (std::is_same_v<T, addition>) {
-			double sum = 0.0;
+number detail::node::eval(const Context* ctx) const {
+	number num = std::visit(overloaded {
+		[&](const constant& x) -> number { return x.value; },
+		[&](const symbol& x) -> number { return ctx->at(x.name); },
+		[&](const negation& x) -> number { return -x.child->eval(ctx); },
+		[&](const addition& x) -> number {
+			number sum = numbers::natural(0);
 			for (auto& op : x.operands) {
 				sum += op->eval(ctx);
 			}
 			return sum;
-		}
-
-		else if constexpr (std::is_same_v<T, multiplication>) {
-			double m = 1.0;
+		},
+		[&](const multiplication& x) -> number {
+			number prod = numbers::natural(1);
 			for (auto& op : x.operands) {
-				m *= op->eval(ctx);
+				prod *= op->eval(ctx);
 			}
-			return m;
-		}
-
-		else if constexpr (std::is_same_v<T, power>) {
-			return std::pow(x.base->eval(ctx), x.exponent->eval(ctx));
-		}
-
-		else if constexpr (std::is_same_v<T, function_call>) {
+			return prod;
+		},
+		[&](const power& x) -> number {
+			return pow_calc(x.base->eval(ctx), x.exponent->eval(ctx));
+		},
+		[&](const function_call& x) -> number {
 			const auto& func = get_func(funcs::builtin_fn_id{x.f_id});
 			return func.eval(x.args);
 		}
-
-		return 0.0;
 	}, p_data);
+	num.downcast();
+	return num;
 }
 
 bool should_be_preceeded_by_star(const detail::node* parent, const detail::node* node) {
@@ -103,12 +90,12 @@ std::string detail::node::string(const node* parent, bool first) const {
 
 		if constexpr (std::is_same_v<T, constant>) {
 			if (parent && std::holds_alternative<addition>(parent->p_data)) {
-				return std::format("{}", std::abs(x.value));
+				return std::format("{}", abs_calc(x.value).string());
 			}
-			if (!first && x.value < 0 && parent && parent->priority() >= multiplication::priority) {
-				return std::format("({})", x.value);
+			if (!first && x.value.template get<double>() < 0 && parent && parent->priority() >= multiplication::priority) {
+				return std::format("({})", x.value.string());
 			}
-			return std::format("{}", x.value);
+			return std::format("{}", x.value.string());
 		}
 
 		else if constexpr (std::is_same_v<T, symbol>) {
@@ -134,7 +121,7 @@ std::string detail::node::string(const node* parent, bool first) const {
 			if (par) s += "(";
 			for (int i = 0; i < x.operands.size(); ++i) {
 				auto& op = x.operands[i];
-				if (std::holds_alternative<negation>(op->p_data) || (std::holds_alternative<constant>(op->p_data) && op->eval(nullptr) < 0)) {
+				if (std::holds_alternative<negation>(op->p_data) || (std::holds_alternative<constant>(op->p_data) && op->eval(nullptr).template get<double>() < 0)) {
 					if (i == 0) {
 						s += "-" + op->string(this, true);
 					}
@@ -356,7 +343,20 @@ std::size_t node_hash::operator()(const node_key& k) const {
 			h ^= std::hash<std::string>{}(x.name);
 
 		else if constexpr (std::is_same_v<T, detail::constant>)
-			h ^= std::hash<double>{}(x.value);
+			std::visit(overloaded {
+				[&](const numbers::natural& n) { h ^= std::hash<unsigned long long>{}(n.val); },
+				[&](const numbers::integer& n) { h ^= std::hash<long long>{}(n.val); },
+				[&](const numbers::rational& n) {
+					h ^= std::hash<long long>{}(n.num);
+					h ^= std::hash<long long>{}(n.den);
+				},
+				[&](const numbers::real& n) { h ^= std::hash<double>{}(n.val); },
+				[&](const numbers::complex& n) {
+					h ^= std::hash<double>{}(n.val.real());
+					h ^= std::hash<double>{}(n.val.imag());
+				},
+				[&](const numbers::nan& n) { h ^= std::hash<double>{}(std::numeric_limits<double>::signaling_NaN()); },
+			}, x.value.p_data);
 
 		else if constexpr (std::is_same_v<T, detail::addition> || std::is_same_v<T, detail::multiplication>) {
 			for (auto* c : x.operands)
@@ -427,7 +427,7 @@ double get_biggest_power(const detail::node* node) {
 
 		if constexpr (std::is_same_v<T, detail::power>) {
 			if (x.exponent->is_ground())
-				max = x.exponent->eval(nullptr);
+				max = x.exponent->eval(nullptr).template get<double>();
 			else
 				max = std::numeric_limits<double>::max();
 		}
@@ -490,7 +490,7 @@ const detail::node* detail::addition::sorted() const {
 const detail::node* detail::addition::reduced() const {
 	// In case of other sub-expressions, recursively simplify them
 	// Hold each variable and its total coefficient
-	std::map<std::string, std::pair<double, const node*>> m;
+	std::map<std::string, std::pair<number, const node*>> m;
 
 	// Get all variables' coefficient
 	for (auto op : operands) {
@@ -515,7 +515,7 @@ const detail::node* detail::addition::reduced() const {
 			term term_ = extract_term(op);
 
 			// Don't add term if coefficient is (almost) null
-			if (std::abs(term_.coefficient) > 1e-12) {
+			if (std::abs(term_.coefficient.get<double>()) > 1e-12) {
 				std::string name = std::visit([&](auto& x) {
 					using T = std::decay_t<decltype(x)>;
 					if constexpr (std::is_same_v<T, negation>) {
@@ -543,7 +543,7 @@ const detail::node* detail::addition::reduced() const {
 		auto [coeff, expr] = val;
 
 		// If it is (almost) equal to 0, do not create an operand
-		if (std::abs(coeff) < 1e-12) {
+		if (std::abs(coeff.get<double>()) < 1e-12) {
 			continue;
 		}
 
@@ -554,7 +554,7 @@ const detail::node* detail::addition::reduced() const {
 		}
 
 		// If it is (almost) equal to 1, don't create a multiplication
-		if (std::abs(coeff - 1.0) < 1e-12) {
+		if (std::abs(coeff.get<double>() - 1.0) < 1e-12) {
 			new_expr.push_back(reduce(expr).root);
 			continue;
 		}
@@ -632,12 +632,12 @@ const detail::node* detail::multiplication::sorted() const {
 		double pw2 = 1.0;
 		if (std::holds_alternative<power>(op1->p_data)) {
 			auto exp = std::get<power>(op1->p_data).exponent;
-			if (exp->is_ground()) pw1 = exp->eval(nullptr);
+			if (exp->is_ground()) pw1 = exp->eval(nullptr).template get<double>();
 			else pw1 = std::numeric_limits<double>::max();
 		}
 		if (std::holds_alternative<power>(op2->p_data)) {
 			auto exp = std::get<power>(op2->p_data).exponent;
-			if (exp->is_ground()) pw2 = exp->eval(nullptr);
+			if (exp->is_ground()) pw2 = exp->eval(nullptr).template get<double>();
 			else pw2 = std::numeric_limits<double>::max();
 		}
 
@@ -681,7 +681,7 @@ product_term extract_products(const detail::node* op) {
 const detail::node* detail::multiplication::reduced() const {
 	// Same function as addition::reduced
 	std::map<std::string, product_term> coefficients;
-	double global_coeff = 1.0;
+	number global_coeff = numbers::natural(1);
 
 	for (auto op : operands) {
 		// First reduce sub expressions
@@ -695,7 +695,7 @@ const detail::node* detail::multiplication::reduced() const {
 
 		bool is_func = std::holds_alternative<function_call>(op->p_data);
 		if (op->is_ground() && (!is_func || (is_func && !current_context->refactoring_rules().keep_ground_functions))) {
-			if (std::abs(op->eval(nullptr)) < 1e-12) {
+			if (std::abs(op->eval(nullptr).get<double>()) < 1e-12) {
 				return current_context->node_manager().make_constant(0);
 			}
 			global_coeff *= op->eval(nullptr);
@@ -704,7 +704,7 @@ const detail::node* detail::multiplication::reduced() const {
 			product_term result = extract_products(op);
 			std::string name = result.base.string();
 			if (result.negated) {
-				global_coeff *= -1;
+				global_coeff = -global_coeff;
 			}
 			if (coefficients.contains(name)) {
 				// a^b * a^c = a^(b+c)
@@ -719,8 +719,8 @@ const detail::node* detail::multiplication::reduced() const {
 	// Now, create a new sorted branch
 
 	std::vector<const node*> new_operands;
-	if (std::abs(global_coeff - 1.0) > 1e-12 && std::abs(global_coeff + 1.0)) {
-		new_operands.push_back(current_context->node_manager().make_constant(std::abs(global_coeff)));
+	if (std::abs(global_coeff.get<double>() - 1.0) > 1e-12 && std::abs(global_coeff.get<double>() + 1.0)) {
+		new_operands.push_back(current_context->node_manager().make_constant(std::abs(global_coeff.get<double>())));
 	}
 	for (auto& [name, val] : coefficients) {
 		auto [base, exp, neg] = val;
@@ -733,12 +733,12 @@ const detail::node* detail::multiplication::reduced() const {
 		}, exp.root->p_data);
 
 		// If base is (almost) equal to 1 or exponent is 0, don't create a multiplication
-		if (base.is_ground() && std::abs(base() - 1.0) < 1e-12 || exp.is_ground() && std::abs(exp()) < 1e-12) {
+		if (base.is_ground() && std::abs(base().get<double>() - 1.0) < 1e-12 || exp.is_ground() && std::abs(exp().get<double>()) < 1e-12) {
 			continue;
 		}
 
 		// If exponent is (almost) 1, then do not create a power node
-		if (exp.is_ground() && std::abs(exp() - 1) < 1e-12) {
+		if (exp.is_ground() && std::abs(exp().get<double>() - 1) < 1e-12) {
 			new_operands.push_back(base.root);
 			continue;
 		}
@@ -749,13 +749,13 @@ const detail::node* detail::multiplication::reduced() const {
 		return current_context->node_manager().make_constant(1);
 	}
 	if (new_operands.size() == 1) {
-		if (global_coeff < 0) {
+		if (global_coeff.get<double>() < 0) {
 			return current_context->node_manager().make_negation(new_operands.front());
 		}
 		return new_operands.front();
 	}
 	const node* result = current_context->node_manager().make_mul(new_operands);
-	if (global_coeff < 0) {
+	if (global_coeff.get<double>() < 0) {
 		return current_context->node_manager().make_negation(result);
 	}
 	return result;
@@ -815,7 +815,7 @@ const detail::node* detail::multiplication::expanded() const {
 	for (const auto& prod : products) {
 		std::vector<const node*> final_group_terms;
 		for (const auto& factor : prod) {
-			if (factor && !(factor->is_ground() && std::abs(factor->eval(nullptr) - 1) < 1e-12)) {
+			if (factor && !(factor->is_ground() && std::abs(factor->eval(nullptr).get<double>() - 1) < 1e-12)) {
 				final_group_terms.push_back(factor);
 			}
 		}
@@ -874,9 +874,9 @@ const detail::node* detail::power::expanded() const {
 
 		// If the base is an addition, use the multinomial theorem
 		if (std::holds_alternative<addition>(expanded_base->p_data)) {
-			double nd = exponent->eval(nullptr);
 			addition expanded_data = std::get<addition>(expanded_base->p_data);
-			unsigned long long n = static_cast<unsigned long long>(nd);
+			auto nd = exponent->eval(nullptr).get<double>();
+			auto n = static_cast<unsigned long long>(nd);
 			unsigned long long m = expanded_data.operands.size();
 
 			unsigned long long terms_amount = utils::newton_binomial_coefficient(m - 1, n + m - 1);
@@ -885,8 +885,6 @@ const detail::node* detail::power::expanded() const {
 				!utils::is_integer(nd) || nd <= 0) {
 				return current_context->node_manager().make_pow(base, exponent);
 			}
-
-
 		}
 
 		return current_context->node_manager().make_pow(base, exponent);
@@ -938,8 +936,12 @@ const detail::node* node_manager_t::make_symbol(const std::string& name) {
 	return intern(detail::symbol{name});
 }
 
-const detail::node* node_manager_t::make_constant(double v) {
+const detail::node* node_manager_t::make_constant(const number& v) {
 	return intern(detail::constant{v});
+}
+
+const detail::node* node_manager_t::make_constant(double v) {
+	return intern(detail::constant{numbers::real{v}});
 }
 
 const detail::node* node_manager_t::make_negation(const detail::node* node) {

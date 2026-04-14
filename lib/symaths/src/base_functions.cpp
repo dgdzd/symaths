@@ -2,6 +2,7 @@
 
 #include "symaths/symaths.hpp"
 #include "symaths/detail/nodes.hpp"
+#include "symaths/utils/helpers.hpp"
 
 #include <stdexcept>
 
@@ -9,59 +10,59 @@ using namespace sym;
 
 static detail::builtin_func_descriptor builtin_table[funcs::LEN];
 
-double cos_eval(const std::vector<const detail::node*>& args);
+number cos_eval(const std::vector<const detail::node*>& args);
 const detail::node* cos_reduce(const std::vector<const detail::node*>& args);
 const detail::node* cos_derivative(const std::vector<const detail::node*>& args, const detail::node* wrt);
 
-double sin_eval(const std::vector<const detail::node*>& args);
+number sin_eval(const std::vector<const detail::node*>& args);
 const detail::node* sin_reduce(const std::vector<const detail::node*>& args);
 const detail::node* sin_derivative(const std::vector<const detail::node*>& args, const detail::node* wrt);
 
-double tan_eval(const std::vector<const detail::node*>& args);
+number tan_eval(const std::vector<const detail::node*>& args);
 const detail::node* tan_reduce(const std::vector<const detail::node*>& args);
 const detail::node* tan_derivative(const std::vector<const detail::node*>& args, const detail::node* wrt);
 
-double acos_eval(const std::vector<const detail::node*>& args);
+number acos_eval(const std::vector<const detail::node*>& args);
 const detail::node* acos_reduce(const std::vector<const detail::node*>& args);
 const detail::node* acos_derivative(const std::vector<const detail::node*>& args, const detail::node* wrt);
 
-double asin_eval(const std::vector<const detail::node*>& args);
+number asin_eval(const std::vector<const detail::node*>& args);
 const detail::node* asin_reduce(const std::vector<const detail::node*>& args);
 const detail::node* asin_derivative(const std::vector<const detail::node*>& args, const detail::node* wrt);
 
-double atan_eval(const std::vector<const detail::node*>& args);
+number atan_eval(const std::vector<const detail::node*>& args);
 const detail::node* atan_reduce(const std::vector<const detail::node*>& args);
 const detail::node* atan_derivative(const std::vector<const detail::node*>& args, const detail::node* wrt);
 
-double exp_eval(const std::vector<const detail::node*>& args);
+number exp_eval(const std::vector<const detail::node*>& args);
 const detail::node* exp_reduce(const std::vector<const detail::node*>& args);
 const detail::node* exp_derivative(const std::vector<const detail::node*>& args, const detail::node* wrt);
 
-double ln_eval(const std::vector<const detail::node*>& args);
+number ln_eval(const std::vector<const detail::node*>& args);
 const detail::node* ln_reduce(const std::vector<const detail::node*>& args);
 const detail::node* ln_derivative(const std::vector<const detail::node*>& args, const detail::node* wrt);
 
-double log10_eval(const std::vector<const detail::node*>& args);
+number log10_eval(const std::vector<const detail::node*>& args);
 const detail::node* log10_reduce(const std::vector<const detail::node*>& args);
 const detail::node* log10_derivative(const std::vector<const detail::node*>& args, const detail::node* wrt);
 
-double cosh_eval(const std::vector<const detail::node*>& args);
+number cosh_eval(const std::vector<const detail::node*>& args);
 const detail::node* cosh_reduce(const std::vector<const detail::node*>& args);
 const detail::node* cosh_derivative(const std::vector<const detail::node*>& args, const detail::node* wrt);
 
-double sinh_eval(const std::vector<const detail::node*>& args);
+number sinh_eval(const std::vector<const detail::node*>& args);
 const detail::node* sinh_reduce(const std::vector<const detail::node*>& args);
 const detail::node* sinh_derivative(const std::vector<const detail::node*>& args, const detail::node* wrt);
 
-double tanh_eval(const std::vector<const detail::node*>& args);
+number tanh_eval(const std::vector<const detail::node*>& args);
 const detail::node* tanh_reduce(const std::vector<const detail::node*>& args);
 const detail::node* tanh_derivative(const std::vector<const detail::node*>& args, const detail::node* wrt);
 
-double sqrt_eval(const std::vector<const detail::node*>& args);
+number sqrt_eval(const std::vector<const detail::node*>& args);
 const detail::node* sqrt_reduce(const std::vector<const detail::node*>& args);
 const detail::node* sqrt_derivative(const std::vector<const detail::node*>& args, const detail::node* wrt);
 
-double abs_eval(const std::vector<const detail::node*>& args);
+number abs_eval(const std::vector<const detail::node*>& args);
 const detail::node* abs_reduce(const std::vector<const detail::node*>& args);
 const detail::node* abs_derivative(const std::vector<const detail::node*>& args, const detail::node* wrt);
 
@@ -164,12 +165,17 @@ funcs::builtin_fn_id detail::get_func_id(const std::string& name) {
 }
 
 
-double cos_eval(const std::vector<const detail::node*>& args) {
+number cos_eval(const std::vector<const detail::node*>& args) {
 	if (args.size() > 1) {
 		throw std::invalid_argument("funcs:builtin: cos only supports 1 argument");
 	}
-	double value = args[0]->eval(nullptr);
-	return std::cos(value);
+	number value = args[0]->eval(nullptr);
+	return std::visit(overloaded {
+		[&](const numbers::rational& q) -> number { return numbers::real{std::cos(q.double_value())}; },
+		[&](const numbers::complex& z) -> number { return numbers::complex{std::cos(z.val)}; },
+		[&](const numbers::nan&) -> number { return numbers::nan{}; },
+		[&](const auto& x) -> number { return numbers::real{std::cos(x.val)}; },
+	}, value.p_data);
 }
 
 const detail::node* cos_reduce(const std::vector<const detail::node*>& args) {
@@ -192,12 +198,17 @@ const detail::node* cos_derivative(const std::vector<const detail::node*>& args,
 	});
 }
 
-double sin_eval(const std::vector<const detail::node*>& args) {
+number sin_eval(const std::vector<const detail::node*>& args) {
 	if (args.size() > 1) {
 		throw std::invalid_argument("funcs:builtin: sin only supports 1 argument");
 	}
-	double value = args[0]->eval(nullptr);
-	return std::sin(value);
+	number value = args[0]->eval(nullptr);
+	return std::visit(overloaded {
+		[&](const numbers::rational& q) -> number { return numbers::real{std::sin(q.double_value())}; },
+		[&](const numbers::complex& z) -> number { return numbers::complex{std::sin(z.val)}; },
+		[&](const numbers::nan&) -> number { return numbers::nan{}; },
+		[&](const auto& x) -> number { return numbers::real{std::sin(x.val)}; },
+	}, value.p_data);
 }
 
 const detail::node* sin_reduce(const std::vector<const detail::node*>& args) {
@@ -220,12 +231,17 @@ const detail::node* sin_derivative(const std::vector<const detail::node*>& args,
 	});
 }
 
-double tan_eval(const std::vector<const detail::node*>& args) {
+number tan_eval(const std::vector<const detail::node*>& args) {
 	if (args.size() > 1) {
 		throw std::invalid_argument("funcs:builtin: tan only supports 1 argument");
 	}
-	double value = args[0]->eval(nullptr);
-	return std::tan(value);
+	number value = args[0]->eval(nullptr);
+	return std::visit(overloaded {
+		[&](const numbers::rational& q) -> number { return numbers::real{std::tan(q.double_value())}; },
+		[&](const numbers::complex& z) -> number { return numbers::complex{std::tan(z.val)}; },
+		[&](const numbers::nan&) -> number { return numbers::nan{}; },
+		[&](const auto& x) -> number { return numbers::real{std::tan(x.val)}; },
+	}, value.p_data);
 }
 
 const detail::node* tan_reduce(const std::vector<const detail::node*>& args) {
@@ -251,12 +267,17 @@ const detail::node* tan_derivative(const std::vector<const detail::node*>& args,
 	});
 }
 
-double acos_eval(const std::vector<const detail::node*>& args) {
+number acos_eval(const std::vector<const detail::node*>& args) {
 	if (args.size() > 1) {
 		throw std::invalid_argument("funcs:builtin: acos only supports 1 argument");
 	}
-	double value = args[0]->eval(nullptr);
-	return std::acos(value);
+	number value = args[0]->eval(nullptr);
+	return std::visit(overloaded {
+		[&](const numbers::rational& q) -> number { return numbers::real{std::acos(q.double_value())}; },
+		[&](const numbers::complex& z) -> number { return numbers::complex{std::acos(z.val)}; },
+		[&](const numbers::nan&) -> number { return numbers::nan{}; },
+		[&](const auto& x) -> number { return numbers::real{std::acos(x.val)}; },
+	}, value.p_data);
 }
 
 const detail::node* acos_reduce(const std::vector<const detail::node*>& args) {
@@ -284,12 +305,17 @@ const detail::node* acos_derivative(const std::vector<const detail::node*>& args
 	);
 }
 
-double asin_eval(const std::vector<const detail::node*>& args) {
+number asin_eval(const std::vector<const detail::node*>& args) {
 	if (args.size() > 1) {
 		throw std::invalid_argument("funcs:builtin: asin only supports 1 argument");
 	}
-	double value = args[0]->eval(nullptr);
-	return std::asin(value);
+	number value = args[0]->eval(nullptr);
+	return std::visit(overloaded {
+		[&](const numbers::rational& q) -> number { return numbers::real{std::asin(q.double_value())}; },
+		[&](const numbers::complex& z) -> number { return numbers::complex{std::asin(z.val)}; },
+		[&](const numbers::nan&) -> number { return numbers::nan{}; },
+		[&](const auto& x) -> number { return numbers::real{std::asin(x.val)}; },
+	}, value.p_data);
 }
 
 const detail::node* asin_reduce(const std::vector<const detail::node*>& args) {
@@ -315,12 +341,17 @@ const detail::node* asin_derivative(const std::vector<const detail::node*>& args
 	);
 }
 
-double atan_eval(const std::vector<const detail::node*>& args) {
+number atan_eval(const std::vector<const detail::node*>& args) {
 	if (args.size() > 1) {
 		throw std::invalid_argument("funcs:builtin: atan only supports 1 argument");
 	}
-	double value = args[0]->eval(nullptr);
-	return std::atan(value);
+	number value = args[0]->eval(nullptr);
+	return std::visit(overloaded {
+		[&](const numbers::rational& q) -> number { return numbers::real{std::atan(q.double_value())}; },
+		[&](const numbers::complex& z) -> number { return numbers::complex{std::atan(z.val)}; },
+		[&](const numbers::nan&) -> number { return numbers::nan{}; },
+		[&](const auto& x) -> number { return numbers::real{std::atan(x.val)}; },
+	}, value.p_data);
 }
 
 const detail::node* atan_reduce(const std::vector<const detail::node*>& args) {
@@ -346,12 +377,17 @@ const detail::node* atan_derivative(const std::vector<const detail::node*>& args
 	);
 }
 
-double exp_eval(const std::vector<const detail::node*>& args) {
+number exp_eval(const std::vector<const detail::node*>& args) {
 	if (args.size() > 1) {
 		throw std::invalid_argument("funcs:builtin: exp only supports 1 argument");
 	}
-	double value = args[0]->eval(nullptr);
-	return std::exp(value);
+	number value = args[0]->eval(nullptr);
+	return std::visit(overloaded {
+		[&](const numbers::rational& q) -> number { return numbers::real{std::exp(q.double_value())}; },
+		[&](const numbers::complex& z) -> number { return numbers::complex{std::exp(z.val)}; },
+		[&](const numbers::nan&) -> number { return numbers::nan{}; },
+		[&](const auto& x) -> number { return numbers::real{std::exp(x.val)}; },
+	}, value.p_data);
 }
 
 const detail::node* exp_reduce(const std::vector<const detail::node*>& args) {
@@ -374,12 +410,17 @@ const detail::node* exp_derivative(const std::vector<const detail::node*>& args,
 	});
 }
 
-double ln_eval(const std::vector<const detail::node*>& args) {
+number ln_eval(const std::vector<const detail::node*>& args) {
 	if (args.size() > 1) {
 		throw std::invalid_argument("funcs:builtin: ln only supports 1 argument");
 	}
-	double value = args[0]->eval(nullptr);
-	return std::log(value);
+	number value = args[0]->eval(nullptr);
+	return std::visit(overloaded {
+		[&](const numbers::rational& q) -> number { return numbers::real{std::log(q.double_value())}; },
+		[&](const numbers::complex& z) -> number { return numbers::complex{std::log(z.val)}; },
+		[&](const numbers::nan&) -> number { return numbers::nan{}; },
+		[&](const auto& x) -> number { return numbers::real{std::log(x.val)}; },
+	}, value.p_data);
 }
 
 const detail::node* ln_reduce(const std::vector<const detail::node*>& args) {
@@ -402,12 +443,17 @@ const detail::node* ln_derivative(const std::vector<const detail::node*>& args, 
 	);
 }
 
-double log10_eval(const std::vector<const detail::node*>& args) {
+number log10_eval(const std::vector<const detail::node*>& args) {
 	if (args.size() > 1) {
 		throw std::invalid_argument("funcs:builtin: log10 only supports 1 argument");
 	}
-	double value = args[0]->eval(nullptr);
-	return std::log10(value);
+	number value = args[0]->eval(nullptr);
+	return std::visit(overloaded {
+		[&](const numbers::rational& q) -> number { return numbers::real{std::log10(q.double_value())}; },
+		[&](const numbers::complex& z) -> number { return numbers::complex{std::log10(z.val)}; },
+		[&](const numbers::nan&) -> number { return numbers::nan{}; },
+		[&](const auto& x) -> number { return numbers::real{std::log10(x.val)}; },
+	}, value.p_data);
 }
 
 const detail::node* log10_reduce(const std::vector<const detail::node*>& args) {
@@ -430,12 +476,17 @@ const detail::node* log10_derivative(const std::vector<const detail::node*>& arg
 	);
 }
 
-double cosh_eval(const std::vector<const detail::node*>& args) {
+number cosh_eval(const std::vector<const detail::node*>& args) {
 	if (args.size() > 1) {
 		throw std::invalid_argument("funcs:builtin: cosh only supports 1 argument");
 	}
-	double value = args[0]->eval(nullptr);
-	return std::cosh(value);
+	number value = args[0]->eval(nullptr);
+	return std::visit(overloaded {
+		[&](const numbers::rational& q) -> number { return numbers::real{std::cosh(q.double_value())}; },
+		[&](const numbers::complex& z) -> number { return numbers::complex{std::cosh(z.val)}; },
+		[&](const numbers::nan&) -> number { return numbers::nan{}; },
+		[&](const auto& x) -> number { return numbers::real{std::cosh(x.val)}; },
+	}, value.p_data);
 }
 
 const detail::node* cosh_reduce(const std::vector<const detail::node*>& args) {
@@ -458,12 +509,17 @@ const detail::node* cosh_derivative(const std::vector<const detail::node*>& args
 	});
 }
 
-double sinh_eval(const std::vector<const detail::node*>& args) {
+number sinh_eval(const std::vector<const detail::node*>& args) {
 	if (args.size() > 1) {
 		throw std::invalid_argument("funcs:builtin: sinh only supports 1 argument");
 	}
-	double value = args[0]->eval(nullptr);
-	return std::sinh(value);
+	number value = args[0]->eval(nullptr);
+	return std::visit(overloaded {
+		[&](const numbers::rational& q) -> number { return numbers::real{std::sinh(q.double_value())}; },
+		[&](const numbers::complex& z) -> number { return numbers::complex{std::sinh(z.val)}; },
+		[&](const numbers::nan&) -> number { return numbers::nan{}; },
+		[&](const auto& x) -> number { return numbers::real{std::sinh(x.val)}; },
+	}, value.p_data);
 }
 
 const detail::node* sinh_reduce(const std::vector<const detail::node*>& args) {
@@ -486,12 +542,17 @@ const detail::node* sinh_derivative(const std::vector<const detail::node*>& args
 	});
 }
 
-double tanh_eval(const std::vector<const detail::node*>& args) {
+number tanh_eval(const std::vector<const detail::node*>& args) {
 	if (args.size() > 1) {
 		throw std::invalid_argument("funcs:builtin: tanh only supports 1 argument");
 	}
-	double value = args[0]->eval(nullptr);
-	return std::tanh(value);
+	number value = args[0]->eval(nullptr);
+	return std::visit(overloaded {
+		[&](const numbers::rational& q) -> number { return numbers::real{std::tanh(q.double_value())}; },
+		[&](const numbers::complex& z) -> number { return numbers::complex{std::tanh(z.val)}; },
+		[&](const numbers::nan&) -> number { return numbers::nan{}; },
+		[&](const auto& x) -> number { return numbers::real{std::tanh(x.val)}; },
+	}, value.p_data);
 }
 
 const detail::node* tanh_reduce(const std::vector<const detail::node*>& args) {
@@ -517,12 +578,17 @@ const detail::node* tanh_derivative(const std::vector<const detail::node*>& args
 	});
 }
 
-double sqrt_eval(const std::vector<const detail::node*>& args) {
+number sqrt_eval(const std::vector<const detail::node*>& args) {
 	if (args.size() > 1) {
 		throw std::invalid_argument("funcs:builtin: sqrt only supports 1 argument");
 	}
-	double value = args[0]->eval(nullptr);
-	return std::sqrt(value);
+	number value = args[0]->eval(nullptr);
+	return std::visit(overloaded {
+		[&](const numbers::rational& q) -> number { return numbers::real{std::sqrt(q.double_value())}; },
+		[&](const numbers::complex& z) -> number { return numbers::complex{std::sqrt(z.val)}; },
+		[&](const numbers::nan&) -> number { return numbers::nan{}; },
+		[&](const auto& x) -> number { return numbers::real{std::sqrt(x.val)}; },
+	}, value.p_data);
 }
 
 const detail::node* sqrt_reduce(const std::vector<const detail::node*>& args) {
@@ -548,12 +614,19 @@ const detail::node* sqrt_derivative(const std::vector<const detail::node*>& args
 	);
 }
 
-double abs_eval(const std::vector<const detail::node*>& args) {
+number abs_eval(const std::vector<const detail::node*>& args) {
 	if (args.size() > 1) {
 		throw std::invalid_argument("funcs:builtin: abs only supports 1 argument");
 	}
-	double value = args[0]->eval(nullptr);
-	return std::abs(value);
+	number value = args[0]->eval(nullptr);
+	return std::visit(overloaded {
+		[&](const numbers::natural& n)  -> number { return n; },
+		[&](const numbers::integer& n)  -> number { return numbers::integer{std::abs(n.val)}; },
+		[&](const numbers::rational& q) -> number { return numbers::real{std::abs(q.double_value())}; },
+		[&](const numbers::real& x)     -> number { return numbers::real{std::abs(x.val)}; },
+		[&](const numbers::complex& z)  -> number { return numbers::real{std::abs(z.val)}; },
+		[&](const numbers::nan&)        -> number { return numbers::nan{}; },
+	}, value.p_data);
 }
 
 const detail::node* abs_reduce(const std::vector<const detail::node*>& args) {
