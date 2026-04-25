@@ -49,10 +49,9 @@ public:
 
     [[nodiscard]] std::vector<const Isle*> allIsles() const;
     [[nodiscard]] Isle& isleAt(size_t group, size_t subgroup, size_t isle);
-    [[nodiscard]] const Isle& isleAt(size_t group, size_t subgroup, size_t isle) const;
 
-    void clearBackup(size_t groupIdx);
-    void injectIntoBackup(size_t groupIdx, NodePtr tree);
+    void clearBackup(size_t group);
+    void injectIntoBackup(size_t group, NodePtr tree);
     void clearHallOfFame();
 
 private:

@@ -1,8 +1,17 @@
-#include <../../mathgen/include/model_manager.h>
-#include <../../mathgen/include/island_manager.h>
+#include "../../../lib/mathgen//include/model_manager.h"
+#include "../../../lib/mathgen//include/island_manager.h"
+
 #include <cmath>
 #include <iostream>
+#include <optional>
 
+double sum0(double n) {
+    double out = 0.0;
+    for (int k = 0; k < (int)n; k++) {
+        out += std::sin(k)/k;
+    }
+    return out;
+}
 
 void test_model_manager() {
     //1. Define operators
@@ -16,8 +25,8 @@ void test_model_manager() {
         { "sin", [](double x){ return std::sin(x); } },
         { "cos", [](double x) { return std::cos(x); } },
         { "square", [](double x){ return x * x; } },
-        { "exp", [](double x){ return std::abs(x) < 10.0 ? std::exp(x) : 0.0; } },
-        { "log", [](double x) { return x <= 0.0 ? 0.0 : std::log(x); } }
+        { "exp", [](double x){ return std::abs(x) < 100.0 ? std::exp(x) : 0.0; } },
+        { "log", [](double x) { return x == 0.0 ? 0.0 : std::log(std::abs(x)); } }
     };
 
     //2. Build dataset
@@ -29,7 +38,7 @@ void test_model_manager() {
     for (int i = static_cast<int>(from / precision); i < static_cast<int>(to / precision); i++) {
         double x_v = i * precision;
         X.push_back({ { "x", x_v } });
-        Y.push_back(std::log(x_v * x_v + std::sin(x_v + exp(x_v))));
+        Y.push_back(sum0(x_v));
     }
 
     //3. Configure and run
@@ -61,17 +70,17 @@ void test_model_manager() {
 
 void test_island_manager() {
     BinaryMap binaryFunc = {
-        {"+", [](double a, double b){ return a + b; }},
-        {"-", [](double a, double b){ return a - b; }},
-        {"*", [](double a, double b){ return a * b; }},
-        {"/", [](double a, double b){ return std::abs(b) > 1e-12 ? a / b : 0.0; }},
+        { "+", [](double a, double b){ return a + b; } },
+        { "-", [](double a, double b){ return a - b; } },
+        { "*", [](double a, double b){ return a * b; } },
+        { "/", [](double a, double b){ return std::abs(b) > 1e-12 ? a / b : 0.0; } },
     };
 
     UnaryMap unary = {
-        {"sin", [](double x){ return std::sin(x); }},
-        {"cos", [](double x){ return std::cos(x); }},
-        {"square", [](double x){ return x * x; }},
-        {"cube", [](double x){ return x * x * x; }},
+        { "sin", [](double x){ return std::sin(x); } },
+        { "cos", [](double x){ return std::cos(x); } },
+        { "square", [](double x){ return x * x; } },
+        { "cube", [](double x){ return x * x * x; } },
     };
 
     // Dataset: \sin(x^{2}+\sin(x^{3}+\cos(x)))
@@ -108,8 +117,8 @@ void test_island_manager() {
     group0.intraSubgroupProb = 0.60;
     group0.interSubgroupProb = 0.25;
     group0.subgroups = {
-        SubGroupConfig{3, std::nullopt}, // SG 0.0 — inherit baseCfg0
-        SubGroupConfig{2, exploreCfg}, // SG 0.1 — explorative override
+        SubGroupConfig{ 3, std::nullopt }, // SG 0.0 — inherit baseCfg0
+        SubGroupConfig{ 2, exploreCfg }, // SG 0.1 — explorative override
     };
 
     // Group 1
@@ -146,7 +155,6 @@ int main() {
     //- meilleur algo de BGFS (dans fitness.cpp)
     //- (?) implémenter tolérance adaptive (suivant quelles variables, indicateurs, ... ?)
     //- (?) détection de convergence avancée (plus d'indicateurs de convergence)
-    //- implémenter une fonction qui convertit std::string -> Node (pour que user implémente ses propres arbres)
     //- NOMBRES COMPLEXES EN OPTION (avec des templates ?)
     //- implémenter sommes et produits dans arbres
 

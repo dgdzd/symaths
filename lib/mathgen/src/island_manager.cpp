@@ -477,3 +477,28 @@ std::vector<const Isle*> IslandManager::allIsles() const {
         result.push_back(&isleAt(addr));
     return result;
 }
+
+Isle& IslandManager::isleAt(size_t group, size_t subgroup, size_t isle) {
+    if (group > groups.size())
+        throw std::runtime_error("group index out of range.");
+    if (subgroup > groups[group].subgroups.size())
+        throw std::runtime_error("subgroup index out of range.");
+    if (isle > groups[group].subgroups[subgroup].isles.size())
+        throw std::runtime_error("isle index out of range.");
+    return groups[group].subgroups[subgroup].isles[isle];
+}
+
+void IslandManager::clearBackup(size_t group) {
+    if (group > groups.size())
+        throw std::runtime_error("group index out of range.");
+    groups[group].backup.clear();
+}
+void IslandManager::injectIntoBackup(size_t group, NodePtr tree) {
+    if (group > groups.size())
+        throw std::runtime_error("group index out of range.");
+    groups[group].backup.push_back(tree->clone());
+}
+
+void IslandManager::clearHallOfFame() {
+    hallOfFame.fames.clear();
+}
