@@ -57,12 +57,12 @@ NodePtr randomTree(unsigned int maxDepth, const std::vector<std::string>& variab
     return std::make_unique<UnaryNode>(name, unaryFuncs.at(name), std::move(child));
 }
 
-std::string printTree(const Node* node, const std::unordered_map<std::string, std::string>& aliases) {
+std::string printTree(const Node* node, const std::unordered_map<std::string, std::string>& aliases, unsigned int constPrecision) {
     if (!node) return "null";
 
     if (const auto* c = dynamic_cast<const ConstNode*>(node)) {
         std::ostringstream ss;
-        ss << std::fixed << std::setprecision(2) << c->value;
+        ss << std::fixed << std::setprecision(constPrecision) << c->value;
         return ss.str();
     }
 
@@ -280,4 +280,204 @@ void cropSimilarTrees(std::vector<std::unique_ptr<Node>> trees, const Dataset& X
             }
         }
     }
+}
+
+std::vector<std::string> tokenize(const std::string& str) {
+    std::vector<std::string> tokens;
+
+    std::string s;
+    s.reserve(str.size());
+    for (char c : str) if (c != ' ') s += c;
+
+    const std::string punctuation = "(),";
+
+    size_t i = 0;
+    while (i < s.size()) {
+        char c = s[i];
+
+        if (std::isdigit(c) || c == '.') {
+            size_t start = i;
+            while (i < s.size() && (std::isdigit(s[i]) || s[i] == '.')) ++i;
+            tokens.emplace_back(s.substr(start, i - start));
+        }
+
+        else if (std::isalpha(c) || c == '_') {
+            size_t start = i;
+            while (i < s.size() && (std::isalnum(s[i]) || s[i] == '_')) ++i;
+            tokens.emplace_back(s.substr(start, i - start));
+        }
+
+        else if (punctuation.find(c) != std::string::npos) {
+            tokens.emplace_back(1, c);
+            ++i;
+        }
+
+        else {
+            size_t start = i;
+            while (i < s.size() && !std::isdigit(s[i]) && !std::isalpha(s[i]) && s[i] != '_' && punctuation.find(s[i]) == std::string::npos && s[i] != ' ')
+                ++i;
+            tokens.emplace_back(s.substr(start, i - start));
+        }
+    }
+    return tokens;
+}
+
+struct OpInfo {
+    int prec;
+    bool rightAssoc;
+};
+
+//precedence
+inline OpInfo opInfo(const std::string& op, int default_prec = 20) {
+    static const std::unordered_map<std::string, OpInfo> table = {
+        { "+", { 10, false } },
+        { "-", { 10, false } },
+        { "*", { 20, false } },
+        { "/", { 20, false } },
+        { "%", { 20, false } },
+        { "^", { 30, true } },
+        { "**", { 30, true } },
+    };
+    auto it = table.find(op);
+    return it != table.end() ? it->second : OpInfo{ default_prec, false };
+}
+
+struct Parser {
+    const std::vector<std::string>& tokens;
+    const std::vector<std::string>& variables;
+    const UnaryMap&  unaryFuncs;
+    const BinaryMap& binaryFuncs;
+    size_t pos = 0;
+
+    [[nodiscard]] bool atEnd() const {
+        return pos >= tokens.size();
+    }
+    [[nodiscard]] const std::string& peek() const {
+        if (atEnd()) throw std::runtime_error("Unexpected end of expression");
+        return tokens[pos];
+    }
+    std::string consume() {
+        return tokens[pos++];
+    }
+    [[nodiscard]] bool check(const std::string& s) const {
+        return !atEnd() && tokens[pos] == s;
+    }
+    void expect(const std::string& s) {
+        if (atEnd() || tokens[pos] != s)
+            throw std::runtime_error("Expected '" + s + "' but got '" + (atEnd() ? "<end>" : peek()) + "'");
+        pos++;
+    }
+
+    // Returns true if the current token is a known binary operator
+    [[nodiscard]] bool isBinaryOp(const std::string& tok) const {
+        return binaryFuncs.contains(tok);
+    }
+
+    // ── expression entry point (precedence-climbing) ──────────────────────────
+    //
+    //  parse_expr(minPrec):
+    //    lhs = parse_unary()
+    //    while next token is a binary op with prec >= minPrec:
+    //        op = consume()
+    //        nextMinPrec = op.prec + (op.rightAssoc ? 0 : 1)
+    //        rhs = parse_expr(nextMinPrec)
+    //        lhs = BinaryNode(op, lhs, rhs)
+    //    return lhs
+
+    NodePtr parse_expr(int minPrec = 0) {
+        NodePtr lhs = parse_unary();
+
+        while (!atEnd()) {
+            const std::string& tok = tokens[pos];
+            if (!isBinaryOp(tok)) break;
+
+            OpInfo info = opInfo(tok);
+            if (info.prec < minPrec) break;
+
+            std::string op = consume();
+            int nextMin = info.prec + (info.rightAssoc ? 0 : 1);
+            NodePtr rhs = parse_expr(nextMin);
+
+            auto it = binaryFuncs.find(op);
+            if (it == binaryFuncs.end())
+                throw std::runtime_error("Unknown binary operator: " + op);
+
+            lhs = std::make_unique<BinaryNode>(op, it->second, std::move(lhs), std::move(rhs));
+        }
+        return lhs;
+    }
+
+    NodePtr parse_unary() {
+        if (check("-")) {
+            pos++;
+            NodePtr operand = parse_unary();
+            if (auto* c = dynamic_cast<ConstNode*>(operand.get()))
+                return std::make_unique<ConstNode>(-c->value);
+            auto it = unaryFuncs.find("neg");
+            if (it != unaryFuncs.end())
+                return std::make_unique<UnaryNode>("neg", it->second, std::move(operand));
+
+            auto mIt = binaryFuncs.find("*");
+            if (mIt == binaryFuncs.end())
+                throw std::runtime_error("No unary negation and no '*' operator available");
+            return std::make_unique<BinaryNode>("*", mIt->second, std::make_unique<ConstNode>(-1.0), std::move(operand));
+        }
+        if (check("+")) {
+            pos++;
+            return parse_unary();
+        }
+
+        if (check("(")) {
+            pos++;
+            NodePtr inner = parse_expr(0);
+            expect(")");
+            return inner;
+        }
+
+        const std::string& tok = peek();
+
+        if (std::isdigit(tok[0]) || tok[0] == '.') {
+            pos++;
+            return std::make_unique<ConstNode>(std::stod(tok));
+        }
+
+        //function or variable
+        if (std::isalpha(tok[0]) || tok[0] == '_') {
+            std::string name = consume();
+
+            //unary
+            if (check("(")) {
+                pos++;
+                NodePtr arg = parse_expr(0);
+                expect(")");
+
+                auto uit = unaryFuncs.find(name);
+                if (uit != unaryFuncs.end())
+                    return std::make_unique<UnaryNode>(name, uit->second, std::move(arg));
+
+                throw std::runtime_error("Unknown function: " + name);
+            }
+
+            if (std::find(variables.begin(), variables.end(), name) != variables.end())
+                return std::make_unique<VarNode>(name);
+
+            throw std::runtime_error("Unknown identifier: " + name);
+        }
+
+        throw std::runtime_error("Unexpected token: " + tok);
+    }
+};
+
+
+NodePtr strToNode(const std::string& str, const std::vector<std::string>& variables, const UnaryMap&  unaryFuncs, const BinaryMap& binaryFuncs) {
+    auto tokens = tokenize(str);
+    if (tokens.empty()) throw std::runtime_error("Empty expression");
+
+    Parser parser{ tokens, variables, unaryFuncs, binaryFuncs };
+    NodePtr result = parser.parse_expr(0);
+
+    if (!parser.atEnd())
+        throw std::runtime_error("Unexpected token after expression: " + parser.peek());
+
+    return result;
 }
