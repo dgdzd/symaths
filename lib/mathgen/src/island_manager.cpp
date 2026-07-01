@@ -379,8 +379,7 @@ void IslandManager::run(unsigned int totalGenerations, size_t maxPop, size_t eli
 
         if (debug) {
             unsigned int gensRun = (cycle + 1) * migrationInterval;
-            std::cout << "=== Migration cycle: " << cycle
-                      << "  (Gen " << gensRun << ") ===\n";
+            std::cout << "=== Migration cycle: " << cycle << "  (Gen " << gensRun << ") ===\n";
 
             for (size_t gi = 0; gi < groups.size(); gi++) {
                 for (size_t si = 0; si < groups[gi].subgroups.size(); si++) {

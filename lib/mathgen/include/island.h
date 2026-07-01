@@ -13,7 +13,7 @@
 using Isle = ModelManager;
 
 struct IsleConfig {
-    std::vector<std::string> variables = {"x"};
+    std::vector<std::string> variables = { "x" };
     unsigned int maxDepth = 6;
     double penalty = 1e-4;
     double mutationProb = 0.4;

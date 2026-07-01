@@ -41,8 +41,8 @@ void optimizeConstants(Node* tree, const Dataset& X, const std::vector<double>& 
     };
 
     if (n == 1) {
-        // golden section search in [x[0] - 5, x[0] + 5]
-        double lo = x[0] - 5.0, hi = x[0] + 5.0;
+        // golden section search in [x[0] - 1, x[0] + 1]
+        double lo = x[0] - 1.0, hi = x[0] + 1.0;
         const double phi = (std::sqrt(5.0) - 1.0) / 2.0;
         for (int i = 0; i < 50; i++) {
             double m1 = hi - phi * (hi - lo);
@@ -87,7 +87,6 @@ void optimizeConstants(Node* tree, const Dataset& X, const std::vector<double>& 
 void optiBFGS(std::vector<double>& x, const std::function<double(const std::vector<double>& vals)>& applyAndEval, size_t n, const double tol, const size_t max_iter) {
     const double h = 1e-6;
 
-    // Hessian inverse approx (identity)
     std::vector<std::vector<double>> H(n, std::vector<double>(n, 0.0));
     for (size_t i = 0; i < n; i++) H[i][i] = 1.0;
 
@@ -106,12 +105,10 @@ void optiBFGS(std::vector<double>& x, const std::function<double(const std::vect
     double f = computeGrad(x, grad);
 
     for (size_t iter = 0; iter < max_iter; iter++) {
-        // Convergence check
         double gnorm = 0.0;
         for (double g : grad) gnorm += g * g;
         if (std::sqrt(gnorm) < tol) break;
 
-        // Search direction d = -H * grad
         std::vector<double> d(n, 0.0);
         for (size_t i = 0; i < n; i++)
             for (size_t j = 0; j < n; j++)
@@ -128,7 +125,6 @@ void optiBFGS(std::vector<double>& x, const std::function<double(const std::vect
             for (size_t i = 0; i < n; i++) dot_gd += grad[i] * d[i];
         }
 
-        //Backtracking line search (Armijo)
         double alpha = 1.0;
         for (int ls = 0; ls < 30; ls++) {
             std::vector<double> x_new(n);
@@ -137,12 +133,12 @@ void optiBFGS(std::vector<double>& x, const std::function<double(const std::vect
             alpha *= 0.5;
         }
 
-        prev_x   = x;
+        prev_x = x;
         prev_grad = grad;
         for (size_t i = 0; i < n; i++) x[i] += alpha * d[i];
         f = computeGrad(x, grad);
 
-        // s = x_new - x_old,  y = grad_new - grad_old
+        //s = x_new - x_old,  y = grad_new - grad_old
         std::vector<double> s(n), y(n);
         double sy = 0.0;
         for (size_t i = 0; i < n; i++) {
@@ -151,9 +147,9 @@ void optiBFGS(std::vector<double>& x, const std::function<double(const std::vect
             sy += s[i] * y[i];
         }
 
-        if (sy < 1e-10) continue; //skip update if not positive definite
+        if (sy < 1e-10) continue;
 
-        // H = (I - rho * s * y ^ T) * H * (I - rho * y * s ^ T) + rho * s * s ^ T
+        //H = (I - rho * s * y ^ T) * H * (I - rho * y * s ^ T) + rho * s * s ^ T
         double rho = 1.0 / sy;
 
         //Hy = H * y
@@ -167,7 +163,7 @@ void optiBFGS(std::vector<double>& x, const std::function<double(const std::vect
         for (size_t i = 0; i < n; i++)
             yHy += y[i] * Hy[i];
 
-        //rank-2 update: H += (rho^2 * yHy + rho) * s*s^T - rho * (Hy*s^T + s*Hy^T)
+        //H += (rho^2 * yHy + rho) * s*s^T - rho * (Hy*s^T + s*Hy^T)
         for (size_t i = 0; i < n; i++)
             for (size_t j = 0; j < n; j++)
                 H[i][j] += (rho * rho * yHy + rho) * s[i] * s[j] - rho * (Hy[i] * s[j] + s[i] * Hy[j]);
