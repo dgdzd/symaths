@@ -10,8 +10,8 @@
  *
  */
 
-#ifndef EQUATION_HPP
-#define EQUATION_HPP
+#ifndef SYM_EQUATION_HPP
+#define SYM_EQUATION_HPP
 
 #include "symaths/expression.hpp"
 

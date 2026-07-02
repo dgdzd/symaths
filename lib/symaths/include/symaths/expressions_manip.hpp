@@ -10,15 +10,15 @@
  *
  */
 
-#ifndef EXPRESSIONS_MANIP_HPP
-#define EXPRESSIONS_MANIP_HPP
+#ifndef SYM_EXPRESSIONS_MANIP_HPP
+#define SYM_EXPRESSIONS_MANIP_HPP
 
 #include "symaths/numbers.hpp"
 
 namespace sym {
 	class expression;
 	namespace detail {
-		class node;
+		class expression_node;
 	}
 
 	/**
@@ -43,18 +43,18 @@ namespace sym {
 	namespace detail {
 		struct term {
 			number coefficient;
-			const node* symbolic;
+			const expression_node* symbolic;
 		};
 
 		struct expr_term {
-			const node* coefficient;
-			const node* symbolic;
+			const expression_node* coefficient;
+			const expression_node* symbolic;
 		};
 
-		term extract_term(const node* node);
-		expr_term extract_term_advanced(const node* node);
+		term extract_term(const expression_node* node);
+		expr_term extract_term_advanced(const expression_node* node);
 
-		const node* develop(const node* node);
+		const expression_node* develop(const expression_node* node);
 	}
 }
 

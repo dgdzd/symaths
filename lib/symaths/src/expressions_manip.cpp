@@ -44,14 +44,14 @@ inline void hash_combine(std::size_t& seed, const T& v)
 	seed ^= hasher(v) + 0x9e3779b9 + (seed<<6) + (seed>>2);
 }
 
-sym::detail::term sym::detail::extract_term(const node* node) {
+sym::detail::term sym::detail::extract_term(const expression_node* node) {
 	return std::visit([&](const auto& x) {
 		using T = std::decay_t<decltype(x)>;
 
 		term t{};
 		if constexpr (std::is_same_v<T, multiplication>) {
 			t.coefficient = numbers::natural(1);
-			std::vector<const detail::node*> final_operands;
+			std::vector<const detail::expression_node*> final_operands;
 			for (auto& op : x.operands) {
 				bool is_func = std::holds_alternative<function_call>(op->p_data);
 				if (op->is_ground() && (!is_func || (is_func && !current_context->refactoring_rules().keep_ground_functions))) {
@@ -82,14 +82,14 @@ sym::detail::term sym::detail::extract_term(const node* node) {
 	}, node->p_data);
 }
 
-sym::detail::expr_term sym::detail::extract_term_advanced(const node* node) {
+sym::detail::expr_term sym::detail::extract_term_advanced(const expression_node* node) {
 	return std::visit([&](const auto& x) {
 		using T = std::decay_t<decltype(x)>;
 
 		expr_term t{};
 		if constexpr (std::is_same_v<T, multiplication>) {
 			t.coefficient = current_context->node_manager().make_constant(1);
-			std::vector<const detail::node*> final_operands;
+			std::vector<const detail::expression_node*> final_operands;
 			for (auto& op : x.operands) {
 				if (op->is_ground()) {
 					t.coefficient = current_context->node_manager().make_mul({t.coefficient, op});

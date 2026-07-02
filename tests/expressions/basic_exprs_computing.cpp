@@ -167,14 +167,14 @@ TEST(basic_exprs_computing, lexer_tokenize) {
 }
 
 TEST(basic_exprs_computing, parser_parse) {
-	sym::expression expr1 = sym::parse("3*x+2*y");
-	sym::expression expr2 = sym::parse("3*(x+y+z)*4");
-	sym::expression expr3 = sym::parse("3(x+y+z)*4");
-	sym::expression expr4 = sym::parse("sin(x)");
-	sym::expression expr5 = sym::parse("sin(x)cos(x)");
-	sym::expression expr6 = sym::parse("sin(x)cos(x)+3a");
-	sym::expression expr7 = sym::parse("sin(1+tan(x))x");
-	sym::expression expr8 = sym::parse("cos(x)^2+sin(x)^2");
+	sym::expression expr1 = sym::parse_single("3*x+2*y");
+	sym::expression expr2 = sym::parse_single("3*(x+y+z)*4");
+	sym::expression expr3 = sym::parse_single("3(x+y+z)*4");
+	sym::expression expr4 = sym::parse_single("sin(x)");
+	sym::expression expr5 = sym::parse_single("sin(x)cos(x)");
+	sym::expression expr6 = sym::parse_single("sin(x)cos(x)+3a");
+	sym::expression expr7 = sym::parse_single("sin(1+tan(x))x");
+	sym::expression expr8 = sym::parse_single("cos(x)^2+sin(x)^2");
 
 	ASSERT_EQ(expr1.string(), "3x+2y");
 	ASSERT_EQ(expr2.string(), "3(x+y+z)*4");
@@ -187,7 +187,9 @@ TEST(basic_exprs_computing, parser_parse) {
 }
 
 TEST(basic_exprs_computing, polynomial_simple) {
-	sym::expression expr1 = sym::parse("3x^2 + 4x - 10");
+	sym::expression expr1 = sym::parse_single("3x^2 + 4x - 10");
 
 	sym::polynomial p1(expr1);
+
+	ASSERT_EQ(p1.get_degree(), 2);
 }

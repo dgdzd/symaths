@@ -10,8 +10,8 @@
  *
  */
 
-#ifndef MATHS_H
-#define MATHS_H
+#ifndef SYM_MATHS_H
+#define SYM_MATHS_H
 
 #include <array>
 

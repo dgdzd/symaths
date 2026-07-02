@@ -10,8 +10,8 @@
  *
  */
 
-#ifndef HELPERS_HPP
-#define HELPERS_HPP
+#ifndef SYM_HELPERS_HPP
+#define SYM_HELPERS_HPP
 
 // Helper class for std::visit
 template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };

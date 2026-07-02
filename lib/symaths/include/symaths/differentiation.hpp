@@ -10,8 +10,8 @@
  *
  */
 
-#ifndef DIFFERENTIATION_HPP
-#define DIFFERENTIATION_HPP
+#ifndef SYM_DIFFERENTIATION_HPP
+#define SYM_DIFFERENTIATION_HPP
 
 namespace sym {
 	class expression;

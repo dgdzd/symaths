@@ -8,7 +8,7 @@
 
 using namespace sym;
 
-void polynomial::validate_expr(const detail::node* node, const detail::node* variable) {
+void polynomial::validate_expr(const detail::expression_node* node, const detail::expression_node* variable) {
 	std::visit([&](const auto& x) -> void {
 		using T = std::decay_t<decltype(x)>;
 

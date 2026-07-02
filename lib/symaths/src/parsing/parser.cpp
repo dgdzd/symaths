@@ -1,10 +1,10 @@
 #include "symaths/parsing/parser.hpp"
 
 #include "symaths/symaths.hpp"
-#include "symaths/detail/nodes.hpp"
+#include "symaths/detail/expression_node.hpp"
+#include "symaths/detail/node_manager.hpp"
 
 #include <format>
-#include <map>
 
 using namespace sym;
 
@@ -137,7 +137,7 @@ context_table parser::parse() {
 	return std::move(table);
 }
 
-const detail::node* parser::parse_line() {
+const detail::expression_node* parser::parse_line() {
 	if (expect_identifier("func")) {
 		//return parse_func(0);
 	}
@@ -147,9 +147,9 @@ const detail::node* parser::parse_line() {
 	return parse_expression(0);
 }
 
-const detail::node* parser::parse_expression(int precedence_limit) {
+const detail::expression_node* parser::parse_expression(int precedence_limit) {
 	const lexer::token& prefix = advance();
-	const detail::node* left = parse_prefix(prefix);
+	const detail::expression_node* left = parse_prefix(prefix);
 	if (!left) {
 		return nullptr;
 	}
@@ -162,7 +162,7 @@ const detail::node* parser::parse_expression(int precedence_limit) {
 }
 
 // Example form : pred P:x,y,z -> "3x+2y+z = 0"
-const detail::node* parser::parse_predicate(int precedence_limit) {
+const detail::expression_node* parser::parse_predicate(int precedence_limit) {
 	if (!expect(lexer::identifier)) return nullptr;
 	std::string name = advance().value;
 	std::vector<std::string> variables;
@@ -183,10 +183,10 @@ const detail::node* parser::parse_predicate(int precedence_limit) {
 	// Parsing content
 	if (!expect(lexer::quote)) return nullptr;
 	advance();
-	const detail::node* expr1 = parse_expression(0);
+	const detail::expression_node* expr1 = parse_expression(0);
 }
 
-const detail::node* parser::parse_prefix(const lexer::token& prefix) {
+const detail::expression_node* parser::parse_prefix(const lexer::token& prefix) {
 	auto& nm = current_context->node_manager();
 	switch (prefix.type) {
 		case lexer::number: {
@@ -196,7 +196,7 @@ const detail::node* parser::parse_prefix(const lexer::token& prefix) {
 			auto func_id = detail::get_func_id(prefix.value);
 			if (func_id != funcs::LEN) {
 				if (consume(lexer::open_parenthesis)) {
-					std::vector<const detail::node*> args = parse_func_call();
+					std::vector<const detail::expression_node*> args = parse_func_call();
 					return nm.make_func(func_id, args);
 				}
 				return nullptr;
@@ -207,11 +207,11 @@ const detail::node* parser::parse_prefix(const lexer::token& prefix) {
 			return parse_expression(0);
 		}
 		case lexer::op_subtraction: {
-			const detail::node* n = parse_expression(get_precedence(lexer::op_subtraction, true));
+			const detail::expression_node* n = parse_expression(get_precedence(lexer::op_subtraction, true));
 			return nm.make_negation(n);
 		}
 		case lexer::open_parenthesis: {
-			const detail::node* n = parse_expression(0);
+			const detail::expression_node* n = parse_expression(0);
 			if (consume(lexer::close_parenthesis)) {
 				advance();
 				return n;
@@ -225,35 +225,35 @@ const detail::node* parser::parse_prefix(const lexer::token& prefix) {
 	}
 }
 
-const detail::node* parser::parse_infix(const detail::node* left, const lexer::token& infix) {
+const detail::expression_node* parser::parse_infix(const detail::expression_node* left, const lexer::token& infix) {
 	auto& nm = current_context->node_manager();
 	int p = get_precedence(infix.type);
 	const lexer::token& prefix = m_tokens[m_index - 2];
 	switch (infix.type) {
 		case lexer::op_addition: {
-			const detail::node* right = parse_expression(p);
+			const detail::expression_node* right = parse_expression(p);
 			return nm.make_add({left, right});
 		}
 		case lexer::op_subtraction: {
-			const detail::node* right = parse_expression(p);
+			const detail::expression_node* right = parse_expression(p);
 			return nm.make_add({left, nm.make_negation(right)});
 		}
 		case lexer::op_multiplication: {
-			const detail::node* right = parse_expression(p);
+			const detail::expression_node* right = parse_expression(p);
 			return nm.make_mul({left, right});
 		}
 		case lexer::op_division: {
-			const detail::node* right = parse_expression(p);
+			const detail::expression_node* right = parse_expression(p);
 			return nm.make_div(left, right);
 		}
 		case lexer::op_power: {
-			const detail::node* right = parse_expression(p - 1); // Right-associativity : a^b^c = a^(b^c)
+			const detail::expression_node* right = parse_expression(p - 1); // Right-associativity : a^b^c = a^(b^c)
 			return nm.make_pow(left, right);
 		}
 		case lexer::op_modulo: {
 			m_errors.emplace_back(unsupported, "Modulo is not yet supported.");
 			return nullptr;
-			const detail::node* right = parse_expression(p);
+			const detail::expression_node* right = parse_expression(p);
 			return nm.make_mul({left, right});
 		}
 		case lexer::op_factorial: {
@@ -263,10 +263,10 @@ const detail::node* parser::parse_infix(const detail::node* left, const lexer::t
 		case lexer::open_parenthesis: {
 			auto func_id = detail::get_func_id(prefix.value);
 			if (func_id != funcs::LEN) {
-				std::vector<const detail::node*> args = parse_func_call();
+				std::vector<const detail::expression_node*> args = parse_func_call();
 				return nm.make_func(func_id, args);
 			}
-			const detail::node* right = parse_expression(0);
+			const detail::expression_node* right = parse_expression(0);
 			advance();
 			return nm.make_mul({left, right});
 		}
@@ -276,12 +276,12 @@ const detail::node* parser::parse_infix(const detail::node* left, const lexer::t
 			auto func_id = detail::get_func_id(infix.value);
 			if (func_id != funcs::LEN) {
 				if (consume(lexer::open_parenthesis)) {
-					std::vector<const detail::node*> args = parse_func_call();
+					std::vector<const detail::expression_node*> args = parse_func_call();
 					return nm.make_mul({left, nm.make_func(func_id, args)});
 				}
 				return nullptr;
 			}
-			const detail::node* right = nm.make_symbol(infix.value);
+			const detail::expression_node* right = nm.make_symbol(infix.value);
 			return nm.make_mul({left, right});
 		}
 
@@ -294,8 +294,8 @@ const detail::node* parser::parse_infix(const detail::node* left, const lexer::t
 	}
 }
 
-std::vector<const detail::node*> parser::parse_func_call() {
-	std::vector<const detail::node*> args;
+std::vector<const detail::expression_node*> parser::parse_func_call() {
+	std::vector<const detail::expression_node*> args;
 	advance();
 	if (current_token().type != lexer::close_parenthesis) {
 		do {

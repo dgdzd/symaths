@@ -10,8 +10,8 @@
  *
  */
 
-#ifndef POLYNOMIAL_HPP
-#define POLYNOMIAL_HPP
+#ifndef SYM_POLYNOMIAL_HPP
+#define SYM_POLYNOMIAL_HPP
 
 #include <map>
 
@@ -20,11 +20,11 @@
 
 namespace sym {
 	class polynomial {
-		void validate_expr(const detail::node* node, const detail::node* variable = nullptr);
+		void validate_expr(const detail::expression_node* node, const detail::expression_node* variable = nullptr);
 
 	public:
 		symbol symb;
-		std::vector<const detail::node*> coeffs;
+		std::vector<const detail::expression_node*> coeffs;
 		expression expr;
 
 		polynomial(const expression& root);

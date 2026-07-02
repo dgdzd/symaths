@@ -10,10 +10,10 @@
  *
  */
 
-#ifndef EXPRESSION_HPP
-#define EXPRESSION_HPP
+#ifndef SYM_EXPRESSION_HPP
+#define SYM_EXPRESSION_HPP
 
-#include "symaths/detail/nodes.hpp"
+#include "symaths/detail/expression_node.hpp"
 
 namespace sym {
 	class symbol;
@@ -22,14 +22,14 @@ namespace sym {
 
 	class expression {
 	public:
-		const detail::node* root;
+		const detail::expression_node* root;
 
 		expression(double val);
 		expression(const symbol& var);
 		expression(const polynomial& var);
 		expression(const std::string& name);
 		expression(const char* name);
-		expression(const detail::node* node);
+		expression(const detail::expression_node* node);
 
 		number operator()(const detail::Context& ctx) const;
 		number operator()() const;

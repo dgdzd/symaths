@@ -10,8 +10,8 @@
  *
  */
 
-#ifndef NUMBER_HPP
-#define NUMBER_HPP
+#ifndef SYM_NUMBER_HPP
+#define SYM_NUMBER_HPP
 
 #include "symaths/utils/helpers.hpp"
 

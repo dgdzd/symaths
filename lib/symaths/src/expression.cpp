@@ -19,7 +19,7 @@ sym::expression::expression(const char* name) {
 	root = make_symbol(name);
 }
 
-sym::expression::expression(const detail::node* node) {
+sym::expression::expression(const detail::expression_node* node) {
 	root = node;
 }
 

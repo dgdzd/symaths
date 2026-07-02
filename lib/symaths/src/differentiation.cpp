@@ -26,7 +26,7 @@ expression sym::differentiate(const expression& expr, const symbol& symbol) {
 		}
 
 		else if constexpr (std::is_same_v<T, detail::addition>) {
-			std::vector<const detail::node*> result;
+			std::vector<const detail::expression_node*> result;
 			// (f + g + h + ...)' = f' + g' + h' + ...
 			for (auto& op : x.operands) {
 				result.push_back(differentiate(op, symbol).root);
@@ -36,10 +36,10 @@ expression sym::differentiate(const expression& expr, const symbol& symbol) {
 
 		// Product rule
 		else if constexpr (std::is_same_v<T, detail::multiplication>) {
-			std::vector<const detail::node*> result;
+			std::vector<const detail::expression_node*> result;
 			// (f * g * h) = f'gh + fg'h + fgh'
 			for (auto& f : x.operands) {
-				std::vector<const detail::node*> group_product;
+				std::vector<const detail::expression_node*> group_product;
 				group_product.push_back(differentiate(f, symbol).root);
 				for (auto& g : x.operands) {
 					if (&f == &g) continue;

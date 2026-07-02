@@ -10,14 +10,13 @@
  *
  */
 
-#ifndef SETS_HPP
-#define SETS_HPP
-
-#include <vector>
+#ifndef SYM_NODE_SET_HPP
+#define SYM_NODE_SET_HPP
 
 #include "symaths/interval.hpp"
 
 #include <variant>
+#include <vector>
 
 namespace sym {
 	/*
@@ -54,11 +53,12 @@ namespace sym {
 			std::vector<const set*> sets;
 		};
 
-		class set {
+		class set_node {
 		public:
 			using internal_data_t = std::variant<continuous_set, integer_set, conditional_set, intersection_set>;
 
 			internal_data_t p_data;
+			size_t p_hash;
 
 			bool contains();
 		};

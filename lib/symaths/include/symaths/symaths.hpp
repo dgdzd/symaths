@@ -17,6 +17,7 @@
 #include "symaths/expression.hpp"
 #include "symaths/expressions_manip.hpp"
 #include "symaths/symbol.hpp"
+#include "symaths/detail/node_manager.hpp"
 #include "symaths/parsing/parser.hpp"
 
 namespace sym {
@@ -66,15 +67,15 @@ namespace sym {
 	void make_context_current(library& ctx);
 	library* get_current_context();
 
-	const detail::node* make_constant(double val);
-	const detail::node* make_symbol(const std::string& name);
-	const detail::node* make_negation(const detail::node* node);
-	const detail::node* make_addition(const std::vector<const detail::node*>& operands);
-	const detail::node* make_multiplication(const std::vector<const detail::node*>& operands);
-	const detail::node* make_div(const detail::node* numerator, const detail::node* denominator);
-	const detail::node* make_power(const detail::node* base, const detail::node* exponent);
-	const detail::node* make_func(uint32_t f_id, const detail::node* arg);
-	const detail::node* make_func(uint32_t f_id, const std::vector<const detail::node*>& args);
+	const detail::expression_node* make_constant(double val);
+	const detail::expression_node* make_symbol(const std::string& name);
+	const detail::expression_node* make_negation(const detail::expression_node* node);
+	const detail::expression_node* make_addition(const std::vector<const detail::expression_node*>& operands);
+	const detail::expression_node* make_multiplication(const std::vector<const detail::expression_node*>& operands);
+	const detail::expression_node* make_div(const detail::expression_node* numerator, const detail::expression_node* denominator);
+	const detail::expression_node* make_power(const detail::expression_node* base, const detail::expression_node* exponent);
+	const detail::expression_node* make_func(uint32_t f_id, const detail::expression_node* arg);
+	const detail::expression_node* make_func(uint32_t f_id, const std::vector<const detail::expression_node*>& args);
 
 	expression pow(const expression& lhs, const expression& rhs);
 	expression cos(const expression& arg);
@@ -91,18 +92,6 @@ namespace sym {
 	expression tanh(const expression& arg);
 	expression sqrt(const expression& arg);
 	expression abs(const expression& arg);
-
-	/**
-	 * @brief Class representing a single-argument mathematical function
-	 */
-	class function {
-		const detail::node* m_ref;
-
-		friend expression;
-
-	public:
-		function();
-	};
 }
 
 #endif

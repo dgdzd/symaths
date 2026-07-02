@@ -10,17 +10,17 @@
  *
  */
 
-#ifndef INTERVAL_HPP
-#define INTERVAL_HPP
+#ifndef SYM_INTERVAL_HPP
+#define SYM_INTERVAL_HPP
 
 namespace sym {
 	namespace detail {
-		class node;
+		class expression_node;
 	}
 
 	class interval {
-		const detail::node* lower = nullptr;
-		const detail::node* upper = nullptr;
+		const detail::expression_node* lower = nullptr;
+		const detail::expression_node* upper = nullptr;
 		bool lower_included = true;
 		bool upper_included = true;
 	};

@@ -10,8 +10,8 @@
  *
  */
 
-#ifndef COMPILE_HPP
-#define COMPILE_HPP
+#ifndef SYM_COMPILE_HPP
+#define SYM_COMPILE_HPP
 
 #include <vector>
 

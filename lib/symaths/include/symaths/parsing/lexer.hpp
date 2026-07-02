@@ -10,8 +10,8 @@
  *
  */
 
-#ifndef LEXER_HPP
-#define LEXER_HPP
+#ifndef SYM_LEXER_HPP
+#define SYM_LEXER_HPP
 
 #include <cstdint>
 #include <string>

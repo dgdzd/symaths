@@ -10,8 +10,8 @@
  *
  */
 
-#ifndef SYMBOL_HPP
-#define SYMBOL_HPP
+#ifndef SYM_SYMBOL_HPP
+#define SYM_SYMBOL_HPP
 
 #include "symaths/expression.hpp"
 
@@ -25,13 +25,13 @@ namespace sym {
 		friend expression sym::differentiate(const expression& expr, const symbol& symbol);
 
 	public:
-		const detail::node* ref;
+		const detail::expression_node* ref;
 
 		symbol();
 		symbol(const std::string& name);
 		symbol(const char* name);
 		symbol(const expression& expr);
-		symbol(const detail::node* root);
+		symbol(const detail::expression_node* root);
 
 		[[nodiscard]] const std::string& name() const;
 		const std::string& name(const std::string& new_name);
