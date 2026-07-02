@@ -12,6 +12,12 @@ int get_precedence(lexer::token_type type, bool unary_context = false) {
 	switch (type) {
 		case lexer::comma:
 		case lexer::close_parenthesis:
+		case lexer::equal:
+		case lexer::inferior:
+		case lexer::superior:
+		case lexer::infequal:
+		case lexer::supequal:
+		case lexer::not_equal:
 			return 0;
 
 		case lexer::number:
@@ -34,8 +40,11 @@ int get_precedence(lexer::token_type type, bool unary_context = false) {
 		case lexer::op_modulo:
 			return 60;
 
-		case lexer::open_parenthesis:
+		case lexer::op_factorial:
 			return 70;
+
+		case lexer::open_parenthesis:
+			return 80;
 
 		default: return -1;
 	}
@@ -53,21 +62,6 @@ const lexer::token& parser::advance() {
 	return m_tokens[m_index++];
 }
 
-bool parser::expect_next(lexer::token_type type) {
-	if (has_tokens()) {
-		const lexer::token& next = *(&current_token() + 1);
-		if (next.type != type) {
-			m_errors.emplace_back(unexpected_token, std::format(R"(Expected "{}", but got "{}" instead.)", get_token_type_str(type), get_token_type_str(next.type)));
-		}
-		return next.type == type;
-	}
-	if (type == lexer::NONE || type == lexer::eof) {
-		return true;
-	}
-	m_errors.emplace_back(unexpected_token, std::format(R"("{}" was expected)", get_token_type_str(type)));
-	return false;
-}
-
 bool parser::consume(lexer::token_type type) {
 	if (has_tokens()) {
 		const lexer::token& curr = current_token();
@@ -83,8 +77,74 @@ bool parser::consume(lexer::token_type type) {
 	return false;
 }
 
-const detail::node* parser::parse(int precedence_limit) {
-	return parse_expression(precedence_limit);
+bool parser::expect(lexer::token_type type) {
+	if (has_tokens()) {
+		const lexer::token& token = current_token();
+		if (token.type != type) {
+			m_errors.emplace_back(unexpected_token, std::format(R"(Expected "{}", but got "{}" instead.)", get_token_type_str(type), get_token_type_str(token.type)));
+		}
+		return token.type == type;
+	}
+	if (type == lexer::NONE || type == lexer::eof) {
+		return true;
+	}
+	m_errors.emplace_back(unexpected_token, std::format(R"("{}" was expected)", get_token_type_str(type)));
+	return false;
+}
+
+bool parser::expect2(lexer::token_type type1, lexer::token_type type2) {
+	if (has_tokens()) {
+		const lexer::token& token = current_token();
+		if (!(token.type == type1 || token.type == type2)) {
+			m_errors.emplace_back(unexpected_token, std::format(R"(Expected "{}" or "{}", but got "{}" instead.)", get_token_type_str(type1), get_token_type_str(type2), get_token_type_str(token.type)));
+		}
+		return token.type == type1 || token.type == type2;
+	}
+	if (type1 == lexer::NONE || type1 == lexer::eof || type2 == lexer::NONE || type2 == lexer::eof) {
+		return true;
+	}
+	m_errors.emplace_back(unexpected_token, std::format(R"("{}" or "{}" was expected)", get_token_type_str(type1), get_token_type_str(type2)));
+	return false;
+}
+
+bool parser::expect_next(lexer::token_type type) {
+	if (has_tokens()) {
+		const lexer::token& next = *(&current_token() + 1);
+		if (next.type != type) {
+			m_errors.emplace_back(unexpected_token, std::format(R"(Expected "{}", but got "{}" instead.)", get_token_type_str(type), get_token_type_str(next.type)));
+		}
+		return next.type == type;
+	}
+	if (type == lexer::NONE || type == lexer::eof) {
+		return true;
+	}
+	m_errors.emplace_back(unexpected_token, std::format(R"("{}" was expected)", get_token_type_str(type)));
+	return false;
+}
+
+std::optional<lexer::token> parser::expect_identifier(const std::string& name) {
+	if (!has_tokens()) return std::nullopt;
+	if (current_token().value != name) return std::nullopt;
+
+	return advance();
+}
+
+context_table parser::parse() {
+	context_table table;
+	while (has_tokens()) {
+		table.add_entry(parse_line());
+	}
+	return std::move(table);
+}
+
+const detail::node* parser::parse_line() {
+	if (expect_identifier("func")) {
+		//return parse_func(0);
+	}
+	else if (expect_identifier("pred")) {
+		return parse_predicate(0);
+	}
+	return parse_expression(0);
 }
 
 const detail::node* parser::parse_expression(int precedence_limit) {
@@ -99,6 +159,31 @@ const detail::node* parser::parse_expression(int precedence_limit) {
 		left = parse_infix(left, infix);
 	}
 	return left;
+}
+
+// Example form : pred P:x,y,z -> "3x+2y+z = 0"
+const detail::node* parser::parse_predicate(int precedence_limit) {
+	if (!expect(lexer::identifier)) return nullptr;
+	std::string name = advance().value;
+	std::vector<std::string> variables;
+
+	// Parsing variable declarations
+	while (has_tokens() && current_token().type != lexer::right_arrow) {
+		if (!expect(lexer::identifier)) return nullptr;
+		variables.push_back(advance().value);
+		if (current_token().type == lexer::open_parenthesis) {
+			m_errors.emplace_back(unsupported, "Domain restriction for variables is not supported yet");
+			return nullptr;
+		}
+		if (current_token().type == lexer::right_arrow) break;
+		if (!expect(lexer::comma)) return nullptr;
+	}
+	advance();
+
+	// Parsing content
+	if (!expect(lexer::quote)) return nullptr;
+	advance();
+	const detail::node* expr1 = parse_expression(0);
 }
 
 const detail::node* parser::parse_prefix(const lexer::token& prefix) {
@@ -171,6 +256,10 @@ const detail::node* parser::parse_infix(const detail::node* left, const lexer::t
 			const detail::node* right = parse_expression(p);
 			return nm.make_mul({left, right});
 		}
+		case lexer::op_factorial: {
+			m_errors.emplace_back(unsupported, "Factorial is not yet supported.");
+			return nullptr;
+		}
 		case lexer::open_parenthesis: {
 			auto func_id = detail::get_func_id(prefix.value);
 			if (func_id != funcs::LEN) {
@@ -226,14 +315,27 @@ std::vector<const detail::node*> parser::parse_func_call() {
 	return {};
 }
 
-expression sym::parse(const lexer& lexer) {
+expression sym::parse_single(const lexer& lexer) {
 	parser p(lexer);
-	return p.parse(0);
+	return p.parse_line();
 }
 
-expression sym::parse(const std::string& input) {
+expression sym::parse_single(const std::string& input) {
 	lexer l;
 	l.tokenize(input);
 	parser p(l);
-	return p.parse(0);
+	return p.parse_line();
 }
+
+context_table parse(const lexer& lexer) {
+	parser p(lexer);
+	return p.parse();
+}
+
+context_table sym::parse(const std::string& input) {
+	lexer l;
+	l.tokenize(input);
+	parser p(l);
+	return p.parse();
+}
+

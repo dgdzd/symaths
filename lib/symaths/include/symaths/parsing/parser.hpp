@@ -13,8 +13,11 @@
 #ifndef PARSER_HPP
 #define PARSER_HPP
 
+#include "symaths/context_table.hpp"
 #include "symaths/expression.hpp"
 #include "symaths/parsing/lexer.hpp"
+
+#include <optional>
 
 namespace sym {
 	namespace detail {
@@ -42,7 +45,8 @@ namespace sym {
 		[[nodiscard]] const lexer::token& current_token() const;
 		const lexer::token& advance();
 
-		const detail::node* parse(int precedence_limit);
+		context_table parse();
+		const detail::node* parse_line();
 
 	private:
 		std::vector<lexer::token> m_tokens;
@@ -50,15 +54,22 @@ namespace sym {
 		size_t m_index = 0;
 
 		const detail::node* parse_expression(int precedence_limit);
+		const detail::node* parse_predicate(int precedence_limit);
 		const detail::node* parse_prefix(const lexer::token& prefix);
 		const detail::node* parse_infix(const detail::node* left, const lexer::token& infix);
 		std::vector<const detail::node*> parse_func_call();
 		bool consume(lexer::token_type type);
+		bool expect(lexer::token_type type);
+		bool expect2(lexer::token_type type1, lexer::token_type type2);
 		bool expect_next(lexer::token_type type);
+		std::optional<lexer::token> expect_identifier(const std::string& name);
 	};
 
-	expression parse(const lexer& lexer);
-	expression parse(const std::string& input);
+	expression parse_single(const lexer& lexer);
+	expression parse_single(const std::string& input);
+
+	context_table parse(const lexer& lexer);
+	context_table parse(const std::string& input);
 }
 
 #endif

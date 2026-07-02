@@ -35,10 +35,28 @@ namespace sym {
 			op_division,
 			op_power,
 			op_modulo,
+			op_factorial,
 
 			open_parenthesis,
 			close_parenthesis,
+			open_crlbracket,
+			close_crlbracket,
+			open_sqbracket,
+			close_sqbracket,
+			vertical_bar,
 			comma,
+			colon,
+			semicolon,
+			quote,
+
+			equal,
+			inferior,
+			superior,
+			infequal,
+			supequal,
+
+			not_equal,
+			right_arrow,
 		};
 		struct token {
 			token_type type = NONE;

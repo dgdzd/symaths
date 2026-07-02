@@ -6,24 +6,31 @@
 
 using namespace sym;
 
-std::map<char, lexer::token_type> op_types = {
-	{'+', lexer::token_type::op_addition},
-	{'-', lexer::token_type::op_subtraction},
-	{'*', lexer::token_type::op_multiplication},
-	{'/', lexer::token_type::op_division},
-	{'^', lexer::token_type::op_power},
-	{'%', lexer::token_type::op_modulo},
+std::map<std::string, lexer::token_type> op_types = {
+	{"+", lexer::token_type::op_addition},
+	{"-", lexer::token_type::op_subtraction},
+	{"*", lexer::token_type::op_multiplication},
+	{"/", lexer::token_type::op_division},
+	{"^", lexer::token_type::op_power},
+	{"%", lexer::token_type::op_modulo},
+	{"!", lexer::token_type::op_modulo},
+	{"(", lexer::token_type::open_parenthesis},
+	{")", lexer::token_type::close_parenthesis},
+	{"{", lexer::token_type::open_crlbracket},
+	{"}", lexer::token_type::close_crlbracket},
+	{"[", lexer::token_type::open_sqbracket},
+	{"]", lexer::token_type::close_sqbracket},
+	{"|", lexer::token_type::vertical_bar},
+	{",", lexer::token_type::comma},
+	{":", lexer::token_type::colon},
+	{";", lexer::token_type::semicolon},
+	{"\"", lexer::token_type::quote},
+	{"->", lexer::token_type::right_arrow},
 };
 
 bool isoperation(char c) {
-	static const std::string operations = "+-*/^%";
+	static const std::string operations = "+-*/^%!(){}[]|,:;\"=<>≤≥";
 	return operations.contains(c);
-}
-
-bool isoperation(lexer::token_type type) {
-	return type == lexer::token_type::op_addition || type == lexer::token_type::op_subtraction
-	|| type == lexer::token_type::op_multiplication || type == lexer::token_type::op_division
-	|| type == lexer::token_type::op_power || type == lexer::token_type::op_modulo;
 }
 
 lexer::token next_token(char*& pc) {
@@ -31,13 +38,14 @@ lexer::token next_token(char*& pc) {
 
 	char& c = *pc;
 	while (c != '\0') {
+		bool ret = false;
 		if (isalpha(c)) {
 			if (!current_token) {
 				// New number
 				current_token = {lexer::identifier, std::string(1, c)};
 			}
 			else if (current_token.value().type != lexer::identifier) {
-				return current_token.value();
+				ret = true;
 			}
 			else {
 				current_token.value().value += c;
@@ -50,62 +58,49 @@ lexer::token next_token(char*& pc) {
 				current_token = {lexer::number, std::string(1, c)};
 			}
 			else if (auto t = current_token.value().type; !(t == lexer::number || t == lexer::identifier)) {
-				return current_token.value_or(lexer::token{lexer::NONE, ""});
+				ret = true;
 			}
 			else {
 				current_token.value().value += c;
 			}
 		}
 
-		else if (isspace(c)) {
+		else if (isspace(c) || c == '\n') {
 			if (current_token) {
 				pc++;
-				return current_token.value();
+				ret = true;
 			}
 		}
 
 		else if (isoperation(c)) {
 			if (!current_token) {
-				current_token = {op_types[c], std::string(1, c)};
+				auto sc = std::string(1, c);
+				current_token = {op_types[sc], sc};
 			}
-			else if (isoperation(current_token.value().type)) {
-				return current_token.value_or(lexer::token{lexer::NONE, ""});
+			else if (auto& tok = current_token.value(); tok.type == lexer::number || tok.type == lexer::identifier) {
+				return tok;
 			}
 			else {
-				return current_token.value();
+				tok.value += c;
+				if (op_types.contains(tok.value)) {
+					tok.type = op_types[tok.value];
+				}
+				else {
+					tok.type = lexer::NONE;
+				}
 			}
 		}
 
-		else if (c == '(') {
-			if (!current_token) {
-				pc++;
-				return {lexer::open_parenthesis, "("};
+		if (ret) {
+			lexer::token& tok = current_token.value();
+			if (tok.type == lexer::NONE) {
+				while (tok.type == lexer::NONE && !tok.value.empty()) {
+					tok.value.pop_back();
+					pc--;
+					if (op_types.contains(tok.value)) tok.type = op_types[tok.value];
+				}
 			}
-			return current_token.value();
-		}
-
-		else if (c == ')') {
-			if (!current_token) {
-				pc++;
-				return {lexer::close_parenthesis, ")"};
-			}
-			return current_token.value();
-		}
-
-		else if (c == ',') {
-			if (!current_token) {
-				pc++;
-				return {lexer::comma, ","};
-			}
-			return current_token.value();
-		}
-
-		else {
-			if (!current_token) {
-				pc++;
-				return {lexer::error, std::string(1, c)};
-			}
-			return current_token.value();
+			return tok;
 		}
 
 		c = *++pc; // Get reference to next char
@@ -156,12 +151,30 @@ std::string sym::get_token_type_str(lexer::token_type type) {
 			return "op_power";
 		case lexer::token_type::op_modulo:
 			return "op_modulo";
+		case lexer::token_type::op_factorial:
+			return "op_factorial";
 		case lexer::token_type::open_parenthesis:
 			return "open_parenthesis";
 		case lexer::token_type::close_parenthesis:
 			return "close_parenthesis";
+		case lexer::token_type::open_crlbracket:
+			return "open_crlbracket";
+		case lexer::token_type::close_crlbracket:
+			return "close_crlbracket";
+		case lexer::token_type::open_sqbracket:
+			return "open_sqbracket";
+		case lexer::token_type::close_sqbracket:
+			return "close_sqbracket";
+		case lexer::token_type::vertical_bar:
+			return "vertical_bar";
 		case lexer::token_type::comma:
 			return "comma";
+		case lexer::token_type::colon:
+			return "colon";
+		case lexer::token_type::semicolon:
+			return "semicolon";
+		case lexer::token_type::quote:
+			return "quote";
 		case lexer::token_type::error:
 			return "<error>";
 		default:
