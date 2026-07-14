@@ -13,7 +13,7 @@
 
 static Isle makeIsle(const IsleConfig& cfg) {
     Isle isle(cfg.variables, cfg.populationSize, cfg.maxDepth, cfg.penalty, cfg.mutationProb, cfg.probs, cfg.k);
-    isle.initPopulation(cfg.binaryOps, cfg.unaryOps);
+    isle.initPopulation(cfg.binaryOps, cfg.unaryOps, cfg.naryOps);
     return isle;
 }
 
@@ -188,6 +188,14 @@ NodePtr IslandManager::adaptTree(NodePtr tree, const Operators& destOps) {
             b->func = destOps.binary.at(newOp);
         }
     }
+    else if (auto* na = dynamic_cast<NaryNode*>(tree.get())) {
+        for (auto& c : na->children) c = adaptTree(std::move(c), destOps);
+        if (destOps.nary.find(na->name) == destOps.nary.end()) {
+            const std::string& newName = randKey(destOps.nary);
+            na->name = newName;
+            na->func = destOps.nary.at(newName);
+        }
+    }
     return tree;
 }
 
@@ -346,7 +354,7 @@ void IslandManager::handleConvergence(const IsleAddress& addr, size_t eliteSize)
         newPop.push_back(group.backup[idx]->clone());
 
     while (newPop.size() < isle.populationSize) {
-        auto nb = randomTree(isle.maxDepth, isle.variables, isle.probs, isle.ops.unary, isle.ops.binary);
+        auto nb = randomTree(isle.maxDepth, isle.variables, isle.probs, isle.ops.unary, isle.ops.binary, isle.ops.nary);
         if (!isMostlyConstants(nb.get()))
             newPop.push_back(std::move(nb));
     }

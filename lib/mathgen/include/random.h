@@ -17,19 +17,19 @@ inline void seedRng(unsigned int seed) {
 }
 
 inline double randDouble(double lo, double hi) {
-    return std::uniform_real_distribution<double>{lo, hi}(rng());
+    return std::uniform_real_distribution<double>{ lo, hi }(rng());
 }
 
 inline double randGauss(double mu = 0.0, double sigma = 1.0) {
-    return std::normal_distribution<double>{mu, sigma}(rng());
+    return std::normal_distribution<double>{ mu, sigma }(rng());
 }
 
 inline int randInt(int lo, int hi) {
-    return std::uniform_int_distribution<int>{lo, hi}(rng());
+    return std::uniform_int_distribution<int>{ lo, hi }(rng());
 }
 
 inline bool randBool(double prob) {
-    return std::bernoulli_distribution{prob}(rng());
+    return std::bernoulli_distribution{ prob }(rng());
 }
 
 template<typename T>

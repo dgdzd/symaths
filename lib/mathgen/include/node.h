@@ -19,7 +19,7 @@ inline double clamp(double v, double lo = -1e12, double hi = 1e12) {
 }
 
 struct Node {
-    enum class Type { Const, Var, Unary, Binary };
+    enum class Type { Const, Var, Unary, Binary, Nary };
 
     virtual ~Node() = default;
     [[nodiscard]] virtual double eval(const Sample& x) const = 0;
@@ -112,12 +112,48 @@ struct BinaryNode final : Node {
     }
 };
 
+struct NaryNode final : Node {
+    std::string name;
+    NaryFunc func;
+    std::vector<NodePtr> children;
+
+    NaryNode(std::string n, NaryFunc f, std::vector<NodePtr> c) : name(std::move(n)), func(std::move(f)), children(std::move(c)) {}
+
+    [[nodiscard]] double eval(const Sample& x) const override {
+        std::vector<double> vals;
+        vals.reserve(children.size());
+        for (const auto& c : children) vals.push_back(c->eval(x));
+        return clamp(func(vals));
+    }
+    [[nodiscard]] NodePtr clone() const override {
+        std::vector<NodePtr> c;
+        c.reserve(children.size());
+        for (const auto& ch : children) c.push_back(ch->clone());
+        return std::make_unique<NaryNode>(name, func, std::move(c));
+    }
+    [[nodiscard]] int complexity() const override {
+        int s = 1;
+        for (const auto& c : children) s += c->complexity();
+        return s;
+    }
+    [[nodiscard]] Type type() const override { return Type::Nary; }
+    void collectNodes(std::vector<Node*>& out) override {
+        out.push_back(this);
+        for (auto& c : children) c->collectNodes(out);
+    }
+};
+
 inline bool isConstantSubtree(const Node* node) {
     if (dynamic_cast<const ConstNode*>(node)) return true;
     if (const auto* u = dynamic_cast<const UnaryNode*>(node))
         return isConstantSubtree(u->child.get());
     if (const auto* b = dynamic_cast<const BinaryNode*>(node))
         return isConstantSubtree(b->left.get()) && isConstantSubtree(b->right.get());
+    if (const auto* na = dynamic_cast<const NaryNode*>(node)) {           // NOUVEAU
+        for (const auto& c : na->children)
+            if (!isConstantSubtree(c.get())) return false;
+        return true;
+    }
     return false; //var node
 }
 

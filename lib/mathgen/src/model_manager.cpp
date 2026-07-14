@@ -11,7 +11,7 @@
 #include <thread>
 
 ModelManager::ModelManager(std::vector<std::string> variables_, size_t populationSize_, unsigned int maxDepth_, double penalty_,
-    double mutationProb_, const std::tuple<double,double,double>& probs_, unsigned int k_) :
+    double mutationProb_, const std::tuple<double,double,double, double>& probs_, unsigned int k_) :
     variables(std::move(variables_)) , populationSize(populationSize_) , maxDepth(maxDepth_) , penalty(penalty_) , mutationProb(mutationProb_) , probs(probs_),
     k(k_) {
 
@@ -23,20 +23,20 @@ void ModelManager::updateData(Dataset x, std::vector<double> y) {
     Y = std::move(y);
 }
 
-void ModelManager::initPopulation(const BinaryMap& binaryOperators, const UnaryMap& unaryOperators){
-    ops = Operators(binaryOperators, unaryOperators);
+void ModelManager::initPopulation(const BinaryMap& binaryOps, const UnaryMap& unaryOps, const NaryMap& naryOps){
+    ops = Operators(binaryOps, unaryOps, naryOps);
 
     population.clear();
 
     while (static_cast<int>(population.size()) < populationSize) {
-        auto tree = randomTree(maxDepth, variables, probs, ops.unary, ops.binary);
+        auto tree = randomTree(maxDepth, variables, probs, ops.unary, ops.binary, ops.nary);
         if (!isMostlyConstants(tree.get()))
             population.push_back(std::move(tree));
     }
 }
 
-void ModelManager::loadPopulation(std::vector<NodePtr> population_, const BinaryMap& binaryOperators, const UnaryMap& unaryOperators, bool fillPop) {
-    ops = Operators(binaryOperators, unaryOperators);
+void ModelManager::loadPopulation(std::vector<NodePtr> population_, const BinaryMap& binaryOps, const UnaryMap& unaryOps, const NaryMap& naryOps, bool fillPop) {
+    ops = Operators(binaryOps, unaryOps, naryOps);
 
     population.clear();
 
@@ -47,7 +47,7 @@ void ModelManager::loadPopulation(std::vector<NodePtr> population_, const Binary
 
     if (fillPop) {
         while (static_cast<int>(population.size()) < populationSize) {
-            auto tree = randomTree(maxDepth, variables, probs, ops.unary, ops.binary);
+            auto tree = randomTree(maxDepth, variables, probs, ops.unary, ops.binary, ops.nary);
             if (!isMostlyConstants(tree.get()))
                 population.push_back(std::move(tree));
         }
@@ -210,10 +210,10 @@ void ModelManager::fit(size_t generations, size_t maxPop, size_t eliteSize, size
 
             NodePtr child = crossover(p1, p2);
             child = prune(std::move(child));
-            child = mutateSubtree(std::move(child), maxDepth, variables, mutationProb, probs, ops.unary, ops.binary);
+            child = mutateSubtree(std::move(child), maxDepth, variables, mutationProb, probs, ops.unary, ops.binary, ops.nary);
 
             mutateConstants(child.get());
-            mutateOperator(child.get(), mutationProb, ops.binary, ops.unary);
+            mutateOperator(child.get(), mutationProb, ops.binary, ops.unary, ops.nary);
             child = prune(std::move(child));
 
             if (!isMostlyConstants(child.get()))
@@ -230,7 +230,7 @@ void ModelManager::fit(size_t generations, size_t maxPop, size_t eliteSize, size
             for (size_t t = from; t < to; t++) {
                 localPops[t].reserve(newbornsPerThread + 1);
                 while (localPops[t].size() < newbornsPerThread) {
-                    auto newborn = randomTree(maxDepth, variables, probs, ops.unary, ops.binary);
+                    auto newborn = randomTree(maxDepth, variables, probs, ops.unary, ops.binary, ops.nary);
                     if (!isMostlyConstants(newborn.get()))
                         localPops[t].push_back(std::move(newborn));
                 }
@@ -242,7 +242,7 @@ void ModelManager::fit(size_t generations, size_t maxPop, size_t eliteSize, size
                 newPop.push_back(std::move(tree));
 
         while (newPop.size() < maxPop) {
-            auto newborn = randomTree(maxDepth, variables, probs, ops.unary, ops.binary);
+            auto newborn = randomTree(maxDepth, variables, probs, ops.unary, ops.binary, ops.nary);
             if (!isMostlyConstants(newborn.get()))
                 newPop.push_back(std::move(newborn));
         }

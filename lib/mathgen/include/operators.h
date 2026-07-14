@@ -7,28 +7,31 @@
 
 using BinaryFunc = double(*)(double, double);
 using UnaryFunc = double(*)(double);
+using NaryFunc   = double(*)(const std::vector<double>&);
 
 using BinaryMap = std::unordered_map<std::string, BinaryFunc>;
 using UnaryMap = std::unordered_map<std::string, UnaryFunc>;
+using NaryMap = std::unordered_map<std::string, NaryFunc>;
 
 struct Operators {
     BinaryMap binary;
     UnaryMap unary;
+    NaryMap nary;
 
     Operators() {
         binary = defaultBinary();
         unary = defaultUnary();
+        nary = defaultNary();
     }
-    Operators(const BinaryMap& b, const UnaryMap& u) {
-        if (b.empty())
-            binary = defaultBinary();
-        else
-            binary = b;
+    Operators(const BinaryMap& b, const UnaryMap& u, const NaryMap& n) {
+        if (b.empty()) binary = defaultBinary();
+        else  binary = b;
 
-        if (u.empty())
-            unary = defaultUnary();
-        else
-            unary = u;
+        if (u.empty()) unary = defaultUnary();
+        else unary = u;
+
+        if (n.empty()) nary = defaultNary();
+        else nary = n;
     }
 
     static double add(double a, double b) { return a + b; }
@@ -68,6 +71,14 @@ struct Operators {
             { "square", square },
             { "cube", cube },
             { "sqrt", sqrt_f },
+        };
+    }
+
+    static double nsum(const std::vector<double>& v)  { double s = 0; for(double x : v) { s +=x; } return s; }
+
+    static NaryMap defaultNary() {
+        return {
+            { "sum", nsum }
         };
     }
 };

@@ -48,10 +48,10 @@ void test_model_manager() {
         10, //max tree depth
         1e-6, //complexity penalty
         0.4, //mutation probability
-        { 0.15, 0.25, 0.25 }, //(const_prob, var_prob, binary_prob)
+        { 0.2, 0.2, 0.2, 0.0 }, //(const_prob, var_prob, binary_prob)
         7 //Tournament k
     );
-    manager.initPopulation(binaryFunc, unaryFunc);
+    manager.initPopulation(binaryFunc, unaryFunc, { });
     manager.updateData(X, Y);
     manager.fit(
         /*generations*/ 100,
@@ -101,11 +101,12 @@ void test_island_manager() {
     baseCfg0.maxDepth = 12;
     baseCfg0.penalty = 1e-4;
     baseCfg0.mutationProb = 0.4;
-    baseCfg0.probs = { 0.15, 0.25, 0.25 };
+    baseCfg0.probs = { 0.2, 0.2, 0.2, 0.0 };
     baseCfg0.populationSize = 300;
     baseCfg0.k = 7;
     baseCfg0.binaryOps = binaryFunc;
     baseCfg0.unaryOps = unary;
+    baseCfg0.naryOps = { };
 
     // SG 0.1 override: more explorative
     IsleConfig exploreCfg = baseCfg0;
@@ -179,7 +180,7 @@ void test_visco_data()
     baseCfg0.maxDepth = 7;
     baseCfg0.penalty = 1e-3;
     baseCfg0.mutationProb = 0.4;
-    baseCfg0.probs = { 0.25, 0.25, 0.25 };
+    baseCfg0.probs = { 0.2, 0.2, 0.2, 0.0 };
     baseCfg0.populationSize = 1000;
     baseCfg0.k = 7;
     baseCfg0.binaryOps = binaryFunc;
@@ -237,21 +238,21 @@ double eval_(std::vector<double> c, const Dataset& X, const std::vector<double>&
     double er = 0;
     for (size_t i = 0; i < Y.size(); i++) {
         double x = X[i].at("x");
-        er += abs(Y[i] - (x * (c[0]*x*x + c[1]*x + c[2]) / (c[3]*x*x + c[4]*x + c[5])));
+        er += abs(Y[i] - (c[0] * x * x + c[1] * x + c[2]));
     }
     return er / static_cast<double>(Y.size());
 }
 
 void test_cmaes() {
     //Dataset
-    Dataset X = { {  {"x", 30 } }, {  {"x", 40 } }, {  {"x", 50 } }, {  {"x", 60 } }, {  {"x", 70 } } };
-    std::vector<double> Y = { 47, 34, 25, 19, 15 };
-    size_t n = 6; //number of parameters
-    std::vector<double> x0 = { 1e-3, -1e-2, 50, 1e-2, -3, 50 }; //initial guesses (of size n)
-    int max_gen = 10000;
+    Dataset X = { { {"x", -1 } } , { {"x", 0 } }, { {"x", 1 } }, { {"x", 2 } } };
+    std::vector<double> Y = { -2, -3, 2, 13 };
+    size_t n = 3; //number of parameters
+    std::vector<double> x0 = { 1, 1, 1 }; //initial guesses (of size n)
+    int max_gen = 100;
 
     CMAESConfig cfg;
-    cfg.max_iter = 1000;
+    cfg.max_iter = 100;
     cfg.sigma0 = 1.0;
 
     CMAES optimizer(n, cfg);
@@ -280,9 +281,12 @@ int main() {
     //A FAIRE
     //- (?) implémenter tolérance adaptive (suivant quelles variables, indicateurs, ... ?)
     //- (?) NOMBRES COMPLEXES EN OPTION (avec des templates ?)
-    //- implémenter sommes et produits dans arbres
+    //- implémenter Trinary
+    //- mutation de Nary -> ajouter/retirer un child de Nary
+    //- nodes à sortie vectorielle ?
+    //- DAG tree ?
 
     //test_island_manager();
-    //test_cmaes();
-    test_visco_data();
+    test_cmaes();
+    //test_visco_data();
 }
