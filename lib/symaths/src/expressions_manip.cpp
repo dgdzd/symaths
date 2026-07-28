@@ -6,7 +6,7 @@ sym::expression sym::reduce(const expression& expr) {
 	return sort(std::visit([&](const auto& x) {
 		using T = std::decay_t<decltype(x)>;
 
-		if constexpr (std::is_same_v<T, detail::addition> || std::is_same_v<T, detail::multiplication> ||  std::is_same_v<T, detail::power> || std::is_same_v<T, detail::negation>) {
+		if constexpr (std::is_same_v<T, detail::addition> || std::is_same_v<T, detail::multiplication> ||  std::is_same_v<T, detail::power> || std::is_same_v<T, detail::expr_negation>) {
 			return x.reduced();
 		}
 		return expr.root;
@@ -17,7 +17,7 @@ sym::expression sym::sort(const expression& expr) {
 	return std::visit([&](const auto& x) {
 		using T = std::decay_t<decltype(x)>;
 
-		if constexpr (std::is_same_v<T, detail::addition> || std::is_same_v<T, detail::multiplication> || std::is_same_v<T, detail::negation>) {
+		if constexpr (std::is_same_v<T, detail::addition> || std::is_same_v<T, detail::multiplication> || std::is_same_v<T, detail::expr_negation>) {
 			return x.sorted();
 		}
 
@@ -29,7 +29,7 @@ sym::expression sym::expand(const expression& expr) {
 	return std::visit([&](const auto& x) {
 		using T = std::decay_t<decltype(x)>;
 
-		if constexpr (std::is_same_v<T, detail::addition> || std::is_same_v<T, detail::multiplication> || std::is_same_v<T, detail::power> || std::is_same_v<T, detail::negation>) {
+		if constexpr (std::is_same_v<T, detail::addition> || std::is_same_v<T, detail::multiplication> || std::is_same_v<T, detail::power> || std::is_same_v<T, detail::expr_negation>) {
 			return x.expanded();
 		}
 		return expr.root;
@@ -69,7 +69,7 @@ sym::detail::term sym::detail::extract_term(const expression_node* node) {
 				t.symbolic = current_context->node_manager().make_mul(final_operands);
 			}
 		}
-		else if constexpr (std::is_same_v<T, negation>) {
+		else if constexpr (std::is_same_v<T, expr_negation>) {
 			t = extract_term(x.child);
 			t.coefficient = -t.coefficient;
 		}
@@ -106,7 +106,7 @@ sym::detail::expr_term sym::detail::extract_term_advanced(const expression_node*
 				t.symbolic = current_context->node_manager().make_mul(final_operands);
 			}
 		}
-		else if constexpr (std::is_same_v<T, negation>) {
+		else if constexpr (std::is_same_v<T, expr_negation>) {
 			t = extract_term_advanced(x.child);
 			t.coefficient = current_context->node_manager().make_negation(t.coefficient);
 		}

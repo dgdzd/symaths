@@ -1,4 +1,4 @@
-# lib/mathgen
+# lib/mathgen/
 
 add_library(mathgen_lib STATIC)
 

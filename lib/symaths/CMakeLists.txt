@@ -1,4 +1,4 @@
-# lib/symaths
+# lib/symaths/
 
 add_library(symaths_lib STATIC)
 
@@ -11,6 +11,8 @@ set(SYMATHS_LIB_SOURCES
         src/expressions_manip.cpp
         src/numbers.cpp
         src/polynomial.cpp
+        src/predicate.cpp
+        src/set.cpp
         src/detail/expression_node.cpp
         src/detail/node_manager.cpp
         src/detail/predicate_node.cpp
@@ -21,3 +23,5 @@ set(SYMATHS_LIB_SOURCES
 
 target_include_directories(symaths_lib PUBLIC include)
 target_sources(symaths_lib PUBLIC ${SYMATHS_LIB_SOURCES})
+
+add_library(symaths::core ALIAS symaths_lib)

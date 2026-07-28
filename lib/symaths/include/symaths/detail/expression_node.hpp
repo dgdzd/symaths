@@ -46,7 +46,7 @@ namespace sym {
 			bool operator==(const constant&) const = default;
 		};
 
-		struct negation {
+		struct expr_negation {
 			static constexpr unsigned int priority = 2;
 			const expression_node* child;
 
@@ -54,7 +54,7 @@ namespace sym {
 			[[nodiscard]] const expression_node* reduced() const;
 			[[nodiscard]] const expression_node* expanded() const;
 
-			bool operator==(const negation&) const = default;
+			bool operator==(const expr_negation&) const = default;
 		};
 
 		struct addition {
@@ -102,8 +102,7 @@ namespace sym {
 		// Base node
 		class expression_node {
 		public:
-			using internal_data_t = std::variant<symbol, constant, negation, addition, multiplication, power, function_call>;
-			friend node_manager_t;
+			using internal_data_t = std::variant<symbol, constant, expr_negation, addition, multiplication, power, function_call>;
 
 			internal_data_t p_data;
 			size_t p_hash = 0;

@@ -52,6 +52,14 @@ const sym::refactoring_rules_t& sym::library::refactoring_rules() const {
 	return m_refactoring_rules;
 }
 
+sym::context_table_t& sym::library::context_table() {
+	return m_context_table;
+}
+
+const sym::context_table_t& sym::library::context_table() const {
+	return m_context_table;
+}
+
 const sym::detail::expression_node* sym::make_constant(double val) {
 	if (!current_context) {
 		throw std::runtime_error("sym::make_constant: current context is null");

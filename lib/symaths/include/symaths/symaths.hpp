@@ -49,17 +49,20 @@ namespace sym {
 		print_policies_t m_print_policies;
 		node_manager_t m_node_manager;
 		refactoring_rules_t m_refactoring_rules;
+		context_table_t m_context_table;
 
 	public:
 		library();
 		~library();
 
-		[[nodiscard]] const print_policies_t& print_policies() const;
 		[[nodiscard]] print_policies_t& print_policies();
-		[[nodiscard]] const node_manager_t& node_manager() const;
+		[[nodiscard]] const print_policies_t& print_policies() const;
 		[[nodiscard]] node_manager_t& node_manager();
-		[[nodiscard]] const refactoring_rules_t& refactoring_rules() const;
+		[[nodiscard]] const node_manager_t& node_manager() const;
 		[[nodiscard]] refactoring_rules_t& refactoring_rules();
+		[[nodiscard]] const refactoring_rules_t& refactoring_rules() const;
+		[[nodiscard]] context_table_t& context_table();
+		[[nodiscard]] const context_table_t& context_table() const;
 	};
 
 	extern library* current_context;

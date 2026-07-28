@@ -20,6 +20,12 @@
 #include <optional>
 
 namespace sym {
+	template <typename T>
+	concept is_math_object = requires(T t)
+	{
+		requires std::is_pointer_v<decltype(t.root)>;
+	};
+
 	namespace detail {
 		class expression_node;
 	}
@@ -37,6 +43,28 @@ namespace sym {
 			std::string desc;
 		};
 
+		// Wrapper around context_table_t::entry
+		class output {
+			friend class parser;
+
+			std::shared_ptr<context_table_t::entry> m_entry;
+
+			output() = default;
+			explicit output(std::shared_ptr<context_table_t::entry> entry);
+
+		public:
+			operator expression() const;
+			operator predicate() const;
+			operator set() const;
+
+			[[nodiscard]] std::shared_ptr<context_table_t::entry> entry() const;
+
+			template <is_math_object T>
+			T cast() const {
+				return T(static_cast<decltype(T::root)>(m_entry->value));
+			}
+		};
+
 		parser() = default;
 		explicit parser(const lexer& lexer) : m_tokens(lexer.m_tokens) {}
 		explicit parser(lexer&& lexer) : m_tokens(std::move(lexer.m_tokens)) {}
@@ -45,9 +73,9 @@ namespace sym {
 		[[nodiscard]] const lexer::token& current_token() const;
 		const lexer::token& advance();
 
-		context_table parse();
+		context_table_t parse();
 
-		const detail::expression_node* parse_line();
+		output parse_line(context_table_t* table);
 
 	private:
 		std::vector<lexer::token> m_tokens;
@@ -55,7 +83,9 @@ namespace sym {
 		size_t m_index = 0;
 
 		const detail::expression_node* parse_expression(int precedence_limit);
-		const detail::expression_node* parse_predicate(int precedence_limit);
+		const detail::predicate_node* parse_predicate(int precedence_limit);
+
+		std::string parse_name();
 		const detail::expression_node* parse_prefix(const lexer::token& prefix);
 		const detail::expression_node* parse_infix(const detail::expression_node* left, const lexer::token& infix);
 		std::vector<const detail::expression_node*> parse_func_call();
@@ -66,11 +96,12 @@ namespace sym {
 		std::optional<lexer::token> expect_identifier(const std::string& name);
 	};
 
-	expression parse_single(const lexer& lexer);
-	expression parse_single(const std::string& input);
+	parser::output parse_single(const lexer& lexer);
+	parser::output parse_single(const std::string& input);
 
-	context_table parse(const lexer& lexer);
-	context_table parse(const std::string& input);
+	context_table_t* parse(const lexer& lexer);
+
+	context_table_t* parse(const std::string& input);
 }
 
 #endif

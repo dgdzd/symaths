@@ -12,7 +12,7 @@ void polynomial::validate_expr(const detail::expression_node* node, const detail
 	std::visit([&](const auto& x) -> void {
 		using T = std::decay_t<decltype(x)>;
 
-		if constexpr (std::is_same_v<T, detail::negation>) {
+		if constexpr (std::is_same_v<T, detail::expr_negation>) {
 			validate_expr(x.child, variable);
 		}
 

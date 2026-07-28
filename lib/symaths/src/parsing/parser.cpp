@@ -4,6 +4,7 @@
 #include "symaths/detail/expression_node.hpp"
 #include "symaths/detail/node_manager.hpp"
 
+#include <array>
 #include <format>
 
 using namespace sym;
@@ -50,6 +51,39 @@ int get_precedence(lexer::token_type type, bool unary_context = false) {
 	}
 }
 
+std::array<std::string, 9> reserved_identifiers = {
+	"and",
+	"delete",
+	"else",
+	"expr",
+	"func",
+	"if",
+	"or",
+	"pred",
+	"set",
+};
+
+parser::output::output(std::shared_ptr<context_table_t::entry> entry) {
+	m_entry = entry;
+}
+
+parser::output::operator expression() const {
+	return cast<expression>();
+}
+
+parser::output::operator predicate() const {
+	return cast<predicate>();
+}
+
+parser::output::operator set() const {
+	return cast<set>();
+}
+
+std::shared_ptr<context_table_t::entry> parser::output::entry() const {
+	return m_entry;
+}
+
+
 bool parser::has_tokens() const {
 	return m_index < m_tokens.size() && m_tokens[m_index].type != lexer::eof;
 }
@@ -67,10 +101,13 @@ bool parser::consume(lexer::token_type type) {
 		const lexer::token& curr = current_token();
 		if (curr.type != type) {
 			m_errors.emplace_back(unexpected_token, std::format(R"(Expected "{}", but got "{}" instead.)", get_token_type_str(type), get_token_type_str(curr.type)));
+			return false;
 		}
-		return curr.type == type;
+		advance();
+		return true;
 	}
 	if (type == lexer::NONE || type == lexer::eof) {
+		advance();
 		return true;
 	}
 	m_errors.emplace_back(unexpected_token, std::format(R"("{}" was expected)", get_token_type_str(type)));
@@ -129,22 +166,42 @@ std::optional<lexer::token> parser::expect_identifier(const std::string& name) {
 	return advance();
 }
 
-context_table parser::parse() {
-	context_table table;
+context_table_t parser::parse() {
+	context_table_t table;
 	while (has_tokens()) {
-		table.add_entry(parse_line());
+		parse_line(&table).m_entry;
 	}
 	return std::move(table);
 }
 
-const detail::expression_node* parser::parse_line() {
-	if (expect_identifier("func")) {
+parser::output parser::parse_line(context_table_t* table) {
+	output out;
+	if (expect_identifier("expr")) {
+		std::string name = parse_name();
+		if (!consume(lexer::colon)) return output{nullptr};
+		out = output{std::make_shared<context_table_t::entry>(context_table_t::expression, parse_expression(0))};
+		if (table) table->add_named_entry(name, out.entry());
+	}
+
+	else if (expect_identifier("func")) {
 		//return parse_func(0);
 	}
+
 	else if (expect_identifier("pred")) {
-		return parse_predicate(0);
+		std::string name = parse_name();
+		if (!expect(lexer::colon)) return output{nullptr};
+		out = output{std::make_shared<context_table_t::entry>(context_table_t::predicate, parse_predicate(0))};
+		if (table) table->add_named_entry(name, out.entry());
 	}
-	return parse_expression(0);
+
+	else {
+		out = output{std::make_shared<context_table_t::entry>(context_table_t::expression, parse_expression(0))};
+		if (table) table->add_entry(out.entry());
+	}
+
+	if (current_token().type == lexer::semicolon) advance();
+
+	return out;
 }
 
 const detail::expression_node* parser::parse_expression(int precedence_limit) {
@@ -162,9 +219,7 @@ const detail::expression_node* parser::parse_expression(int precedence_limit) {
 }
 
 // Example form : pred P:x,y,z -> "3x+2y+z = 0"
-const detail::expression_node* parser::parse_predicate(int precedence_limit) {
-	if (!expect(lexer::identifier)) return nullptr;
-	std::string name = advance().value;
+const detail::predicate_node* parser::parse_predicate(int precedence_limit) {
 	std::vector<std::string> variables;
 
 	// Parsing variable declarations
@@ -183,7 +238,20 @@ const detail::expression_node* parser::parse_predicate(int precedence_limit) {
 	// Parsing content
 	if (!expect(lexer::quote)) return nullptr;
 	advance();
-	const detail::expression_node* expr1 = parse_expression(0);
+	while (has_tokens() && current_token().type != lexer::quote) {
+		const detail::expression_node* expr1 = parse_expression(0);
+	}
+	return nullptr;
+}
+
+std::string parser::parse_name() {
+	auto& nm = current_context->node_manager();
+	if (expect(lexer::identifier)) {
+		std::string name = current_token().value;
+		advance();
+		return name;
+	}
+	return "";
 }
 
 const detail::expression_node* parser::parse_prefix(const lexer::token& prefix) {
@@ -213,7 +281,6 @@ const detail::expression_node* parser::parse_prefix(const lexer::token& prefix) 
 		case lexer::open_parenthesis: {
 			const detail::expression_node* n = parse_expression(0);
 			if (consume(lexer::close_parenthesis)) {
-				advance();
 				return n;
 			}
 			return nullptr;
@@ -253,8 +320,8 @@ const detail::expression_node* parser::parse_infix(const detail::expression_node
 		case lexer::op_modulo: {
 			m_errors.emplace_back(unsupported, "Modulo is not yet supported.");
 			return nullptr;
-			const detail::expression_node* right = parse_expression(p);
-			return nm.make_mul({left, right});
+			//const detail::expression_node* right = parse_expression(p);
+			//return nm.make_mul({left, right});
 		}
 		case lexer::op_factorial: {
 			m_errors.emplace_back(unsupported, "Factorial is not yet supported.");
@@ -263,6 +330,7 @@ const detail::expression_node* parser::parse_infix(const detail::expression_node
 		case lexer::open_parenthesis: {
 			auto func_id = detail::get_func_id(prefix.value);
 			if (func_id != funcs::LEN) {
+				advance();
 				std::vector<const detail::expression_node*> args = parse_func_call();
 				return nm.make_func(func_id, args);
 			}
@@ -296,7 +364,6 @@ const detail::expression_node* parser::parse_infix(const detail::expression_node
 
 std::vector<const detail::expression_node*> parser::parse_func_call() {
 	std::vector<const detail::expression_node*> args;
-	advance();
 	if (current_token().type != lexer::close_parenthesis) {
 		do {
 			args.push_back(parse_expression(0));
@@ -308,34 +375,34 @@ std::vector<const detail::expression_node*> parser::parse_func_call() {
 		while (has_tokens());
 	}
 	if (consume(lexer::close_parenthesis)) {
-		advance();
 		return args;
 	}
 
 	return {};
 }
 
-expression sym::parse_single(const lexer& lexer) {
+parser::output sym::parse_single(const lexer& lexer) {
 	parser p(lexer);
-	return p.parse_line();
+	auto out =  p.parse_line(&current_context->context_table());
+	return out;
 }
 
-expression sym::parse_single(const std::string& input) {
+parser::output sym::parse_single(const std::string& input) {
 	lexer l;
 	l.tokenize(input);
 	parser p(l);
-	return p.parse_line();
+	return p.parse_line(&current_context->context_table());
 }
 
-context_table parse(const lexer& lexer) {
+context_table_t* sym::parse(const lexer& lexer) {
 	parser p(lexer);
-	return p.parse();
+	return &(current_context->context_table() = p.parse());
 }
 
-context_table sym::parse(const std::string& input) {
+context_table_t* sym::parse(const std::string& input) {
 	lexer l;
 	l.tokenize(input);
 	parser p(l);
-	return p.parse();
+	return &(current_context->context_table() = p.parse());
 }
 

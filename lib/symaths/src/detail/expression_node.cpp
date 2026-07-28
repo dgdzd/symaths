@@ -25,7 +25,7 @@ number detail::expression_node::eval(const Context* ctx) const {
 	number num = std::visit(overloaded {
 		[&](const constant& x) -> number { return x.value; },
 		[&](const symbol& x) -> number { return ctx->at(x.name); },
-		[&](const negation& x) -> number { return -x.child->eval(ctx); },
+		[&](const expr_negation& x) -> number { return -x.child->eval(ctx); },
 		[&](const addition& x) -> number {
 			number sum = numbers::natural(0);
 			for (auto& op : x.operands) {
@@ -64,7 +64,7 @@ bool should_be_preceeded_by_star(const detail::expression_node* parent, const de
 			return false;
 		}
 
-		if constexpr (std::is_same_v<T, detail::negation>) {
+		if constexpr (std::is_same_v<T, detail::expr_negation>) {
 			return parent->priority() > node->priority();
 		}
 
@@ -103,7 +103,7 @@ std::string detail::expression_node::string(const expression_node* parent, bool 
 			return x.name;
 		}
 
-		else if constexpr (std::is_same_v<T, negation>) {
+		else if constexpr (std::is_same_v<T, expr_negation>) {
 			// If parent is sum then no need to add "-" sign
 			if (parent && std::holds_alternative<addition>(parent->p_data)) {
 				return x.child->string(this, first);
@@ -122,7 +122,7 @@ std::string detail::expression_node::string(const expression_node* parent, bool 
 			if (par) s += "(";
 			for (int i = 0; i < x.operands.size(); ++i) {
 				auto& op = x.operands[i];
-				if (std::holds_alternative<negation>(op->p_data) || (std::holds_alternative<constant>(op->p_data) && op->eval(nullptr).template get<double>() < 0)) {
+				if (std::holds_alternative<expr_negation>(op->p_data) || (std::holds_alternative<constant>(op->p_data) && op->eval(nullptr).template get<double>() < 0)) {
 					if (i == 0) {
 						s += "-" + op->string(this, true);
 					}
@@ -200,7 +200,7 @@ bool detail::expression_node::is_ground() const {
 			return false;
 		}
 
-		if constexpr (std::is_same_v<T, negation>) {
+		if constexpr (std::is_same_v<T, expr_negation>) {
 			return x.child->is_ground();
 		}
 
@@ -231,7 +231,7 @@ bool detail::expression_node::depends_on(const expression_node* n) const {
 			return this == n;
 		}
 
-		if constexpr (std::is_same_v<T, negation>) {
+		if constexpr (std::is_same_v<T, expr_negation>) {
 			return x.child->depends_on(n);
 		}
 
@@ -262,7 +262,7 @@ void find_all_paths_r(const detail::expression_node* current, const detail::expr
 	std::visit([&](const auto& x) {
 		using T = std::decay_t<decltype(x)>;
 
-		if constexpr (std::is_same_v<T, detail::negation>) {
+		if constexpr (std::is_same_v<T, detail::expr_negation>) {
 			find_all_paths_r(x.child, target, current_path, paths);
 		}
 
@@ -298,7 +298,7 @@ void find_symbols_r(const detail::expression_node* current, std::vector<const de
 			}
 		}
 
-		if constexpr (std::is_same_v<T, detail::negation>) {
+		if constexpr (std::is_same_v<T, detail::expr_negation>) {
 			find_symbols_r(x.child, result);
 		}
 
@@ -335,22 +335,22 @@ std::vector<const detail::expression_node*> detail::list_symbols(const expressio
 }
 
 
-const detail::expression_node* detail::negation::sorted() const {
+const detail::expression_node* detail::expr_negation::sorted() const {
 	return std::visit([&](const auto& x) {
 		using T = std::decay_t<decltype(x)>;
 
-		if constexpr (std::is_same_v<T, addition> || std::is_same_v<T, multiplication> || std::is_same_v<T, negation>) {
+		if constexpr (std::is_same_v<T, addition> || std::is_same_v<T, multiplication> || std::is_same_v<T, expr_negation>) {
 			return current_context->node_manager().make_negation(x.sorted());
 		}
 		return current_context->node_manager().make_negation(child);
 	}, child->p_data);
 }
 
-const detail::expression_node* detail::negation::reduced() const {
+const detail::expression_node* detail::expr_negation::reduced() const {
 	return std::visit([&](const auto& x) {
 		using T = std::decay_t<decltype(x)>;
 
-		if constexpr (std::is_same_v<T, addition> || std::is_same_v<T, multiplication> || std::is_same_v<T, power> || std::is_same_v<T, negation>) {
+		if constexpr (std::is_same_v<T, addition> || std::is_same_v<T, multiplication> || std::is_same_v<T, power> || std::is_same_v<T, expr_negation>) {
 			return current_context->node_manager().make_negation(x.reduced());
 		}
 
@@ -360,11 +360,11 @@ const detail::expression_node* detail::negation::reduced() const {
 	}, child->p_data);
 }
 
-const detail::expression_node* detail::negation::expanded() const {
+const detail::expression_node* detail::expr_negation::expanded() const {
 	return std::visit([&](const auto& x) {
 		using T = std::decay_t<decltype(x)>;
 
-		if constexpr (std::is_same_v<T, addition> || std::is_same_v<T, multiplication> || std::is_same_v<T, power> || std::is_same_v<T, negation>) {
+		if constexpr (std::is_same_v<T, addition> || std::is_same_v<T, multiplication> || std::is_same_v<T, power> || std::is_same_v<T, expr_negation>) {
 			return current_context->node_manager().make_negation(x.expanded());
 		}
 		return current_context->node_manager().make_negation(child);
@@ -383,7 +383,7 @@ double get_biggest_power(const detail::expression_node* node) {
 		}
 
 		// Don't care if it's positive or negative, only exponent is important
-		if constexpr (std::is_same_v<T, detail::negation>) {
+		if constexpr (std::is_same_v<T, detail::expr_negation>) {
 			return get_biggest_power(x.child);
 		}
 
@@ -458,7 +458,7 @@ const detail::expression_node* detail::addition::reduced() const {
 	for (auto op : operands) {
 		std::visit([&](auto& x) {
 			using T = std::decay_t<decltype(x)>;
-			if constexpr (std::is_same_v<T, addition> || std::is_same_v<T, multiplication> || std::is_same_v<T, power> || std::is_same_v<T, negation>) {
+			if constexpr (std::is_same_v<T, addition> || std::is_same_v<T, multiplication> || std::is_same_v<T, power> || std::is_same_v<T, expr_negation>) {
 				op = x.reduced();
 			}
 		}, op->p_data);
@@ -480,7 +480,7 @@ const detail::expression_node* detail::addition::reduced() const {
 			if (std::abs(term_.coefficient.get<double>()) > 1e-12) {
 				std::string name = std::visit([&](auto& x) {
 					using T = std::decay_t<decltype(x)>;
-					if constexpr (std::is_same_v<T, negation>) {
+					if constexpr (std::is_same_v<T, expr_negation>) {
 						return expression(x.child).string();
 					}
 					return expression(term_.symbolic).string();
@@ -548,7 +548,7 @@ const detail::expression_node* detail::addition::expanded() const {
 		new_expr.push_back(std::visit([&](auto& x) {
 			using T = std::decay_t<decltype(x)>;
 
-			if constexpr (std::is_same_v<T, addition> || std::is_same_v<T, multiplication> || std::is_same_v<T, power> || std::is_same_v<T, negation>) {
+			if constexpr (std::is_same_v<T, addition> || std::is_same_v<T, multiplication> || std::is_same_v<T, power> || std::is_same_v<T, expr_negation>) {
 				return x.expanded();
 			}
 			return op;
@@ -631,7 +631,7 @@ product_term extract_products(const detail::expression_node* op) {
 			return product_term{x.base, x.exponent};
 		}
 		// If it's a negation, extract the child's exponent then negate the base
-		if constexpr (std::is_same_v<T, detail::negation>) {
+		if constexpr (std::is_same_v<T, detail::expr_negation>) {
 			auto term = extract_products(x.child);
 			term.negated = true;
 			return term;
@@ -649,7 +649,7 @@ const detail::expression_node* detail::multiplication::reduced() const {
 		// First reduce sub expressions
 		op = std::visit([&](auto& x) {
 			using T = std::decay_t<decltype(x)>;
-			if constexpr (std::is_same_v<T, addition> || std::is_same_v<T, multiplication> || std::is_same_v<T, power> ||std::is_same_v<T, negation>) {
+			if constexpr (std::is_same_v<T, addition> || std::is_same_v<T, multiplication> || std::is_same_v<T, power> ||std::is_same_v<T, expr_negation>) {
 				return x.reduced();
 			}
 			return op;
@@ -689,7 +689,7 @@ const detail::expression_node* detail::multiplication::reduced() const {
 
 		std::visit([&](auto& x) {
 			using T = std::decay_t<decltype(x)>;
-			if constexpr (std::is_same_v<T, addition> || std::is_same_v<T, multiplication> || std::is_same_v<T, power> || std::is_same_v<T, negation>) {
+			if constexpr (std::is_same_v<T, addition> || std::is_same_v<T, multiplication> || std::is_same_v<T, power> || std::is_same_v<T, expr_negation>) {
 				exp = x.reduced();
 			}
 		}, exp.root->p_data);
@@ -743,7 +743,7 @@ const detail::expression_node* detail::multiplication::expanded() const {
 			using T = std::decay_t<decltype(x)>;
 
 			// Expand all subexpressions
-			if constexpr (std::is_same_v<T, addition> || std::is_same_v<T, multiplication> || std::is_same_v<T, power> || std::is_same_v<T, negation>) {
+			if constexpr (std::is_same_v<T, addition> || std::is_same_v<T, multiplication> || std::is_same_v<T, power> || std::is_same_v<T, expr_negation>) {
 				expanded = x.expanded();
 			}
 			if (std::holds_alternative<addition>(expanded->p_data)) {
@@ -797,7 +797,7 @@ const detail::expression_node* detail::power::reduced() const {
 	const expression_node* base_ = std::visit([&](const auto& x) {
 		using T = std::decay_t<decltype(x)>;
 
-		if constexpr (std::is_same_v<T, addition> || std::is_same_v<T, multiplication> || std::is_same_v<T, power> || std::is_same_v<T, negation>) {
+		if constexpr (std::is_same_v<T, addition> || std::is_same_v<T, multiplication> || std::is_same_v<T, power> || std::is_same_v<T, expr_negation>) {
 			return x.reduced();
 		}
 		return base;
@@ -806,7 +806,7 @@ const detail::expression_node* detail::power::reduced() const {
 	const expression_node* exp_ = std::visit([&](const auto& x) {
 		using T = std::decay_t<decltype(x)>;
 
-		if constexpr (std::is_same_v<T, addition> || std::is_same_v<T, multiplication> || std::is_same_v<T, power> || std::is_same_v<T, negation>) {
+		if constexpr (std::is_same_v<T, addition> || std::is_same_v<T, multiplication> || std::is_same_v<T, power> || std::is_same_v<T, expr_negation>) {
 			return x.reduced();
 		}
 		return exponent;
@@ -820,7 +820,7 @@ const detail::expression_node* detail::power::expanded() const {
 		using T = std::decay_t<decltype(x)>;
 
 		const expression_node* expanded_base = base;
-		if constexpr (std::is_same_v<T, addition> || std::is_same_v<T, multiplication> || std::is_same_v<T, power> || std::is_same_v<T, negation>) {
+		if constexpr (std::is_same_v<T, addition> || std::is_same_v<T, multiplication> || std::is_same_v<T, power> || std::is_same_v<T, expr_negation>) {
 			expanded_base = x.expanded();
 		}
 

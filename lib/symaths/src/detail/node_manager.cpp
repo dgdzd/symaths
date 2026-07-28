@@ -45,6 +45,56 @@ std::size_t pred_node_hash::operator()(const node_key<detail::predicate_node>& k
 		using T = std::decay_t<decltype(x)>;
 		size_t h = typeid(T).hash_code();
 
+		if constexpr (std::is_same_v<T, detail::equality>) {
+			h ^= std::hash<std::string>{}("equal");
+		}
+
+		else if constexpr (std::is_same_v<T, detail::inequality>) {
+			h ^= std::hash<std::string>{}("inequality");
+			h ^= std::hash<detail::inequality::kind>{}(x.type);
+		}
+
+		else if constexpr (std::is_same_v<T, detail::congruence>) {
+			h ^= std::hash<std::string>{}("congruence");
+			h ^= std::hash<const detail::expression_node*>{}(x.mod);
+		}
+
+		else if constexpr (std::is_same_v<T, detail::element_inclusion>) {
+			h ^= std::hash<const detail::set_node*>{}(x.set);
+			h ^= std::hash<const detail::expression_node*>{}(x.element);
+		}
+
+		else if constexpr (std::is_same_v<T, detail::set_inclusion>) {
+			h ^= std::hash<const detail::set_node*>{}(x.set);
+			h ^= std::hash<const detail::set_node*>{}(x.subset);
+		}
+
+		else if constexpr (std::is_same_v<T, detail::logical_or>) {
+			h ^= std::hash<std::string>{}("logic_or");
+			h ^= std::hash<const detail::predicate_node*>{}(x.p);
+			h ^= std::hash<const detail::predicate_node*>{}(x.q);
+		}
+
+		else if constexpr (std::is_same_v<T, detail::logical_and>) {
+			h ^= std::hash<std::string>{}("logic_and");
+			h ^= std::hash<const detail::predicate_node*>{}(x.p);
+			h ^= std::hash<const detail::predicate_node*>{}(x.q);
+		}
+
+		if constexpr (std::is_same_v<T, detail::equality> || std::is_same_v<T, detail::inequality> || std::is_same_v<T, detail::congruence>) {
+			for (auto* n : x.expressions)
+				h ^= std::hash<const detail::expression_node*>{}(n) + 0x9e3779b9;
+		}
+
+		return h;
+	}, k.data);
+}
+
+std::size_t set_node_hash::operator()(const node_key<detail::set_node>& k) const {
+	return std::visit([](const auto& x) {
+		using T = std::decay_t<decltype(x)>;
+		size_t h = typeid(T).hash_code();
+
 		// TODO : do things
 
 		return h;
@@ -84,6 +134,23 @@ const detail::predicate_node* node_manager_t::intern(detail::predicate_node::int
 	return pred_arena.back().get();
 }
 
+const detail::set_node* node_manager_t::intern(detail::set_node::internal_data_t data) {
+	node_key<detail::set_node> key{data};
+
+	auto it = set_table.find(key);
+	if (it != set_table.end())
+		return it->second;
+
+	auto n = std::make_unique<detail::set_node>();
+	n->p_hash = set_node_hash{}(key);
+	n->p_data = std::move(data);
+
+	set_arena.push_back(std::move(n));
+	set_table.emplace(std::move(key), set_arena.back().get());
+	return set_arena.back().get();
+}
+
+
 template<typename T>
 std::vector<const detail::expression_node*> flatten(const std::vector<const detail::expression_node*>& args) {
 	std::vector<const detail::expression_node*> flat;
@@ -100,10 +167,10 @@ std::vector<const detail::expression_node*> flatten(const std::vector<const deta
 	return flat;
 }
 
-detail::expression_node::internal_data_t reduce_negations(detail::negation arg) {
+detail::expression_node::internal_data_t reduce_negations(detail::expr_negation arg) {
 	// 2 negations = +
-	if (std::holds_alternative<detail::negation>(arg.child->p_data)) {
-		return std::get<detail::negation>(arg.child->p_data).child->p_data;
+	if (std::holds_alternative<detail::expr_negation>(arg.child->p_data)) {
+		return std::get<detail::expr_negation>(arg.child->p_data).child->p_data;
 	}
 	return arg;
 }
@@ -121,7 +188,7 @@ const detail::expression_node* node_manager_t::make_constant(double v) {
 }
 
 const detail::expression_node* node_manager_t::make_negation(const detail::expression_node* node) {
-	return intern(reduce_negations(detail::negation{node}));
+	return intern(reduce_negations(detail::expr_negation{node}));
 }
 
 const detail::expression_node* node_manager_t::make_add(const std::vector<const detail::expression_node*>& operands) {
@@ -146,4 +213,32 @@ const detail::expression_node* node_manager_t::make_func(uint32_t f_id, const st
 
 const detail::expression_node* node_manager_t::make_func(funcs::builtin_fn_id f_id, const std::vector<const detail::expression_node*>& args) {
 	return intern(detail::function_call{static_cast<uint32_t>(f_id), args});
+}
+
+const detail::predicate_node* node_manager_t::make_equal(const std::vector<const detail::expression_node*>& members, bool negated) {
+	return intern(detail::equality{members});
+}
+
+const detail::predicate_node* node_manager_t::make_inequal(detail::inequality::kind type, const std::vector<const detail::expression_node*>& members, bool negated) {
+	return intern(detail::inequality{type, members});
+}
+
+const detail::predicate_node* node_manager_t::make_congruence(const detail::expression_node* mod, const std::vector<const detail::expression_node*>& members, bool negated) {
+	return intern(detail::congruence{mod, members});
+}
+
+const detail::predicate_node* node_manager_t::make_element_inclusion(const detail::set_node* set, const detail::expression_node* elem, bool negated) {
+	return intern(detail::element_inclusion{elem, set});
+}
+
+const detail::predicate_node* node_manager_t::make_set_inclusion(const detail::set_node* set, const detail::set_node* subset, bool negated) {
+	return intern(detail::set_inclusion{subset, set});
+}
+
+const detail::predicate_node* node_manager_t::make_or(const detail::predicate_node* p, const detail::predicate_node* q, bool negated) {
+	return intern(detail::logical_or{p, q});
+}
+
+const detail::predicate_node* node_manager_t::make_and(const detail::predicate_node* p, const detail::predicate_node* q, bool negated) {
+	return intern(detail::logical_and{p, q});
 }

@@ -18,76 +18,83 @@
 
 namespace sym {
 	namespace detail {
+		class set_node;
 		class expression_node;
+		class predicate_node;
+
+		struct pred_negation {
+			const predicate_node* p;
+
+			bool operator==(const pred_negation&) const = default;
+		};
 
 		struct equality {
-			bool negated;
 			std::vector<const expression_node*> expressions;
 
 			bool operator==(const equality&) const = default;
 		};
 
 		struct inequality {
-			enum type {
+			enum kind {
 				LESS_EQUAL,
 				LESS,
 				GREATER_EQUAL,
 				GREATER,
 			};
-			type type;
-			bool negated;
+			kind type;
 			std::vector<const expression_node*> expressions;
 
 			bool operator==(const inequality&) const = default;
 		};
 
 		struct congruence {
-			bool negated;
-			const expression_node* q;
+			const expression_node* mod;
 			std::vector<const expression_node*> expressions;
 
 			bool operator==(const congruence&) const = default;
 		};
 
 		struct element_inclusion {
-			bool negated;
 			const expression_node* element;
-			const expression_node* set;
+			const set_node* set;
 
 			bool operator==(const element_inclusion&) const = default;
 		};
 
 		struct set_inclusion {
-			bool negated;
-			const expression_node* subset;
-			const expression_node* set;
+			const set_node* subset;
+			const set_node* set;
 
 			bool operator==(const set_inclusion&) const = default;
 		};
 
 		struct logical_or {
-			bool negated;
-			const expression_node* p;
-			const expression_node* q;
+			const predicate_node* p;
+			const predicate_node* q;
 
 			bool operator==(const logical_or&) const = default;
 		};
 
 		struct logical_and {
-			bool negated;
-			const expression_node* p;
-			const expression_node* q;
+			const predicate_node* p;
+			const predicate_node* q;
 
 			bool operator==(const logical_and&) const = default;
 		};
 
+
 		class predicate_node {
 		public:
-			using internal_data_t = std::variant<equality, inequality, congruence,
+			using internal_data_t = std::variant<pred_negation, equality, inequality, congruence,
 			element_inclusion, set_inclusion, logical_or, logical_and>;
 
 			internal_data_t p_data;
 			size_t p_hash = 0;
+
+			predicate_node() = default;
+			virtual ~predicate_node() = default;
+
+			[[nodiscard]] bool is_ground() const;
 		};
 	}
 }

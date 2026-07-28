@@ -23,6 +23,9 @@ namespace sym {
 		const detail::expression_node* upper = nullptr;
 		bool lower_included = true;
 		bool upper_included = true;
+
+	public:
+		bool operator==(const interval&) const = default;
 	};
 }
 

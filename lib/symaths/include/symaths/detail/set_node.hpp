@@ -28,29 +28,35 @@ namespace sym {
 	 * Sets can also be disjoint, like R* = ]-∞;0[ ∪ ]0;+∞[
 	 */
 
-	class set;
 
 	namespace detail {
-		class node;
+		class set_node;
 	}
 
 	namespace detail {
 		struct continuous_set {
 			std::vector<interval> disjoint_intervals;
+
+			bool operator==(const continuous_set&) const = default;
 		};
 
 		// No need to store any information (integers are human construct and convention)
 		struct integer_set {
 
+			bool operator==(const integer_set&) const = default;
 		};
 
 		struct conditional_set {
-			const set* base_set;
-			const node* symbol;
+			const set_node* base_set;
+			const expression_node* symbol;
+
+			bool operator==(const conditional_set&) const = default;
 		};
 
 		struct intersection_set {
-			std::vector<const set*> sets;
+			std::vector<const set_node*> sets;
+
+			bool operator==(const intersection_set&) const = default;
 		};
 
 		class set_node {
@@ -58,7 +64,7 @@ namespace sym {
 			using internal_data_t = std::variant<continuous_set, integer_set, conditional_set, intersection_set>;
 
 			internal_data_t p_data;
-			size_t p_hash;
+			size_t p_hash = 0;
 
 			bool contains();
 		};

@@ -21,7 +21,7 @@ expression sym::differentiate(const expression& expr, const symbol& symbol) {
 			return nm.make_constant(0);
 		}
 
-		else if constexpr (std::is_same_v<T, detail::negation>) {
+		else if constexpr (std::is_same_v<T, detail::expr_negation>) {
 			return nm.make_negation(differentiate(x.child, symbol).root);
 		}
 
