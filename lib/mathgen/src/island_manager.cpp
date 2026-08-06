@@ -13,7 +13,7 @@
 
 static Isle makeIsle(const IsleConfig& cfg) {
     Isle isle(cfg.variables, cfg.populationSize, cfg.maxDepth, cfg.penalty, cfg.mutationProb, cfg.probs, cfg.k);
-    isle.initPopulation(cfg.binaryOps, cfg.unaryOps, cfg.naryOps);
+    isle.initPopulation(cfg.unaryOps, cfg.binaryOps, cfg.trinaryOps, cfg.naryOps);
     return isle;
 }
 
@@ -188,6 +188,15 @@ NodePtr IslandManager::adaptTree(NodePtr tree, const Operators& destOps) {
             b->func = destOps.binary.at(newOp);
         }
     }
+    else if (auto* t = dynamic_cast<TrinaryNode*>(tree.get())) {
+        for (auto& c : t->children)
+            c = adaptTree(std::move(c), destOps);
+        if (destOps.trinary.find(t->name) == destOps.trinary.end()) {
+            const std::string& newOp = randKey(destOps.trinary);
+            t->name = newOp;
+            t->func = destOps.trinary.at(newOp);
+        }
+    }
     else if (auto* na = dynamic_cast<NaryNode*>(tree.get())) {
         for (auto& c : na->children) c = adaptTree(std::move(c), destOps);
         if (destOps.nary.find(na->name) == destOps.nary.end()) {
@@ -354,7 +363,7 @@ void IslandManager::handleConvergence(const IsleAddress& addr, size_t eliteSize)
         newPop.push_back(group.backup[idx]->clone());
 
     while (newPop.size() < isle.populationSize) {
-        auto nb = randomTree(isle.maxDepth, isle.variables, isle.probs, isle.ops.unary, isle.ops.binary, isle.ops.nary);
+        auto nb = randomTree(isle.maxDepth, isle.variables, isle.probs, isle.ops.unary, isle.ops.binary, isle.ops.trinary, isle.ops.nary);
         if (!isMostlyConstants(nb.get()))
             newPop.push_back(std::move(nb));
     }

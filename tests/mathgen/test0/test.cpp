@@ -48,10 +48,10 @@ void test_model_manager() {
         10, //max tree depth
         1e-6, //complexity penalty
         0.4, //mutation probability
-        { 0.2, 0.2, 0.2, 0.0 }, //(const_prob, var_prob, binary_prob)
+        { 0.2, 0.2, 0.2, 0.0, 0.0 }, //(const_prob, var_prob, binary_prob, trinary_prob, nary_prob)
         7 //Tournament k
     );
-    manager.initPopulation(binaryFunc, unaryFunc, { });
+    manager.initPopulation(unaryFunc, binaryFunc, { }, { });
     manager.updateData(X, Y);
     manager.fit(
         /*generations*/ 100,
@@ -62,7 +62,7 @@ void test_model_manager() {
         /*constant size for cma-es threshold*/ 8,
         /*debug*/ true,
         /*timeoutSecs*/ 3600,
-        [](double fitness) { return fitness < 1e-3; }
+        /*earlyStopCondition*/ [](double fitness) { return fitness < 1e-3; }
     );
 
     std::cout << manager.getTree(0);
@@ -83,7 +83,7 @@ void test_island_manager() {
         { "cube", [](double x){ return x * x * x; } },
     };
 
-    // Dataset: \sin(x^{2}+\sin(x^{3}+\cos(x)))
+    // Dataset: \sin(x^2+\sin(x^3+\cos(x)))
     Dataset X;
     std::vector<double> Y;
     double from = -10;
@@ -101,7 +101,7 @@ void test_island_manager() {
     baseCfg0.maxDepth = 12;
     baseCfg0.penalty = 1e-4;
     baseCfg0.mutationProb = 0.4;
-    baseCfg0.probs = { 0.2, 0.2, 0.2, 0.0 };
+    baseCfg0.probs = { 0.2, 0.2, 0.2, 0.0, 0.0 };
     baseCfg0.populationSize = 300;
     baseCfg0.k = 7;
     baseCfg0.binaryOps = binaryFunc;
@@ -180,7 +180,7 @@ void test_visco_data()
     baseCfg0.maxDepth = 7;
     baseCfg0.penalty = 1e-3;
     baseCfg0.mutationProb = 0.4;
-    baseCfg0.probs = { 0.2, 0.2, 0.2, 0.0 };
+    baseCfg0.probs = { 0.2, 0.2, 0.2, 0.0, 0.0 };
     baseCfg0.populationSize = 1000;
     baseCfg0.k = 7;
     baseCfg0.binaryOps = binaryFunc;
@@ -238,7 +238,7 @@ double eval_(std::vector<double> c, const Dataset& X, const std::vector<double>&
     double er = 0;
     for (size_t i = 0; i < Y.size(); i++) {
         double x = X[i].at("x");
-        er += abs(Y[i] - (c[0] * x * x + c[1] * x + c[2]));
+        er += std::abs(Y[i] - (c[0] * x * x + c[1] * x + c[2]));
     }
     return er / static_cast<double>(Y.size());
 }
@@ -282,9 +282,8 @@ int main() {
     //- (?) implémenter tolérance adaptive (suivant quelles variables, indicateurs, ... ?)
     //- (?) NOMBRES COMPLEXES EN OPTION (avec des templates ?)
     //- implémenter Trinary
-    //- mutation de Nary -> ajouter/retirer un child de Nary
-    //- nodes à sortie vectorielle ?
-    //- DAG tree ?
+    //- faire un visualisateur complexe pour vraiment voir la convergence (et pour tester les limites de la SR)
+    //- améliorer les modes debugs (pour qu'ils soient customs)
 
     //test_island_manager();
     test_cmaes();

@@ -4,48 +4,42 @@
 #include <string>
 #include <unordered_map>
 #include <cmath>
+#include <vector>
 
-using BinaryFunc = double(*)(double, double);
 using UnaryFunc = double(*)(double);
-using NaryFunc   = double(*)(const std::vector<double>&);
+using BinaryFunc = double(*)(double, double);
+using TrinaryFunc = double(*)(double, double, double);
+using NaryFunc = double(*)(const std::vector<double>&);
 
-using BinaryMap = std::unordered_map<std::string, BinaryFunc>;
 using UnaryMap = std::unordered_map<std::string, UnaryFunc>;
+using BinaryMap = std::unordered_map<std::string, BinaryFunc>;
+using TrinaryMap = std::unordered_map<std::string, TrinaryFunc>;
 using NaryMap = std::unordered_map<std::string, NaryFunc>;
 
 struct Operators {
-    BinaryMap binary;
     UnaryMap unary;
+    BinaryMap binary;
+    TrinaryMap trinary;
     NaryMap nary;
 
     Operators() {
-        binary = defaultBinary();
         unary = defaultUnary();
+        binary = defaultBinary();
+        trinary = defaultTrinary();
         nary = defaultNary();
     }
-    Operators(const BinaryMap& b, const UnaryMap& u, const NaryMap& n) {
-        if (b.empty()) binary = defaultBinary();
-        else  binary = b;
-
+    Operators(const UnaryMap& u, const BinaryMap& b, const TrinaryMap& t, const NaryMap& n) {
         if (u.empty()) unary = defaultUnary();
         else unary = u;
 
+        if (b.empty()) binary = defaultBinary();
+        else binary = b;
+
+        if (t.empty()) trinary = defaultTrinary();
+        else trinary = t;
+
         if (n.empty()) nary = defaultNary();
         else nary = n;
-    }
-
-    static double add(double a, double b) { return a + b; }
-    static double sub(double a, double b) { return a - b; }
-    static double mul(double a, double b) { return a * b; }
-    static double div(double a, double b) { return std::abs(b) > 1e-12 ? a / b : 0.0; }
-
-    static BinaryMap defaultBinary() {
-        return {
-            { "+", add },
-            { "-", sub },
-            { "*", mul },
-            { "/", div },
-        };
     }
 
     static double sin_f(double x) { return std::sin(x); }
@@ -71,6 +65,30 @@ struct Operators {
             { "square", square },
             { "cube", cube },
             { "sqrt", sqrt_f },
+        };
+    }
+
+    static double add(double a, double b) { return a + b; }
+    static double sub(double a, double b) { return a - b; }
+    static double mul(double a, double b) { return a * b; }
+    static double div(double a, double b) { return std::abs(b) > 1e-12 ? a / b : 0.0; }
+
+    static BinaryMap defaultBinary() {
+        return {
+                { "+", add },
+                { "-", sub },
+                { "*", mul },
+                { "/", div },
+            };
+    }
+
+    static double condition(double a, double b, double c) { return std::abs(a) < 1e-6 ? b : c; }
+    static double fma_f(double a, double b, double c) { return std::fma(a, b, c); }
+
+    static TrinaryMap defaultTrinary() {
+        return {
+            { "condition", condition },
+            { "fma", fma_f }
         };
     }
 

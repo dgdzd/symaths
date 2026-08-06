@@ -17,11 +17,12 @@ struct IsleConfig {
     unsigned int maxDepth = 6;
     double penalty = 1e-4;
     double mutationProb = 0.4;
-    std::tuple<double, double, double, double> probs = { 0.2, 0.2, 0.2, 0.2 };
+    Probs probs = { 0.167, 0.167, 0.167, 0.167, 0.167 };
     size_t populationSize = 200;
     unsigned int k = 7;
-    BinaryMap binaryOps;
     UnaryMap unaryOps;
+    BinaryMap binaryOps;
+    TrinaryMap trinaryOps;
     NaryMap naryOps;
 
     IsleConfig() = default;

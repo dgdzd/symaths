@@ -19,7 +19,7 @@ inline double clamp(double v, double lo = -1e12, double hi = 1e12) {
 }
 
 struct Node {
-    enum class Type { Const, Var, Unary, Binary, Nary };
+    enum class Type { Const, Var, Unary, Binary, Trinary, Nary };
 
     virtual ~Node() = default;
     [[nodiscard]] virtual double eval(const Sample& x) const = 0;
@@ -65,7 +65,7 @@ struct UnaryNode final : Node {
     UnaryFunc func;
     NodePtr child;
 
-    UnaryNode(std::string n, UnaryFunc f, NodePtr c) : name(std::move(n)), func(std::move(f)), child(std::move(c)) {}
+    UnaryNode(std::string n, UnaryFunc f, NodePtr c) : name(std::move(n)), func(f), child(std::move(c)) {}
 
     [[nodiscard]] double eval(const Sample& x) const override {
         return clamp(func(child->eval(x)));
@@ -91,7 +91,7 @@ struct BinaryNode final : Node {
     NodePtr left;
     NodePtr right;
 
-    BinaryNode(std::string o, BinaryFunc f, NodePtr l, NodePtr r) : op(std::move(o)), func(std::move(f)), left(std::move(l)), right(std::move(r)) {}
+    BinaryNode(std::string o, BinaryFunc f, NodePtr l, NodePtr r) : op(std::move(o)), func(f), left(std::move(l)), right(std::move(r)) {}
 
     [[nodiscard]] double eval(const Sample& x) const override {
         return clamp(func(left->eval(x), right->eval(x)));
@@ -112,12 +112,37 @@ struct BinaryNode final : Node {
     }
 };
 
+struct TrinaryNode final : Node {
+    std::string name;
+    TrinaryFunc func;
+    std::array<NodePtr, 3> children;
+
+    TrinaryNode(std::string n, TrinaryFunc f, NodePtr a, NodePtr b, NodePtr c)
+        : name(std::move(n)), func(f), children{ std::move(a), std::move(b), std::move(c) } {}
+
+    [[nodiscard]] double eval(const Sample& x) const override {
+        return clamp(func(children[0]->eval(x), children[1]->eval(x), children[2]->eval(x)));
+    }
+    [[nodiscard]] NodePtr clone() const override {
+        return std::make_unique<TrinaryNode>(name, func,
+            children[0]->clone(), children[1]->clone(), children[2]->clone());
+    }
+    [[nodiscard]] int complexity() const override {
+        return 1 + children[0]->complexity() + children[1]->complexity() + children[2]->complexity();
+    }
+    [[nodiscard]] Type type() const override { return Type::Trinary; }
+    void collectNodes(std::vector<Node*>& out) override {
+        out.push_back(this);
+        for (auto& c : children) c->collectNodes(out);
+    }
+};
+
 struct NaryNode final : Node {
     std::string name;
     NaryFunc func;
     std::vector<NodePtr> children;
 
-    NaryNode(std::string n, NaryFunc f, std::vector<NodePtr> c) : name(std::move(n)), func(std::move(f)), children(std::move(c)) {}
+    NaryNode(std::string n, NaryFunc f, std::vector<NodePtr> c) : name(std::move(n)), func(f), children(std::move(c)) {}
 
     [[nodiscard]] double eval(const Sample& x) const override {
         std::vector<double> vals;
@@ -149,7 +174,12 @@ inline bool isConstantSubtree(const Node* node) {
         return isConstantSubtree(u->child.get());
     if (const auto* b = dynamic_cast<const BinaryNode*>(node))
         return isConstantSubtree(b->left.get()) && isConstantSubtree(b->right.get());
-    if (const auto* na = dynamic_cast<const NaryNode*>(node)) {           // NOUVEAU
+    if (const auto* t = dynamic_cast<const TrinaryNode*>(node)) {
+        for (const auto& c : t->children)
+            if (!isConstantSubtree(c.get())) return false;
+        return true;
+    }
+    if (const auto* na = dynamic_cast<const NaryNode*>(node)) {
         for (const auto& c : na->children)
             if (!isConstantSubtree(c.get())) return false;
         return true;
