@@ -28,7 +28,7 @@ MathGen is a fast symbolic regression engine based on genetic programming. It ev
 
 ## How it works
 
-The engine maintains a population of expression trees. Each tree is a mathematical formula built from constants, variables, and operators (unary and binary) . 
+The engine maintains a population of expression trees. Each tree is a mathematical formula built from constants, variables, and operators (unary, binary, trinary and nary) . 
 Over successive generations, trees are selected, crossed over, mutated, and pruned to minimize the error on the target dataset.
 It features a built-in CMA-ES algorithm in order to optimize constants.
 
