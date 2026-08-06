@@ -59,6 +59,19 @@ The complexity penalty increases progressively over generations.
 
 ## Usage
 
+### Nodes
+
+There are various types of nodes in MathGen: 
+
+| Type     | Description                   | Example            |
+|----------|-------------------------------|--------------------|
+| Constant | Holds a number                | 3.5, 6             |
+| Variable | Holds a variable name         | "x", "y", "my_var" |
+| Unary    | Holds a single input function | sin(), exp()       |
+| Binary   | Holds a double input function | +, -, *            |
+| Trinary  | Holds a triple input function | condition(), fma() |
+| Nary     | Holds a n-input function      | sum()              |
+
 
 ### Quick start
 
@@ -90,24 +103,26 @@ int main() {
 
     //3. Configure and run
     ModelManager manager(
-        {"x"}, //variable names
-        400, //population size
-        5, //max tree depth
-        1e-5, //complexity penalty
+        { "x" }, //variable names
+        2000, //population size
+        10, //max tree depth
+        1e-6, //complexity penalty
         0.4, //mutation probability
-        {0.1, 0.3, 0.3}, //(const_prob, var_prob, binary_prob)
-        7
+        { 0.2, 0.2, 0.2, 0.0, 0.0 }, //(const_prob, var_prob, binary_prob, trinary_prob, nary_prob)
+        7 //Tournament k
     );
-    manager.initPopulation(binaryFunc, unaryFunc);
+    manager.initPopulation(unaryFunc, binaryFunc, { }, { });
     manager.updateData(X, Y);
     manager.fit(
-        /*generations*/ 10,
-        /*maxPop*/ 400,
-        /*eliteSize*/ 40,
-        /*newbornSize*/ 30,
-        /*lr*/ 0.05,
-        /*cstOptiStep*/ 50,
-        /*timeoutSecs*/ 90
+        /*generations*/ 100,
+        /*maxPop*/ 2000,
+        /*eliteSize*/ 100,
+        /*newbornSize*/ 200,
+        /*config for cma-es*/ { },
+        /*constant size for cma-es threshold*/ 8,
+        /*debug*/ true,
+        /*timeoutSecs*/ 3600,
+        /*earlyStopCondition*/ [](double fitness) { return fitness < 1e-3; }
     );
 }
 ```
@@ -121,41 +136,40 @@ ModelManager(
     unsigned int maxDepth = 5,
     double penalty = 0.01,
     double mutationProb = 0.3,
-    std::tuple<double,double,double> probs = {0.25, 0.25, 0.25}, // (const, var, binary) — unary gets 1-sum
+    Probs probs = {0.25, 0.25, 0.25, 0.0, 0.0}, // (const, var, binary, trinary, nary) unary gets 1-sum
     unsigned int k = 7
 );
 ```
 
-| k | Behaviour |
-|---|---|
-| 1 | Pure random selection (no pressure) |
-| 2–3 | low pressure, high diversity, slow convergence |
-| 7 | Default for Symbolic Regression |
+| k     | Behaviour                                                            |
+|-------|----------------------------------------------------------------------|
+| 1     | Pure random selection (no pressure)                                  |
+| 2–3   | low pressure, high diversity, slow convergence                       |
+| 7     | Default for Symbolic Regression                                      |
 | 15–20 | Very high pressure, fast convergence (risk of premature convergence) |
 
 
-| Method | Description |
-|---|---|
-| `initPopulation(binary, unary, extraUnary)` | Build the initial random population |
-| `loadPopulation(population, binary, unary, extraUnary, fillPop)`| Load any population, fillPop fill population with new trees |
-| `getPopulation(sortFitness)`| Return the current population (and sort it if wanted) |
-| `updateData(X, Y)` | Set or replace the training dataset |
-| `fit(generations, maxPop, eliteSize, timeout, earlyStop)` | Run the evolution loop |
-| `residuals(tree)` | Raw residuals `y - ŷ` for a given tree |
-| `normalizedResiduals(tree)` | Z-score normalized residuals + scale factor |
+| Method                                                           | Description                                                 |
+|------------------------------------------------------------------|-------------------------------------------------------------|
+| `initPopulation(binary, unary, extraUnary)`                      | Build the initial random population                         |
+| `loadPopulation(population, binary, unary, extraUnary, fillPop)` | Load any population, fillPop fill population with new trees |
+| `getPopulation(sortFitness)`                                     | Return the current population (and sort it if wanted)       |
+| `updateData(X, Y)`                                               | Set or replace the training dataset                         |
+| `fit(generations, maxPop, eliteSize, timeout, earlyStop)`        | Run the evolution loop                                      |
+| `residuals(tree)`                                                | Raw residuals `y - ŷ` for a given tree                      |
+| `normalizedResiduals(tree)`                                      | Z-score normalized residuals + scale factor                 |
 
 ### `fit()` parameters
 
-| Parameter | Type | Default | Description | Recommended value |
-|---|---|---|---|---|
-| `generations` | `size_t` | `10` | Number of evolutionary generations | 5 to 100 |
-| `maxPop` | `size_t` | `100` | Maximum population size | 100 to 1000 |
-| `eliteSize` | `size_t` | `10` | Number of top individuals carried over (unchanged) | 10 to 100 |
-| `newbornSize`| `size_t` | `8` | Number of bottom individuals carried over (completely new) | 8 to 80 |
-| `lr` | `double` | `0.05` | Learning rate | 0.01 to 0.1 |
-| `cstOptiStep` | `50` | Constants optimization steps | 20 to 100 |
-| `debug`| `bool` | `false`| Shows useful informations in the cmd | false |
-| `timeoutSeconds` | `unsigned int` | `60` | Time limit | 60 to 3600 |
+| Parameter            | Type                          | Default   | Description                                                   | Recommended value     |
+|----------------------|-------------------------------|-----------|---------------------------------------------------------------|-----------------------|
+| `generations`        | `size_t`                      | `10`      | Number of evolutionary generations                            | 5 to 100              |
+| `maxPop`             | `size_t`                      | `100`     | Maximum population size                                       | 100 to 1000           |
+| `eliteSize`          | `size_t`                      | `10`      | Number of top individuals carried over (unchanged)            | 10 to 100             |
+| `newbornSize`        | `size_t`                      | `8`       | Number of bottom individuals carried over (completely new)    | 8 to 80               |
+| `cmaesCfg`           | `CMAESCfg`                    | `{ }`     | Constants optimization configuration                          | 20 to 100             |
+| `debug`| `bool`      | `false`                       |           | Shows useful informations in the cmd                          | false                 |
+| `timeoutSeconds`     | `unsigned int`                | `60`      | Time limit                                                    | 60 to 3600            |
 | `earlyStopCondition` | `std::function<bool(double)>` | `nullptr` | Callback receiving best fitness — return `true` to stop early | return fitness < 1e-6 |
 
 Recommended values are not rules to follow.
@@ -164,12 +178,12 @@ Recommended values are not rules to follow.
 
 Controls the shape of randomly generated trees. The unary probability is implicit: `1 - sum(probs)`.
 
-| Value | Effect |
-|---|---|
-| High `const_prob` | More numeric constants, smaller trees |
-| High `var_prob` | More variable references, shallower trees |
-| High `binary_prob` | Wider, more complex trees (`+`, `*`, …) |
-| Low all three | More unary nodes (`sin`, `square`, …) |
+| Value              | Effect                                    |
+|--------------------|-------------------------------------------|
+| High `const_prob`  | More numeric constants, smaller trees     |
+| High `var_prob`    | More variable references, shallower trees |
+| High `binary_prob` | Wider, more complex trees (`+`, `*`, …)   |
+| Low all three      | More unary nodes (`sin`, `square`, …)     |
 
 ---
 
@@ -178,11 +192,11 @@ Controls the shape of randomly generated trees. The unary probability is implici
 Constants from all trees are mutated each generations with `mutateConstants` which applies a gauss offset.
 
 For elites, constants are optimized through:
-| n constants | algorithm |
-|---|---|
-| 1 | golden section search |
-| 2 - 4 | simple BFGS |
-| > 4 | complex CMA-ES |
+| n constants | algorithm             |
+|-------------|-----------------------|
+| 1           | golden section search |
+| 2 - 4       | simple BFGS           |
+| > 4         | complex CMA-ES        |
 
 There is a complex CMA-ES librairy inside mathgen librairy, that can be used to other prurposes.
 
@@ -192,8 +206,8 @@ Any `std::function<double(double)>` or `std::function<double(double,double)>` wo
 
 ```cpp
 UnaryMap extra = {
-    {"sigmoid", [](double x){ return 1.0 / (1.0 + std::exp(-x)); }},
-    {"relu", [](double x){ return x > 0.0 ? x : 0.0; }},
+    { "sigmoid", [](double x){ return 1.0 / (1.0 + std::exp(-x)); } },
+    { "relu", [](double x){ return x > 0.0 ? x : 0.0; } },
 };
 manager.initPopulation(binaryFunc, unaryFunc, extra);
 ```
@@ -278,18 +292,18 @@ Incoming migrants **replace the worst individuals** on the destination isle. If 
 
 int main() {
     BinaryMap binaryFunc = {
-        {"+", [](double a, double b){ return a + b; }},
-        {"-", [](double a, double b){ return a - b; }},
-        {"*", [](double a, double b){ return a * b; }},
-        {"/", [](double a, double b){ return std::abs(b) > 1e-12 ? a / b : 0.0; }},
+        {"+", [](double a, double b){ return a + b; } },
+        {"-", [](double a, double b){ return a - b; } },
+        {"*", [](double a, double b){ return a * b; } },
+        {"/", [](double a, double b){ return std::abs(b) > 1e-12 ? a / b : 0.0; } },
     };
 
     // Group 0 — trig focused
     UnaryMap unaryTrig = {
-        {"sin", [](double x){ return std::sin(x); }},
-        {"cos", [](double x){ return std::cos(x); }},
-        {"square", [](double x){ return x * x; }},
-        {"exp", [](double x){ return std::abs(x) < 10.0 ? std::exp(x) : 0.0; }},
+        {"sin", [](double x){ return std::sin(x); } },
+        {"cos", [](double x){ return std::cos(x); } },
+        {"square", [](double x){ return x * x; } } ,
+        {"exp", [](double x){ return std::abs(x) < 10.0 ? std::exp(x) : 0.0; } },
     };
 
     // Group 1 — exp/log focused
@@ -304,24 +318,25 @@ int main() {
     std::vector<double> Y;
     for (int i = 0; i < 400; i++) {
         double xv = i * 0.05;
-        X.push_back({{"x", xv}});
+        X.push_back({ { "x", xv } });
         Y.push_back(std::sin(xv) * std::exp(std::cos(xv * xv)));
     }
 
     // Group 0 config
     IsleConfig baseCfg0;
     baseCfg0.variables = { "x" };
-    baseCfg0.maxDepth = 7;
+    baseCfg0.maxDepth = 12;
     baseCfg0.penalty = 1e-4;
     baseCfg0.mutationProb = 0.4;
-    baseCfg0.probs = { 0.15, 0.25, 0.25 };
+    baseCfg0.probs = { 0.2, 0.2, 0.2, 0.0, 0.0 };
     baseCfg0.populationSize = 300;
     baseCfg0.k = 7;
     baseCfg0.binaryOps = binaryFunc;
-    baseCfg0.unaryOps = unaryTrig;
+    baseCfg0.unaryOps = unary;
+    baseCfg0.naryOps = { };
 
-    // Subgroup 0.1 override — more explorative
-    IsleConfig exploreCfg  = baseCfg0;
+    // SG 0.1 override: more explorative
+    IsleConfig exploreCfg = baseCfg0;
     exploreCfg.mutationProb = 0.6;
     exploreCfg.maxDepth = 5;
 
@@ -330,8 +345,8 @@ int main() {
     group0.intraSubgroupProb = 0.60;
     group0.interSubgroupProb = 0.25;
     group0.subgroups = {
-        SubGroupConfig{ 3, std::nullopt }, // SG 0.0 — 3 isles, inherits baseCfg0
-        SubGroupConfig{ 2, exploreCfg },   // SG 0.1 — 2 isles, explorative override
+        SubGroupConfig{ 3, std::nullopt }, // SG 0.0 — inherit baseCfg0
+        SubGroupConfig{ 2, exploreCfg }, // SG 0.1 — explorative override
     };
 
     // Group 1 config
@@ -344,8 +359,12 @@ int main() {
     group1.intraSubgroupProb = 0.70;
     group1.interSubgroupProb = 0.20;
     group1.subgroups = {
-        SubGroupConfig{ 3, std::nullopt }, // SG 1.0 — 3 isles
+        SubGroupConfig{ 3, std::nullopt }, // SG 1.0
     };
+
+    CMAESConfig cfg;
+    cfg.max_iter = 10;
+    cfg.sigma0 = 1.0;
 
     IslandManager manager(
         { group0, group1 },
@@ -359,8 +378,8 @@ int main() {
         /*maxPop*/ 300,
         /*eliteSize*/ 30,
         /*newbornSize*/ 30,
-        /*lr*/ 0.05,
-        /*cstOptiStep*/ 50,
+        /*CMAEScfg*/ cfg,
+        /*cmaesThreshold*/ 8,
         /*debug*/ true,
         /*timeoutSeconds*/ 3600
     );
