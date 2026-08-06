@@ -128,7 +128,7 @@ public:
         eigen_iter++;
         if (eigen_iter >= params.eigen_every) {
             eigen_iter = 0;
-            decomp(C, values, vectors);
+            eigen_decomp(C, values, vectors);
             BD = make_BD(vectors, values);
         }
 

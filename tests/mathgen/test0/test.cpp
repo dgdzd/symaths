@@ -48,10 +48,10 @@ void test_model_manager() {
         10, //max tree depth
         1e-6, //complexity penalty
         0.4, //mutation probability
-        { 0.15, 0.25, 0.25 }, //(const_prob, var_prob, binary_prob)
+        { 0.2, 0.2, 0.2, 0.0, 0.0 }, //(const_prob, var_prob, binary_prob, trinary_prob, nary_prob)
         7 //Tournament k
     );
-    manager.initPopulation(binaryFunc, unaryFunc);
+    manager.initPopulation(unaryFunc, binaryFunc, { }, { });
     manager.updateData(X, Y);
     manager.fit(
         /*generations*/ 100,
@@ -62,7 +62,7 @@ void test_model_manager() {
         /*constant size for cma-es threshold*/ 8,
         /*debug*/ true,
         /*timeoutSecs*/ 3600,
-        [](double fitness) { return fitness < 1e-3; }
+        /*earlyStopCondition*/ [](double fitness) { return fitness < 1e-3; }
     );
 
     std::cout << manager.getTree(0);
@@ -83,7 +83,7 @@ void test_island_manager() {
         { "cube", [](double x){ return x * x * x; } },
     };
 
-    // Dataset: \sin(x^{2}+\sin(x^{3}+\cos(x)))
+    // Dataset: \sin(x^2+\sin(x^3+\cos(x)))
     Dataset X;
     std::vector<double> Y;
     double from = -10;
@@ -101,11 +101,12 @@ void test_island_manager() {
     baseCfg0.maxDepth = 12;
     baseCfg0.penalty = 1e-4;
     baseCfg0.mutationProb = 0.4;
-    baseCfg0.probs = { 0.15, 0.25, 0.25 };
+    baseCfg0.probs = { 0.2, 0.2, 0.2, 0.0, 0.0 };
     baseCfg0.populationSize = 300;
     baseCfg0.k = 7;
     baseCfg0.binaryOps = binaryFunc;
     baseCfg0.unaryOps = unary;
+    baseCfg0.naryOps = { };
 
     // SG 0.1 override: more explorative
     IsleConfig exploreCfg = baseCfg0;
@@ -149,14 +150,142 @@ void test_island_manager() {
 
 }
 
+void test_visco_data()
+{
+    BinaryMap binaryFunc = {
+        { "+", [](double a, double b){ return a + b; } },
+        { "-", [](double a, double b){ return a - b; } },
+        { "*", [](double a, double b){ return a * b; } },
+        { "/", [](double a, double b){ return std::abs(b) > 1e-12 ? a / b : 0.0; } },
+    };
+
+    UnaryMap unaryFunc = {
+        { "square", [](double x){ return x * x; } },
+        { "cube", [](double x){ return x * x * x; } },
+        { "sqrt", [](double x) { return sqrt(x); } },
+        { "cbrt", [](double x) { return cbrt(x); } },
+        { "exp", [](double x) { return exp(x); } },
+        { "log", [](double x) { return x <= 0 ? 0.0 : log(x); } }
+    };
+
+    std::vector<std::unordered_map<std::string, double>> X = { };
+    for (int x = 10; x <= 100; x += 10) {
+        X.push_back( { { "T", x } } );
+    }
+    std::vector<double> Y = { 150, 78, 42, 23, 14, 9, 6.5, 4.8, 3.8, 3.1 };
+
+    // Group 0
+    IsleConfig baseCfg0;
+    baseCfg0.variables = { "T" };
+    baseCfg0.maxDepth = 7;
+    baseCfg0.penalty = 1e-3;
+    baseCfg0.mutationProb = 0.4;
+    baseCfg0.probs = { 0.2, 0.2, 0.2, 0.0, 0.0 };
+    baseCfg0.populationSize = 1000;
+    baseCfg0.k = 7;
+    baseCfg0.binaryOps = binaryFunc;
+    baseCfg0.unaryOps = unaryFunc;
+
+    // SG 0.1 override: more explorative
+    IsleConfig exploreCfg = baseCfg0;
+    exploreCfg.mutationProb = 0.8;
+
+    // SG 0.0 override: more explorative
+    IsleConfig closedCfg = baseCfg0;
+    exploreCfg.mutationProb = 0.3;
+
+    GroupConfig group0;
+    group0.isleDefaults = baseCfg0;
+    group0.intraSubgroupProb = 0.60;
+    group0.interSubgroupProb = 0.25;
+    group0.subgroups = {
+        SubGroupConfig{ 3, closedCfg }, // SG 0.0 — closed override
+        SubGroupConfig{ 2, exploreCfg }, // SG 0.1 — explorative override
+    };
+
+    //Group 1
+    IsleConfig baseCfg1 = baseCfg0;
+
+    GroupConfig group1;
+    group1.isleDefaults = baseCfg1;
+    group1.intraSubgroupProb = 0.70;
+    group1.interSubgroupProb = 0.20;
+    group1.subgroups = {
+        SubGroupConfig{ 3, std::nullopt }, // SG 1.0
+    };
+
+    CMAESConfig cfg;
+    cfg.max_iter = 50;
+    cfg.sigma0 = 1.0;
+
+    // Run
+    IslandManager manager({ group0, group1 }, { }, 10, 10, 0.6);
+    manager.updateData(X, Y);
+    manager.run(1000, 1000, 100, 300, cfg, 8, true, 3600);
+
+    NodePtr best = manager.bestTree();
+    if (best)
+        std::cout << "\nBest Tree: " << printTree(best.get()) << "\n";
+
+    for (auto& fame : manager.hallOfFame.fames) {
+        std::cout << printTree(fame.tree.get()) << "\n";
+    }
+
+
+}
+
+double eval_(std::vector<double> c, const Dataset& X, const std::vector<double>& Y) {
+    double er = 0;
+    for (size_t i = 0; i < Y.size(); i++) {
+        double x = X[i].at("x");
+        er += std::abs(Y[i] - (c[0] * x * x + c[1] * x + c[2]));
+    }
+    return er / static_cast<double>(Y.size());
+}
+
+void test_cmaes() {
+    //Dataset
+    Dataset X = { { {"x", -1 } } , { {"x", 0 } }, { {"x", 1 } }, { {"x", 2 } } };
+    std::vector<double> Y = { -2, -3, 2, 13 };
+    size_t n = 3; //number of parameters
+    std::vector<double> x0 = { 1, 1, 1 }; //initial guesses (of size n)
+    int max_gen = 100;
+
+    CMAESConfig cfg;
+    cfg.max_iter = 100;
+    cfg.sigma0 = 1.0;
+
+    CMAES optimizer(n, cfg);
+    optimizer.set_mean(x0);
+
+    while (!optimizer.converged() && optimizer.generation() < max_gen) {
+        const auto& candidates = optimizer.ask(); // lambda candidates
+
+        std::vector<double> scores(candidates.size());
+        for (size_t k = 0; k < candidates.size(); k++)
+            scores[k] = eval_(candidates[k], X, Y);
+
+        optimizer.tell(scores); // update state
+    }
+
+    Vector best_coeffs = optimizer.best();
+    double best_mre = optimizer.best_fitness();
+
+    std::cout << "best MRE: " << best_mre;
+    std::cout << "best coeffs: " << "\n";
+    for (double best_coeff : best_coeffs)
+        std::cout << best_coeff << ", ";
+}
 
 int main() {
     //A FAIRE
-    //- meilleur algo de BGFS (dans fitness.cpp)
     //- (?) implémenter tolérance adaptive (suivant quelles variables, indicateurs, ... ?)
-    //- (?) détection de convergence avancée (plus d'indicateurs de convergence)
-    //- NOMBRES COMPLEXES EN OPTION (avec des templates ?)
-    //- implémenter sommes et produits dans arbres
+    //- (?) NOMBRES COMPLEXES EN OPTION (avec des templates ?)
+    //- implémenter Trinary
+    //- faire un visualisateur complexe pour vraiment voir la convergence (et pour tester les limites de la SR)
+    //- améliorer les modes debugs (pour qu'ils soient customs)
 
-    test_island_manager();
+    //test_island_manager();
+    test_cmaes();
+    //test_visco_data();
 }

@@ -78,7 +78,7 @@ inline void matrix_copy_into(const Matrix& A, Matrix& B) {
         B[i] = A[i];
 }
 
-inline void decomp(const Matrix& C, Vector& values, Matrix& vecs) {
+inline void eigen_decomp(const Matrix& C, Vector& values, Matrix& vecs) {
     size_t n = C.size();
 
     if (C.empty() || C[0].size() < 2)

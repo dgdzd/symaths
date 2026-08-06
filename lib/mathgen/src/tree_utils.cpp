@@ -14,12 +14,20 @@ struct NodeWithParent {
 };
 
 static void collectWithParent(Node* node, Node* parent, bool isLeft, std::vector<NodeWithParent>& out) {
-    out.push_back({node, parent, isLeft});
+    out.push_back({ node, parent, isLeft });
     if (auto* u = dynamic_cast<UnaryNode*>(node))
         collectWithParent(u->child.get(), node, true, out);
     else if (auto* b = dynamic_cast<BinaryNode*>(node)) {
         collectWithParent(b->left.get(),  node, true,  out);
         collectWithParent(b->right.get(), node, false, out);
+    }
+    else if (auto* t = dynamic_cast<TrinaryNode*>(node)) {
+        for (auto& c : t->children)
+            collectWithParent(c.get(), node, true, out);
+    }
+    else if (auto* na = dynamic_cast<NaryNode*>(node)) {
+        for (auto& c : na->children)
+            collectWithParent(c.get(), node, true, out);
     }
 }
 
@@ -31,10 +39,19 @@ static void replaceChild(Node* parent, Node* oldChild, NodePtr replacement) {
         if (b->left.get()  == oldChild) b->left  = std::move(replacement);
         else if (b->right.get() == oldChild) b->right = std::move(replacement);
     }
+    else if (auto* t = dynamic_cast<TrinaryNode*>(parent)) {
+        for (auto& c : t->children) {
+            if (c.get() == oldChild) {
+                c = std::move(replacement);
+                break;
+            }
+        }
+    }
 }
 
-NodePtr randomTree(unsigned int maxDepth, const std::vector<std::string>& variables, std::tuple<double, double, double> probs, const UnaryMap& unaryFuncs, const BinaryMap& binaryFuncs) {
-    const auto [constProb, varProb, binaryProb] = probs;
+NodePtr randomTree(unsigned int maxDepth, const std::vector<std::string>& variables, Probs probs, const UnaryMap& unaryFuncs,
+    const BinaryMap& binaryFuncs, const TrinaryMap& trinaryFuncs, const NaryMap& naryFuncs) {
+    const auto [constProb, varProb, binaryProb, trinaryProb, naryProb] = probs;
 
     if (maxDepth == 0)
         return std::make_unique<ConstNode>(randDouble(-10.0, 10.0));
@@ -47,13 +64,30 @@ NodePtr randomTree(unsigned int maxDepth, const std::vector<std::string>& variab
         return std::make_unique<VarNode>(randChoice(variables));
     if (r < constProb + varProb + binaryProb) {
         const std::string& op = randKey(binaryFuncs);
-        auto left  = randomTree(maxDepth - 1, variables, probs, unaryFuncs, binaryFuncs);
-        auto right = randomTree(maxDepth - 1, variables, probs, unaryFuncs, binaryFuncs);
+        auto left  = randomTree(maxDepth - 1, variables, probs, unaryFuncs, binaryFuncs, trinaryFuncs, naryFuncs);
+        auto right = randomTree(maxDepth - 1, variables, probs, unaryFuncs, binaryFuncs, trinaryFuncs, naryFuncs);
         return std::make_unique<BinaryNode>(op, binaryFuncs.at(op), std::move(left), std::move(right));
+    }
+    if (r < constProb + varProb + binaryProb) {
+        const std::string& name = randKey(trinaryFuncs);
+        auto a = randomTree(maxDepth - 1, variables, probs, unaryFuncs, binaryFuncs, trinaryFuncs, naryFuncs);
+        auto b = randomTree(maxDepth - 1, variables, probs, unaryFuncs, binaryFuncs, trinaryFuncs, naryFuncs);
+        auto c = randomTree(maxDepth - 1, variables, probs, unaryFuncs, binaryFuncs, trinaryFuncs, naryFuncs);
+        return std::make_unique<TrinaryNode>(name, trinaryFuncs.at(name), std::move(a), std::move(b), std::move(c));
+    }
+    if (r < constProb + varProb + binaryProb + trinaryProb) {
+        const std::string& name = randKey(naryFuncs);
+        unsigned int minArity = 3, maxArity = 10; //TODO : passer maxArity en paramètre de la fonction
+        unsigned int arity = randInt((int)minArity, (int)maxArity);
+        std::vector<NodePtr> children;
+        children.reserve(arity);
+        for (unsigned int i = 0; i < arity; i++)
+            children.push_back(randomTree(maxDepth - 1, variables, probs, unaryFuncs, binaryFuncs, trinaryFuncs, naryFuncs));
+        return std::make_unique<NaryNode>(name, naryFuncs.at(name), std::move(children));
     }
     //unary
     const std::string& name = randKey(unaryFuncs);
-    auto child = randomTree(maxDepth - 1, variables, probs, unaryFuncs, binaryFuncs);
+    auto child = randomTree(maxDepth - 1, variables, probs, unaryFuncs, binaryFuncs, trinaryFuncs, naryFuncs);
     return std::make_unique<UnaryNode>(name, unaryFuncs.at(name), std::move(child));
 }
 
@@ -62,7 +96,7 @@ std::string printTree(const Node* node, const std::unordered_map<std::string, st
 
     if (const auto* c = dynamic_cast<const ConstNode*>(node)) {
         std::ostringstream ss;
-        ss << std::fixed << std::setprecision(constPrecision) << c->value;
+        ss << std::fixed << std::setprecision((int)constPrecision) << c->value;
         return ss.str();
     }
 
@@ -96,56 +130,104 @@ std::string printTree(const Node* node, const std::unordered_map<std::string, st
         }
         return "(" + printTree(b->left.get()) + " " + b->op + " " + printTree(b->right.get()) + ")";
     }
+    if (const auto* t = dynamic_cast<const TrinaryNode*>(node)) {
+        return t->name + "(" + printTree(t->children[0].get(), aliases, constPrecision) + ", " +
+            printTree(t->children[1].get(), aliases, constPrecision) + ", " + printTree(t->children[2].get(), aliases, constPrecision) + ")";
+    }
+    if (const auto* na = dynamic_cast<const NaryNode*>(node)) {
+        std::string out = na->name + "(";
+        for (size_t i = 0; i < na->children.size(); i++) {
+            out += printTree(na->children[i].get(), aliases, constPrecision);
+            if (i + 1 < na->children.size()) out += ", ";
+        }
+        return out + ")";
+    }
     return "?";
 }
 
-NodePtr mutateSubtree(NodePtr node, unsigned int maxDepth, const std::vector<std::string>& variables, double mutProb, const std::tuple<double, double, double>& probs, const UnaryMap& unaryFuncs,
-    const BinaryMap& binaryFuncs) {
+NodePtr mutateSubtree(NodePtr node, unsigned int maxDepth, const std::vector<std::string>& variables, double mutProb, Probs probs, const UnaryMap& unaryFuncs,
+    const BinaryMap& binaryFuncs, const TrinaryMap& trinaryFuncs, const NaryMap& naryFuncs) {
 
     if (randBool(mutProb))
-        return randomTree(maxDepth, variables, probs, unaryFuncs, binaryFuncs);
+        return randomTree(maxDepth, variables, probs, unaryFuncs, binaryFuncs, trinaryFuncs, naryFuncs);
 
     if (auto* u = dynamic_cast<UnaryNode*>(node.get())) {
-        u->child = mutateSubtree(std::move(u->child), maxDepth - 1, variables, mutProb, probs, unaryFuncs, binaryFuncs);
+        u->child = mutateSubtree(std::move(u->child), maxDepth - 1, variables, mutProb, probs, unaryFuncs, binaryFuncs, trinaryFuncs, naryFuncs);
     }
     else if (auto* b = dynamic_cast<BinaryNode*>(node.get())) {
-        b->left  = mutateSubtree(std::move(b->left),  maxDepth - 1, variables, mutProb, probs, unaryFuncs, binaryFuncs);
-        b->right = mutateSubtree(std::move(b->right), maxDepth - 1, variables, mutProb, probs, unaryFuncs, binaryFuncs);
+        b->left  = mutateSubtree(std::move(b->left),  maxDepth - 1, variables, mutProb, probs, unaryFuncs, binaryFuncs, trinaryFuncs, naryFuncs);
+        b->right = mutateSubtree(std::move(b->right), maxDepth - 1, variables, mutProb, probs, unaryFuncs, binaryFuncs, trinaryFuncs, naryFuncs);
+    }
+    else if (auto* t = dynamic_cast<TrinaryNode*>(node.get())) {
+        for (auto& c : t->children)
+            c = mutateSubtree(std::move(c), maxDepth - 1, variables, mutProb, probs, unaryFuncs, binaryFuncs, trinaryFuncs, naryFuncs);
+    }
+    else if (auto* na = dynamic_cast<NaryNode*>(node.get())) {
+        for (auto& c : na->children)
+            c = mutateSubtree(std::move(c), maxDepth - 1, variables, mutProb, probs, unaryFuncs, binaryFuncs, trinaryFuncs, naryFuncs);
+        if (randBool(mutProb))
+            na->children.erase(na->children.begin() + randInt(0, static_cast<int>(na->children.size()) - 1));
+        if (randBool(mutProb))
+            na->children.push_back(randomTree(maxDepth - 1, variables, probs, unaryFuncs, binaryFuncs, trinaryFuncs, naryFuncs));
     }
     return node;
 }
 
 void mutateConstants(Node* node, double sigma) {
     if (auto* c = dynamic_cast<ConstNode*>(node)) {
-        c->value = clamp(c->value + randGauss(0.0, sigma), -100.0, 100.0);
+        c->value = clamp(c->value + randGauss(0.0, sigma), -10.0, 10.0);
         return;
     }
     if (auto* u = dynamic_cast<UnaryNode*>(node)) {
         mutateConstants(u->child.get(), sigma);
     }
     else if (auto* b = dynamic_cast<BinaryNode*>(node)) {
-        mutateConstants(b->left.get(),  sigma);
+        mutateConstants(b->left.get(), sigma);
         mutateConstants(b->right.get(), sigma);
+    }
+    else if (auto* t = dynamic_cast<TrinaryNode*>(node)) {
+        for (auto& c : t->children)
+            mutateConstants(c.get(), sigma);
+    }
+    else if (auto* na = dynamic_cast<NaryNode*>(node)) {
+        for (auto& c : na->children) mutateConstants(c.get(), sigma);
     }
 }
 
-void mutateOperator(Node* node, double prob, const BinaryMap& binaryFuncs, const UnaryMap& unaryFuncs) {
-    if (auto* b = dynamic_cast<BinaryNode*>(node)) {
-        if (randBool(prob)) {
-            const std::string& newOp = randKey(binaryFuncs);
-            b->op   = newOp;
-            b->func = binaryFuncs.at(newOp);
-        }
-        mutateOperator(b->left.get(),  prob, binaryFuncs, unaryFuncs);
-        mutateOperator(b->right.get(), prob, binaryFuncs, unaryFuncs);
-    }
-    else if (auto* u = dynamic_cast<UnaryNode*>(node)) {
+void mutateOperator(Node* node, double prob, const UnaryMap& unaryFuncs, const BinaryMap& binaryFuncs, const TrinaryMap& trinaryFuncs, const NaryMap& naryFuncs) {
+    if (auto* u = dynamic_cast<UnaryNode*>(node)) {
         if (randBool(prob)) {
             const std::string& newName = randKey(unaryFuncs);
             u->name = newName;
             u->func = unaryFuncs.at(newName);
         }
-        mutateOperator(u->child.get(), prob, binaryFuncs, unaryFuncs);
+        mutateOperator(u->child.get(), prob, unaryFuncs, binaryFuncs, trinaryFuncs, naryFuncs);
+    }
+    else if (auto* b = dynamic_cast<BinaryNode*>(node)) {
+        if (randBool(prob)) {
+            const std::string& newOp = randKey(binaryFuncs);
+            b->op = newOp;
+            b->func = binaryFuncs.at(newOp);
+        }
+        mutateOperator(b->left.get(), prob, unaryFuncs, binaryFuncs, trinaryFuncs, naryFuncs);
+        mutateOperator(b->right.get(), prob, unaryFuncs, binaryFuncs, trinaryFuncs, naryFuncs);
+    }
+    else if (auto* t = dynamic_cast<TrinaryNode*>(node)) {
+        if (randBool(prob)) {
+            const std::string& newName = randKey(trinaryFuncs);
+            t->name = newName;
+            t->func = trinaryFuncs.at(newName);
+        }
+        for (auto& c : t->children)
+            mutateOperator(c.get(), prob, unaryFuncs, binaryFuncs, trinaryFuncs, naryFuncs);
+    }
+    else if (auto* na = dynamic_cast<NaryNode*>(node)) {
+        if (randBool(prob)) {
+            const std::string& newName = randKey(naryFuncs);
+            na->name = newName;
+            na->func = naryFuncs.at(newName);
+        }
+        for (auto& c : na->children) mutateOperator(c.get(), prob, unaryFuncs, binaryFuncs, trinaryFuncs, naryFuncs);
     }
 }
 
@@ -153,7 +235,7 @@ NodePtr crossover(const Node* parent1, const Node* parent2) {
     NodePtr child = parent1->clone();
 
     std::vector<NodeWithParent> nodes1, nodes2Dummy;
-    collectWithParent(child.get(),   nullptr, true, nodes1);
+    collectWithParent(child.get(), nullptr, true, nodes1);
     collectWithParent(const_cast<Node*>(parent2), nullptr, true, nodes2Dummy);
 
     auto all2 = const_cast<Node*>(parent2)->nodes();
@@ -263,6 +345,25 @@ NodePtr prune(NodePtr node) {
         }
         return node;
     }
+
+    if (auto* t = dynamic_cast<TrinaryNode*>(node.get())) {
+        for (auto& c : t->children) c = prune(std::move(c));
+
+        if (isConstantSubtree(t)) {
+            Sample empty{ };
+            return std::make_unique<ConstNode>(node->eval(empty));
+        }
+
+        return node;
+    }
+    if (auto* na = dynamic_cast<NaryNode*>(node.get())) {
+        for (auto& c : na->children) c = prune(std::move(c));
+        if (isConstantSubtree(na)) {
+            Sample empty{ };
+            return std::make_unique<ConstNode>(node->eval(empty));
+        }
+        return node;
+    }
     return node;
 }
 
@@ -347,6 +448,8 @@ struct Parser {
     const std::vector<std::string>& variables;
     const UnaryMap&  unaryFuncs;
     const BinaryMap& binaryFuncs;
+    const TrinaryMap& trinaryFuncs;
+    const NaryMap& naryFuncs;
     size_t pos = 0;
 
     [[nodiscard]] bool atEnd() const {
@@ -373,16 +476,16 @@ struct Parser {
         return binaryFuncs.contains(tok);
     }
 
-    // ── expression entry point (precedence-climbing) ──────────────────────────
+    // expression entry point (precedence-climbing)
     //
-    //  parse_expr(minPrec):
-    //    lhs = parse_unary()
-    //    while next token is a binary op with prec >= minPrec:
-    //        op = consume()
-    //        nextMinPrec = op.prec + (op.rightAssoc ? 0 : 1)
-    //        rhs = parse_expr(nextMinPrec)
-    //        lhs = BinaryNode(op, lhs, rhs)
-    //    return lhs
+    // parse_expr(minPrec):
+    //     lhs = parse_unary()
+    //     while next token is a binary op with prec >= minPrec:
+    //         op = consume()
+    //         nextMinPrec = op.prec + (op.rightAssoc ? 0 : 1)
+    //         rhs = parse_expr(nextMinPrec)
+    //         lhs = BinaryNode(op, lhs, rhs)
+    //     return lhs
 
     NodePtr parse_expr(int minPrec = 0) {
         NodePtr lhs = parse_unary();
@@ -445,15 +548,30 @@ struct Parser {
         if (std::isalpha(tok[0]) || tok[0] == '_') {
             std::string name = consume();
 
-            //unary
+            //unary or nary or trinary
             if (check("(")) {
                 pos++;
-                NodePtr arg = parse_expr(0);
+                std::vector<NodePtr> args;
+                args.push_back(parse_expr(0));
+                while (check(",")) {
+                    pos++;
+                    args.push_back(parse_expr(0));
+                }
                 expect(")");
 
-                auto uit = unaryFuncs.find(name);
-                if (uit != unaryFuncs.end())
-                    return std::make_unique<UnaryNode>(name, uit->second, std::move(arg));
+                if (args.size() == 1) {
+                    auto uit = unaryFuncs.find(name);
+                    if (uit != unaryFuncs.end())
+                        return std::make_unique<UnaryNode>(name, uit->second, std::move(args[0]));
+                }
+                if (args.size() == 3) {
+                    auto tit = trinaryFuncs.find(name);
+                    if (tit != trinaryFuncs.end())
+                        return std::make_unique<TrinaryNode>(name, tit->second, std::move(args[0]), std::move(args[1]), std::move(args[2]));
+                }
+                auto nit = naryFuncs.find(name);
+                if (nit != naryFuncs.end())
+                    return std::make_unique<NaryNode>(name, nit->second, std::move(args));
 
                 throw std::runtime_error("Unknown function: " + name);
             }
@@ -469,11 +587,11 @@ struct Parser {
 };
 
 
-NodePtr strToNode(const std::string& str, const std::vector<std::string>& variables, const UnaryMap&  unaryFuncs, const BinaryMap& binaryFuncs) {
+NodePtr strToNode(const std::string& str, const std::vector<std::string>& variables, const UnaryMap&  unaryFuncs, const BinaryMap& binaryFuncs, const TrinaryMap& trinaryFuncs, const NaryMap& naryFuncs) {
     auto tokens = tokenize(str);
     if (tokens.empty()) throw std::runtime_error("Empty expression");
 
-    Parser parser{ tokens, variables, unaryFuncs, binaryFuncs };
+    Parser parser{ tokens, variables, unaryFuncs, binaryFuncs, trinaryFuncs, naryFuncs };
     NodePtr result = parser.parse_expr(0);
 
     if (!parser.atEnd())

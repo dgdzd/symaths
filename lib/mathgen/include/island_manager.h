@@ -71,7 +71,7 @@ private:
 
     [[nodiscard]] std::vector<NodePtr> collectMigrants(const Isle& src) const;
 
-    void injectMigrants(Isle& dest, std::vector<NodePtr> migrants) ;
+    static void injectMigrants(Isle& dest, std::vector<NodePtr> migrants) ;
 
     static NodePtr adaptTree(NodePtr tree, const Operators& destOps);
 

@@ -13,15 +13,17 @@
 using Isle = ModelManager;
 
 struct IsleConfig {
-    std::vector<std::string> variables = {"x"};
+    std::vector<std::string> variables = { "x" };
     unsigned int maxDepth = 6;
     double penalty = 1e-4;
     double mutationProb = 0.4;
-    std::tuple<double, double, double> probs = { 0.15, 0.25, 0.25 };
+    Probs probs = { 0.167, 0.167, 0.167, 0.167, 0.167 };
     size_t populationSize = 200;
     unsigned int k = 7;
-    BinaryMap binaryOps;
     UnaryMap unaryOps;
+    BinaryMap binaryOps;
+    TrinaryMap trinaryOps;
+    NaryMap naryOps;
 
     IsleConfig() = default;
 };
