@@ -128,7 +128,7 @@ std::string printTree(const Node* node, const std::unordered_map<std::string, st
         if (it != aliases.end()) {
             return "(" + printTree(b->left.get()) + " " + it->second + " " + printTree(b->right.get()) + ")";
         }
-        return "(" + printTree(b->left.get()) + " " + b->op + " " + printTree(b->right.get()) + ")";
+        return b->op + "(" + printTree(b->left.get(), aliases, constPrecision) + ", " + printTree(b->right.get(), aliases, constPrecision) + ")";
     }
     if (const auto* t = dynamic_cast<const TrinaryNode*>(node)) {
         return t->name + "(" + printTree(t->children[0].get(), aliases, constPrecision) + ", " +
@@ -284,42 +284,42 @@ NodePtr prune(NodePtr node) {
         if (auto* lv = dynamic_cast<VarNode*>(b->left.get())) {
             if (auto* rv = dynamic_cast<VarNode*>(b->right.get())) {
                 if (lv->name == rv->name) {
-                    if (b->op == "-") return std::make_unique<ConstNode>(0.0);
-                    if (b->op == "/") return std::make_unique<ConstNode>(1.0);
+                    if (b->op == "sub") return std::make_unique<ConstNode>(0.0);
+                    if (b->op == "div") return std::make_unique<ConstNode>(1.0);
                 }
             }
         }
 
         if (rc) {
-            if (b->op == "+" && rc->value == 0.0) return std::move(b->left);
-            if (b->op == "-" && rc->value == 0.0) return std::move(b->left);
-            if (b->op == "*" && rc->value == 1.0) return std::move(b->left);
-            if (b->op == "*" && rc->value == 0.0) return std::make_unique<ConstNode>(0.0);
-            if (b->op == "/" && rc->value == 1.0) return std::move(b->left);
-            if (b->op == "/" && rc->value == 0.0) return std::make_unique<ConstNode>(0.0);
-            if (b->op == "*" && rc->value == -1.0) {
+            if (b->op == "add" && rc->value == 0.0) return std::move(b->left);
+            if (b->op == "sub" && rc->value == 0.0) return std::move(b->left);
+            if (b->op == "mul" && rc->value == 1.0) return std::move(b->left);
+            if (b->op == "mul" && rc->value == 0.0) return std::make_unique<ConstNode>(0.0);
+            if (b->op == "div" && rc->value == 1.0) return std::move(b->left);
+            if (b->op == "div" && rc->value == 0.0) return std::make_unique<ConstNode>(0.0);
+            if (b->op == "mul" && rc->value == -1.0) {
                 auto zero = std::make_unique<ConstNode>(0.0);
-                return std::make_unique<BinaryNode>("-", b->func, std::move(zero), std::move(b->left));
+                return std::make_unique<BinaryNode>("sub", b->func, std::move(zero), std::move(b->left));
             }
         }
 
         if (lc) {
-            if (b->op == "+" && lc->value == 0.0) return std::move(b->right);
-            if (b->op == "-" && lc->value == 0.0) { }
-            if (b->op == "*" && lc->value == 1.0) return std::move(b->right);
-            if (b->op == "*" && lc->value == 0.0) return std::make_unique<ConstNode>(0.0);
-            if (b->op == "/" && lc->value == 0.0) return std::make_unique<ConstNode>(0.0);
-            if (b->op == "*" && lc->value == -1.0) {
+            if (b->op == "add" && lc->value == 0.0) return std::move(b->right);
+            if (b->op == "sub" && lc->value == 0.0) { }
+            if (b->op == "mul" && lc->value == 1.0) return std::move(b->right);
+            if (b->op == "mul" && lc->value == 0.0) return std::make_unique<ConstNode>(0.0);
+            if (b->op == "div" && lc->value == 0.0) return std::make_unique<ConstNode>(0.0);
+            if (b->op == "mul" && lc->value == -1.0) {
                 auto zero = std::make_unique<ConstNode>(0.0);
-                return std::make_unique<BinaryNode>("-", b->func, std::move(zero), std::move(b->right));
+                return std::make_unique<BinaryNode>("sub", b->func, std::move(zero), std::move(b->right));
             }
         }
 
-        if (rc && (b->op == "*" || b->op == "+")) {
+        if (rc && (b->op == "mul" || b->op == "add")) {
             if (auto* inner = dynamic_cast<BinaryNode*>(b->left.get())) {
                 if (inner->op == b->op) {
                     if (auto* ic = dynamic_cast<ConstNode*>(inner->right.get())) {
-                        double merged = (b->op == "*") ? ic->value * rc->value : ic->value + rc->value;
+                        double merged = (b->op == "mul") ? ic->value * rc->value : ic->value + rc->value;
                         auto mergedNode = std::make_unique<ConstNode>(merged);
                         return std::make_unique<BinaryNode>(b->op, b->func, std::move(inner->left), std::move(mergedNode));
                     }
@@ -327,10 +327,10 @@ NodePtr prune(NodePtr node) {
             }
         }
 
-        if (b->op == "/") {
+        if (b->op == "div") {
             if (auto* lv = dynamic_cast<VarNode*>(b->left.get())) {
                 if (auto* inner = dynamic_cast<BinaryNode*>(b->right.get())) {
-                    if (inner->op == "*") {
+                    if (inner->op == "mul") {
                         if (auto* rv = dynamic_cast<VarNode*>(inner->left.get())) {
                             if (lv->name == rv->name) {
                                 if (auto* ic = dynamic_cast<ConstNode*>(inner->right.get())) {
@@ -423,6 +423,21 @@ std::vector<std::string> tokenize(const std::string& str) {
     return tokens;
 }
 
+std::string convert_bin_op(const std::string& op) {
+    if (op == "+") return "add";
+    if (op == "-") return "sub";
+    if (op == "*") return "mul";
+    if (op == "/") return "div";
+    if (op == "%") return "mod";
+    if (op == "^") return "pow";
+    if (op == "<") return "less";
+    if (op == ">") return "greater";
+    if (op == "<=") return "less_equal";
+    if (op == ">=") return "greater_equal";
+    if (op == "==") return "equal";
+    if (op == "!=") return "not_equal";
+}
+
 struct OpInfo {
     int prec;
     bool rightAssoc;
@@ -504,7 +519,7 @@ struct Parser {
             auto it = binaryFuncs.find(op);
             if (it == binaryFuncs.end())
                 throw std::runtime_error("Unknown binary operator: " + op);
-
+            op = convert_bin_op(op);
             lhs = std::make_unique<BinaryNode>(op, it->second, std::move(lhs), std::move(rhs));
         }
         return lhs;
@@ -520,10 +535,10 @@ struct Parser {
             if (it != unaryFuncs.end())
                 return std::make_unique<UnaryNode>("neg", it->second, std::move(operand));
 
-            auto mIt = binaryFuncs.find("*");
+            auto mIt = binaryFuncs.find("mul");
             if (mIt == binaryFuncs.end())
-                throw std::runtime_error("No unary negation and no '*' operator available");
-            return std::make_unique<BinaryNode>("*", mIt->second, std::make_unique<ConstNode>(-1.0), std::move(operand));
+                throw std::runtime_error("No unary negation and no 'mul' operator available");
+            return std::make_unique<BinaryNode>("mul", mIt->second, std::make_unique<ConstNode>(-1.0), std::move(operand));
         }
         if (check("+")) {
             pos++;
@@ -548,7 +563,7 @@ struct Parser {
         if (std::isalpha(tok[0]) || tok[0] == '_') {
             std::string name = consume();
 
-            //unary or nary or trinary
+            //unary or nary or trinary (or binary)
             if (check("(")) {
                 pos++;
                 std::vector<NodePtr> args;
@@ -563,6 +578,11 @@ struct Parser {
                     auto uit = unaryFuncs.find(name);
                     if (uit != unaryFuncs.end())
                         return std::make_unique<UnaryNode>(name, uit->second, std::move(args[0]));
+                }
+                if (args.size() == 2) {
+                    auto bit = binaryFuncs.find(name);
+                    if (bit != binaryFuncs.end())
+                        return std::make_unique<BinaryNode>(name, bit->second, std::move(args[0]), std::move(args[1]));
                 }
                 if (args.size() == 3) {
                     auto tit = trinaryFuncs.find(name);

@@ -9,11 +9,12 @@
 #include <unordered_map>
 #include <stdexcept>
 #include <algorithm>
+#include <array>
 
 using Sample = std::unordered_map<std::string, double>;
 
 
-inline double clamp(double v, double lo = -1e12, double hi = 1e12) {
+inline double clamp(double v, double lo = -1e30, double hi = 1e30) {
     if (std::isnan(v) || std::isinf(v)) return 0.0;
     return std::clamp(v, lo, hi);
 }

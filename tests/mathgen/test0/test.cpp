@@ -16,10 +16,10 @@ double sum0(double n) {
 void test_model_manager() {
     //1. Define operators
     BinaryMap binaryFunc = {
-        { "+", [](double a, double b){ return a + b; } },
-        { "-", [](double a, double b){ return a - b; } },
-        { "*", [](double a, double b){ return a * b; } },
-        { "/", [](double a, double b){ return std::abs(b) > 1e-12 ? a / b : 0.0; } },
+        { "add", [](double a, double b){ return a + b; } },
+        { "sub", [](double a, double b){ return a - b; } },
+        { "mul", [](double a, double b){ return a * b; } },
+        { "div", [](double a, double b){ return std::abs(b) > 1e-12 ? a / b : 0.0; } },
     };
     UnaryMap unaryFunc = {
         { "sin", [](double x){ return std::sin(x); } },
@@ -70,10 +70,10 @@ void test_model_manager() {
 
 void test_island_manager() {
     BinaryMap binaryFunc = {
-        { "+", [](double a, double b){ return a + b; } },
-        { "-", [](double a, double b){ return a - b; } },
-        { "*", [](double a, double b){ return a * b; } },
-        { "/", [](double a, double b){ return std::abs(b) > 1e-12 ? a / b : 0.0; } },
+        { "add", [](double a, double b){ return a + b; } },
+        { "sub", [](double a, double b){ return a - b; } },
+        { "mul", [](double a, double b){ return a * b; } },
+        { "div", [](double a, double b){ return std::abs(b) > 1e-12 ? a / b : 0.0; } },
     };
 
     UnaryMap unary = {
@@ -153,10 +153,10 @@ void test_island_manager() {
 void test_visco_data()
 {
     BinaryMap binaryFunc = {
-        { "+", [](double a, double b){ return a + b; } },
-        { "-", [](double a, double b){ return a - b; } },
-        { "*", [](double a, double b){ return a * b; } },
-        { "/", [](double a, double b){ return std::abs(b) > 1e-12 ? a / b : 0.0; } },
+        { "add", [](double a, double b){ return a + b; } },
+        { "sub", [](double a, double b){ return a - b; } },
+        { "mul", [](double a, double b){ return a * b; } },
+        { "div", [](double a, double b){ return std::abs(b) > 1e-12 ? a / b : 0.0; } },
     };
 
     UnaryMap unaryFunc = {
@@ -281,9 +281,9 @@ int main() {
     //A FAIRE
     //- (?) implémenter tolérance adaptive (suivant quelles variables, indicateurs, ... ?)
     //- (?) NOMBRES COMPLEXES EN OPTION (avec des templates ?)
-    //- implémenter Trinary
     //- faire un visualisateur complexe pour vraiment voir la convergence (et pour tester les limites de la SR)
     //- améliorer les modes debugs (pour qu'ils soient customs)
+    //- custom prune() part for user
 
     //test_island_manager();
     test_cmaes();
