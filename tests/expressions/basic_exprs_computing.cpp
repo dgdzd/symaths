@@ -103,6 +103,7 @@ TEST(basic_exprs_computing, sort_expressions) {
 
 TEST(basic_exprs_computing, expand_products) {
 	sym::symbol x("x");
+	sym::symbol y("y");
 	sym::expression expr1 = (x - 2) * (x + 2);
 	sym::expression expr2 = (x - 2) * (x + 2) * (2 * x + 6);
 	sym::expression expr3 = (x + x * (3 - x)) * (1 - x);
@@ -160,7 +161,7 @@ TEST(basic_expr_computing, differentiate_builtin_functions) {
 }
 
 TEST(basic_exprs_computing, polynomial_simple) {
-	sym::expression expr1 = sym::parse_single("3x^2 + 4x - 10");
+	sym::expression expr1 = sym::parse_expression("3x^2 + 4x - 10");
 
 	sym::polynomial p1(expr1);
 

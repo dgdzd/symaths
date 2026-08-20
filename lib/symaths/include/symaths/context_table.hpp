@@ -16,55 +16,31 @@
 #include "symaths/expression.hpp"
 #include "symaths/predicate.hpp"
 #include "symaths/set.hpp"
-#include "symaths/detail/predicate_node.hpp"
-#include "symaths/detail/set_node.hpp"
+#include "symaths/detail/types.hpp"
 
 #include <map>
 #include <optional>
 
 namespace sym {
 	namespace detail {
-		class expression_node;
+		class mathexpr_node;
 	}
 
 	class context_table_t {
-	public:
-		enum obj_type {
-			NONE = -1,
-			expression,
-			predicate,
-			set,
-			function,
-		};
-		struct entry {
-			obj_type type;
-			const void* value;
-		};
-
-	private:
-		std::vector<std::shared_ptr<entry>> m_objects;
-		std::map<std::string, std::weak_ptr<entry>> m_table;
+		std::map<std::string, detail::expression_value_t> m_table;
 
 	public:
 		context_table_t() = default;
 
-		void add_entry(const detail::expression_node* obj);
-		void add_entry(const detail::predicate_node* obj);
-		void add_entry(const detail::set_node* obj);
-		void add_entry(std::shared_ptr<entry> p_entry);
-		void add_named_entry(const std::string& name, std::shared_ptr<entry> p_entry);
-
-		void remove_entry(const void* obj);
+		void add_named_entry(const std::string& varname, detail::expression_value_t entry);
+		void remove_entry(const std::string& varname);
 		void clear();
 
-		[[nodiscard]] const std::vector<std::shared_ptr<entry>>& get_objects() const;
-		[[nodiscard]] std::vector<sym::expression> get_expressions() const;
-		[[nodiscard]] std::vector<sym::predicate> get_predicates() const;
-		[[nodiscard]] std::vector<sym::set> get_sets() const;
-
-		[[nodiscard]] std::optional<sym::expression> find_expression(const std::string& name);
-		[[nodiscard]] std::optional<sym::predicate> find_predicate(const std::string& name);
-		[[nodiscard]] std::optional<sym::set> find_set(const std::string& name);
+		[[nodiscard]] std::optional<expression> find_expression(const std::string& name);
+		[[nodiscard]] std::optional<predicate> find_predicate(const std::string& name);
+		[[nodiscard]] std::optional<set> find_set(const std::string& name);
+		[[nodiscard]] std::optional<number> find_number(const std::string& name);
+		[[nodiscard]] std::optional<bool> find_bool(const std::string& name);
 	};
 }
 

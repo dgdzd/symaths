@@ -1,7 +1,7 @@
 #include "symaths/base_functions.hpp"
 
 #include "symaths/symaths.hpp"
-#include "symaths/detail/expression_node.hpp"
+#include "symaths/detail/mathexpr_node.hpp"
 #include "symaths/utils/helpers.hpp"
 
 #include <stdexcept>
@@ -10,61 +10,61 @@ using namespace sym;
 
 static detail::builtin_func_descriptor builtin_table[funcs::LEN];
 
-number cos_eval(const std::vector<const detail::expression_node*>& args);
-const detail::expression_node* cos_reduce(const std::vector<const detail::expression_node*>& args);
-const detail::expression_node* cos_derivative(const std::vector<const detail::expression_node*>& args, const detail::expression_node* wrt);
+number cos_eval(const std::vector<const detail::mathexpr_node*>& args);
+const detail::mathexpr_node* cos_reduce(const std::vector<const detail::mathexpr_node*>& args);
+const detail::mathexpr_node* cos_derivative(const std::vector<const detail::mathexpr_node*>& args, const detail::mathexpr_node* wrt);
 
-number sin_eval(const std::vector<const detail::expression_node*>& args);
-const detail::expression_node* sin_reduce(const std::vector<const detail::expression_node*>& args);
-const detail::expression_node* sin_derivative(const std::vector<const detail::expression_node*>& args, const detail::expression_node* wrt);
+number sin_eval(const std::vector<const detail::mathexpr_node*>& args);
+const detail::mathexpr_node* sin_reduce(const std::vector<const detail::mathexpr_node*>& args);
+const detail::mathexpr_node* sin_derivative(const std::vector<const detail::mathexpr_node*>& args, const detail::mathexpr_node* wrt);
 
-number tan_eval(const std::vector<const detail::expression_node*>& args);
-const detail::expression_node* tan_reduce(const std::vector<const detail::expression_node*>& args);
-const detail::expression_node* tan_derivative(const std::vector<const detail::expression_node*>& args, const detail::expression_node* wrt);
+number tan_eval(const std::vector<const detail::mathexpr_node*>& args);
+const detail::mathexpr_node* tan_reduce(const std::vector<const detail::mathexpr_node*>& args);
+const detail::mathexpr_node* tan_derivative(const std::vector<const detail::mathexpr_node*>& args, const detail::mathexpr_node* wrt);
 
-number acos_eval(const std::vector<const detail::expression_node*>& args);
-const detail::expression_node* acos_reduce(const std::vector<const detail::expression_node*>& args);
-const detail::expression_node* acos_derivative(const std::vector<const detail::expression_node*>& args, const detail::expression_node* wrt);
+number acos_eval(const std::vector<const detail::mathexpr_node*>& args);
+const detail::mathexpr_node* acos_reduce(const std::vector<const detail::mathexpr_node*>& args);
+const detail::mathexpr_node* acos_derivative(const std::vector<const detail::mathexpr_node*>& args, const detail::mathexpr_node* wrt);
 
-number asin_eval(const std::vector<const detail::expression_node*>& args);
-const detail::expression_node* asin_reduce(const std::vector<const detail::expression_node*>& args);
-const detail::expression_node* asin_derivative(const std::vector<const detail::expression_node*>& args, const detail::expression_node* wrt);
+number asin_eval(const std::vector<const detail::mathexpr_node*>& args);
+const detail::mathexpr_node* asin_reduce(const std::vector<const detail::mathexpr_node*>& args);
+const detail::mathexpr_node* asin_derivative(const std::vector<const detail::mathexpr_node*>& args, const detail::mathexpr_node* wrt);
 
-number atan_eval(const std::vector<const detail::expression_node*>& args);
-const detail::expression_node* atan_reduce(const std::vector<const detail::expression_node*>& args);
-const detail::expression_node* atan_derivative(const std::vector<const detail::expression_node*>& args, const detail::expression_node* wrt);
+number atan_eval(const std::vector<const detail::mathexpr_node*>& args);
+const detail::mathexpr_node* atan_reduce(const std::vector<const detail::mathexpr_node*>& args);
+const detail::mathexpr_node* atan_derivative(const std::vector<const detail::mathexpr_node*>& args, const detail::mathexpr_node* wrt);
 
-number exp_eval(const std::vector<const detail::expression_node*>& args);
-const detail::expression_node* exp_reduce(const std::vector<const detail::expression_node*>& args);
-const detail::expression_node* exp_derivative(const std::vector<const detail::expression_node*>& args, const detail::expression_node* wrt);
+number exp_eval(const std::vector<const detail::mathexpr_node*>& args);
+const detail::mathexpr_node* exp_reduce(const std::vector<const detail::mathexpr_node*>& args);
+const detail::mathexpr_node* exp_derivative(const std::vector<const detail::mathexpr_node*>& args, const detail::mathexpr_node* wrt);
 
-number ln_eval(const std::vector<const detail::expression_node*>& args);
-const detail::expression_node* ln_reduce(const std::vector<const detail::expression_node*>& args);
-const detail::expression_node* ln_derivative(const std::vector<const detail::expression_node*>& args, const detail::expression_node* wrt);
+number ln_eval(const std::vector<const detail::mathexpr_node*>& args);
+const detail::mathexpr_node* ln_reduce(const std::vector<const detail::mathexpr_node*>& args);
+const detail::mathexpr_node* ln_derivative(const std::vector<const detail::mathexpr_node*>& args, const detail::mathexpr_node* wrt);
 
-number log10_eval(const std::vector<const detail::expression_node*>& args);
-const detail::expression_node* log10_reduce(const std::vector<const detail::expression_node*>& args);
-const detail::expression_node* log10_derivative(const std::vector<const detail::expression_node*>& args, const detail::expression_node* wrt);
+number log10_eval(const std::vector<const detail::mathexpr_node*>& args);
+const detail::mathexpr_node* log10_reduce(const std::vector<const detail::mathexpr_node*>& args);
+const detail::mathexpr_node* log10_derivative(const std::vector<const detail::mathexpr_node*>& args, const detail::mathexpr_node* wrt);
 
-number cosh_eval(const std::vector<const detail::expression_node*>& args);
-const detail::expression_node* cosh_reduce(const std::vector<const detail::expression_node*>& args);
-const detail::expression_node* cosh_derivative(const std::vector<const detail::expression_node*>& args, const detail::expression_node* wrt);
+number cosh_eval(const std::vector<const detail::mathexpr_node*>& args);
+const detail::mathexpr_node* cosh_reduce(const std::vector<const detail::mathexpr_node*>& args);
+const detail::mathexpr_node* cosh_derivative(const std::vector<const detail::mathexpr_node*>& args, const detail::mathexpr_node* wrt);
 
-number sinh_eval(const std::vector<const detail::expression_node*>& args);
-const detail::expression_node* sinh_reduce(const std::vector<const detail::expression_node*>& args);
-const detail::expression_node* sinh_derivative(const std::vector<const detail::expression_node*>& args, const detail::expression_node* wrt);
+number sinh_eval(const std::vector<const detail::mathexpr_node*>& args);
+const detail::mathexpr_node* sinh_reduce(const std::vector<const detail::mathexpr_node*>& args);
+const detail::mathexpr_node* sinh_derivative(const std::vector<const detail::mathexpr_node*>& args, const detail::mathexpr_node* wrt);
 
-number tanh_eval(const std::vector<const detail::expression_node*>& args);
-const detail::expression_node* tanh_reduce(const std::vector<const detail::expression_node*>& args);
-const detail::expression_node* tanh_derivative(const std::vector<const detail::expression_node*>& args, const detail::expression_node* wrt);
+number tanh_eval(const std::vector<const detail::mathexpr_node*>& args);
+const detail::mathexpr_node* tanh_reduce(const std::vector<const detail::mathexpr_node*>& args);
+const detail::mathexpr_node* tanh_derivative(const std::vector<const detail::mathexpr_node*>& args, const detail::mathexpr_node* wrt);
 
-number sqrt_eval(const std::vector<const detail::expression_node*>& args);
-const detail::expression_node* sqrt_reduce(const std::vector<const detail::expression_node*>& args);
-const detail::expression_node* sqrt_derivative(const std::vector<const detail::expression_node*>& args, const detail::expression_node* wrt);
+number sqrt_eval(const std::vector<const detail::mathexpr_node*>& args);
+const detail::mathexpr_node* sqrt_reduce(const std::vector<const detail::mathexpr_node*>& args);
+const detail::mathexpr_node* sqrt_derivative(const std::vector<const detail::mathexpr_node*>& args, const detail::mathexpr_node* wrt);
 
-number abs_eval(const std::vector<const detail::expression_node*>& args);
-const detail::expression_node* abs_reduce(const std::vector<const detail::expression_node*>& args);
-const detail::expression_node* abs_derivative(const std::vector<const detail::expression_node*>& args, const detail::expression_node* wrt);
+number abs_eval(const std::vector<const detail::mathexpr_node*>& args);
+const detail::mathexpr_node* abs_reduce(const std::vector<const detail::mathexpr_node*>& args);
+const detail::mathexpr_node* abs_derivative(const std::vector<const detail::mathexpr_node*>& args, const detail::mathexpr_node* wrt);
 
 
 void detail::init_builtin_functions() {
@@ -165,7 +165,7 @@ funcs::builtin_fn_id detail::get_func_id(const std::string& name) {
 }
 
 
-number cos_eval(const std::vector<const detail::expression_node*>& args) {
+number cos_eval(const std::vector<const detail::mathexpr_node*>& args) {
 	if (args.size() > 1) {
 		throw std::invalid_argument("funcs:builtin: cos only supports 1 argument");
 	}
@@ -178,14 +178,14 @@ number cos_eval(const std::vector<const detail::expression_node*>& args) {
 	}, value.p_data);
 }
 
-const detail::expression_node* cos_reduce(const std::vector<const detail::expression_node*>& args) {
+const detail::mathexpr_node* cos_reduce(const std::vector<const detail::mathexpr_node*>& args) {
 	if (args.size() > 1) {
 		throw std::invalid_argument("funcs:builtin: cos only supports 1 argument");
 	}
 	return current_context->node_manager().make_func(funcs::cos, args);
 }
 
-const detail::expression_node* cos_derivative(const std::vector<const detail::expression_node*>& args, const detail::expression_node* wrt) {
+const detail::mathexpr_node* cos_derivative(const std::vector<const detail::mathexpr_node*>& args, const detail::mathexpr_node* wrt) {
 	// cos'(u) = u'(-sin(u))
 	if (args.size() > 1) {
 		throw std::invalid_argument("funcs:builtin: cos only supports 1 argument");
@@ -198,7 +198,7 @@ const detail::expression_node* cos_derivative(const std::vector<const detail::ex
 	});
 }
 
-number sin_eval(const std::vector<const detail::expression_node*>& args) {
+number sin_eval(const std::vector<const detail::mathexpr_node*>& args) {
 	if (args.size() > 1) {
 		throw std::invalid_argument("funcs:builtin: sin only supports 1 argument");
 	}
@@ -211,14 +211,14 @@ number sin_eval(const std::vector<const detail::expression_node*>& args) {
 	}, value.p_data);
 }
 
-const detail::expression_node* sin_reduce(const std::vector<const detail::expression_node*>& args) {
+const detail::mathexpr_node* sin_reduce(const std::vector<const detail::mathexpr_node*>& args) {
 	if (args.size() > 1) {
 		throw std::invalid_argument("funcs:builtin: sin only supports 1 argument");
 	}
 	return current_context->node_manager().make_func(funcs::sin, args);
 }
 
-const detail::expression_node* sin_derivative(const std::vector<const detail::expression_node*>& args, const detail::expression_node* wrt) {
+const detail::mathexpr_node* sin_derivative(const std::vector<const detail::mathexpr_node*>& args, const detail::mathexpr_node* wrt) {
 	// sin'(u) = u'cos(u)
 	if (args.size() > 1) {
 		throw std::invalid_argument("funcs:builtin: sin only supports 1 argument");
@@ -231,7 +231,7 @@ const detail::expression_node* sin_derivative(const std::vector<const detail::ex
 	});
 }
 
-number tan_eval(const std::vector<const detail::expression_node*>& args) {
+number tan_eval(const std::vector<const detail::mathexpr_node*>& args) {
 	if (args.size() > 1) {
 		throw std::invalid_argument("funcs:builtin: tan only supports 1 argument");
 	}
@@ -244,14 +244,14 @@ number tan_eval(const std::vector<const detail::expression_node*>& args) {
 	}, value.p_data);
 }
 
-const detail::expression_node* tan_reduce(const std::vector<const detail::expression_node*>& args) {
+const detail::mathexpr_node* tan_reduce(const std::vector<const detail::mathexpr_node*>& args) {
 	if (args.size() > 1) {
 		throw std::invalid_argument("funcs:builtin: tan only supports 1 argument");
 	}
 	return current_context->node_manager().make_func(funcs::tan, args);
 }
 
-const detail::expression_node* tan_derivative(const std::vector<const detail::expression_node*>& args, const detail::expression_node* wrt) {
+const detail::mathexpr_node* tan_derivative(const std::vector<const detail::mathexpr_node*>& args, const detail::mathexpr_node* wrt) {
 	// tan'(u) = u'(1 + tan²(u))
 	if (args.size() > 1) {
 		throw std::invalid_argument("funcs:builtin: tan only supports 1 argument");
@@ -267,7 +267,7 @@ const detail::expression_node* tan_derivative(const std::vector<const detail::ex
 	});
 }
 
-number acos_eval(const std::vector<const detail::expression_node*>& args) {
+number acos_eval(const std::vector<const detail::mathexpr_node*>& args) {
 	if (args.size() > 1) {
 		throw std::invalid_argument("funcs:builtin: acos only supports 1 argument");
 	}
@@ -280,14 +280,14 @@ number acos_eval(const std::vector<const detail::expression_node*>& args) {
 	}, value.p_data);
 }
 
-const detail::expression_node* acos_reduce(const std::vector<const detail::expression_node*>& args) {
+const detail::mathexpr_node* acos_reduce(const std::vector<const detail::mathexpr_node*>& args) {
 	if (args.size() > 1) {
 		throw std::invalid_argument("funcs:builtin: acos only supports 1 argument");
 	}
 	return current_context->node_manager().make_func(funcs::acos, args);
 }
 
-const detail::expression_node* acos_derivative(const std::vector<const detail::expression_node*>& args, const detail::expression_node* wrt) {
+const detail::mathexpr_node* acos_derivative(const std::vector<const detail::mathexpr_node*>& args, const detail::mathexpr_node* wrt) {
 	// acos'(u) = -u' / sqrt(1 - u²)
 	if (args.size() > 1) {
 		throw std::invalid_argument("funcs:builtin: acos only supports 1 argument");
@@ -305,7 +305,7 @@ const detail::expression_node* acos_derivative(const std::vector<const detail::e
 	);
 }
 
-number asin_eval(const std::vector<const detail::expression_node*>& args) {
+number asin_eval(const std::vector<const detail::mathexpr_node*>& args) {
 	if (args.size() > 1) {
 		throw std::invalid_argument("funcs:builtin: asin only supports 1 argument");
 	}
@@ -318,14 +318,14 @@ number asin_eval(const std::vector<const detail::expression_node*>& args) {
 	}, value.p_data);
 }
 
-const detail::expression_node* asin_reduce(const std::vector<const detail::expression_node*>& args) {
+const detail::mathexpr_node* asin_reduce(const std::vector<const detail::mathexpr_node*>& args) {
 	if (args.size() > 1) {
 		throw std::invalid_argument("funcs:builtin: asin only supports 1 argument");
 	}
 	return current_context->node_manager().make_func(funcs::asin, args);
 }
 
-const detail::expression_node* asin_derivative(const std::vector<const detail::expression_node*>& args, const detail::expression_node* wrt) {
+const detail::mathexpr_node* asin_derivative(const std::vector<const detail::mathexpr_node*>& args, const detail::mathexpr_node* wrt) {
 	// asin'(u) = u' / sqrt(1 - u²)
 	if (args.size() > 1) {
 		throw std::invalid_argument("funcs:builtin: asin only supports 1 argument");
@@ -341,7 +341,7 @@ const detail::expression_node* asin_derivative(const std::vector<const detail::e
 	);
 }
 
-number atan_eval(const std::vector<const detail::expression_node*>& args) {
+number atan_eval(const std::vector<const detail::mathexpr_node*>& args) {
 	if (args.size() > 1) {
 		throw std::invalid_argument("funcs:builtin: atan only supports 1 argument");
 	}
@@ -354,14 +354,14 @@ number atan_eval(const std::vector<const detail::expression_node*>& args) {
 	}, value.p_data);
 }
 
-const detail::expression_node* atan_reduce(const std::vector<const detail::expression_node*>& args) {
+const detail::mathexpr_node* atan_reduce(const std::vector<const detail::mathexpr_node*>& args) {
 	if (args.size() > 1) {
 		throw std::invalid_argument("funcs:builtin: atan only supports 1 argument");
 	}
 	return current_context->node_manager().make_func(funcs::atan, args);
 }
 
-const detail::expression_node* atan_derivative(const std::vector<const detail::expression_node*>& args, const detail::expression_node* wrt) {
+const detail::mathexpr_node* atan_derivative(const std::vector<const detail::mathexpr_node*>& args, const detail::mathexpr_node* wrt) {
 	// atan'(u) = u' / (1 + u²)
 	if (args.size() > 1) {
 		throw std::invalid_argument("funcs:builtin: atan only supports 1 argument");
@@ -377,7 +377,7 @@ const detail::expression_node* atan_derivative(const std::vector<const detail::e
 	);
 }
 
-number exp_eval(const std::vector<const detail::expression_node*>& args) {
+number exp_eval(const std::vector<const detail::mathexpr_node*>& args) {
 	if (args.size() > 1) {
 		throw std::invalid_argument("funcs:builtin: exp only supports 1 argument");
 	}
@@ -390,14 +390,14 @@ number exp_eval(const std::vector<const detail::expression_node*>& args) {
 	}, value.p_data);
 }
 
-const detail::expression_node* exp_reduce(const std::vector<const detail::expression_node*>& args) {
+const detail::mathexpr_node* exp_reduce(const std::vector<const detail::mathexpr_node*>& args) {
 	if (args.size() > 1) {
 		throw std::invalid_argument("funcs:builtin: exp only supports 1 argument");
 	}
 	return current_context->node_manager().make_func(funcs::exp, args);
 }
 
-const detail::expression_node* exp_derivative(const std::vector<const detail::expression_node*>& args, const detail::expression_node* wrt) {
+const detail::mathexpr_node* exp_derivative(const std::vector<const detail::mathexpr_node*>& args, const detail::mathexpr_node* wrt) {
 	// exp'(u(x)) = u'(x) exp(u(x))
 	if (args.size() > 1) {
 		throw std::invalid_argument("funcs:builtin: exp only supports 1 argument");
@@ -410,7 +410,7 @@ const detail::expression_node* exp_derivative(const std::vector<const detail::ex
 	});
 }
 
-number ln_eval(const std::vector<const detail::expression_node*>& args) {
+number ln_eval(const std::vector<const detail::mathexpr_node*>& args) {
 	if (args.size() > 1) {
 		throw std::invalid_argument("funcs:builtin: ln only supports 1 argument");
 	}
@@ -423,14 +423,14 @@ number ln_eval(const std::vector<const detail::expression_node*>& args) {
 	}, value.p_data);
 }
 
-const detail::expression_node* ln_reduce(const std::vector<const detail::expression_node*>& args) {
+const detail::mathexpr_node* ln_reduce(const std::vector<const detail::mathexpr_node*>& args) {
 	if (args.size() > 1) {
 		throw std::invalid_argument("funcs:builtin: ln only supports 1 argument");
 	}
 	return current_context->node_manager().make_func(funcs::ln, args);
 }
 
-const detail::expression_node* ln_derivative(const std::vector<const detail::expression_node*>& args, const detail::expression_node* wrt) {
+const detail::mathexpr_node* ln_derivative(const std::vector<const detail::mathexpr_node*>& args, const detail::mathexpr_node* wrt) {
 	// ln'(u(x)) = u'(x)/u(x)
 	if (args.size() > 1) {
 		throw std::invalid_argument("funcs:builtin: ln only supports 1 argument");
@@ -443,7 +443,7 @@ const detail::expression_node* ln_derivative(const std::vector<const detail::exp
 	);
 }
 
-number log10_eval(const std::vector<const detail::expression_node*>& args) {
+number log10_eval(const std::vector<const detail::mathexpr_node*>& args) {
 	if (args.size() > 1) {
 		throw std::invalid_argument("funcs:builtin: log10 only supports 1 argument");
 	}
@@ -456,14 +456,14 @@ number log10_eval(const std::vector<const detail::expression_node*>& args) {
 	}, value.p_data);
 }
 
-const detail::expression_node* log10_reduce(const std::vector<const detail::expression_node*>& args) {
+const detail::mathexpr_node* log10_reduce(const std::vector<const detail::mathexpr_node*>& args) {
 	if (args.size() > 1) {
 		throw std::invalid_argument("funcs:builtin: log10 only supports 1 argument");
 	}
 	return current_context->node_manager().make_func(funcs::log10, args);
 }
 
-const detail::expression_node* log10_derivative(const std::vector<const detail::expression_node*>& args, const detail::expression_node* wrt) {
+const detail::mathexpr_node* log10_derivative(const std::vector<const detail::mathexpr_node*>& args, const detail::mathexpr_node* wrt) {
 	// log10'(u(x)) = u'(x)/(ln(10) u(x))
 	if (args.size() > 1) {
 		throw std::invalid_argument("funcs:builtin: log10 only supports 1 argument");
@@ -476,7 +476,7 @@ const detail::expression_node* log10_derivative(const std::vector<const detail::
 	);
 }
 
-number cosh_eval(const std::vector<const detail::expression_node*>& args) {
+number cosh_eval(const std::vector<const detail::mathexpr_node*>& args) {
 	if (args.size() > 1) {
 		throw std::invalid_argument("funcs:builtin: cosh only supports 1 argument");
 	}
@@ -489,14 +489,14 @@ number cosh_eval(const std::vector<const detail::expression_node*>& args) {
 	}, value.p_data);
 }
 
-const detail::expression_node* cosh_reduce(const std::vector<const detail::expression_node*>& args) {
+const detail::mathexpr_node* cosh_reduce(const std::vector<const detail::mathexpr_node*>& args) {
 	if (args.size() > 1) {
 		throw std::invalid_argument("funcs:builtin: cosh only supports 1 argument");
 	}
 	return current_context->node_manager().make_func(funcs::cosh, args);
 }
 
-const detail::expression_node* cosh_derivative(const std::vector<const detail::expression_node*>& args, const detail::expression_node* wrt) {
+const detail::mathexpr_node* cosh_derivative(const std::vector<const detail::mathexpr_node*>& args, const detail::mathexpr_node* wrt) {
 	// cosh'(x) = u'(x)sinh(u(x))
 	if (args.size() > 1) {
 		throw std::invalid_argument("funcs:builtin: cosh only supports 1 argument");
@@ -509,7 +509,7 @@ const detail::expression_node* cosh_derivative(const std::vector<const detail::e
 	});
 }
 
-number sinh_eval(const std::vector<const detail::expression_node*>& args) {
+number sinh_eval(const std::vector<const detail::mathexpr_node*>& args) {
 	if (args.size() > 1) {
 		throw std::invalid_argument("funcs:builtin: sinh only supports 1 argument");
 	}
@@ -522,14 +522,14 @@ number sinh_eval(const std::vector<const detail::expression_node*>& args) {
 	}, value.p_data);
 }
 
-const detail::expression_node* sinh_reduce(const std::vector<const detail::expression_node*>& args) {
+const detail::mathexpr_node* sinh_reduce(const std::vector<const detail::mathexpr_node*>& args) {
 	if (args.size() > 1) {
 		throw std::invalid_argument("funcs:builtin: sinh only supports 1 argument");
 	}
 	return current_context->node_manager().make_func(funcs::sinh, args);
 }
 
-const detail::expression_node* sinh_derivative(const std::vector<const detail::expression_node*>& args, const detail::expression_node* wrt) {
+const detail::mathexpr_node* sinh_derivative(const std::vector<const detail::mathexpr_node*>& args, const detail::mathexpr_node* wrt) {
 	// sinh'(x) = u'(x)cosh(u(x))
 	if (args.size() > 1) {
 		throw std::invalid_argument("funcs:builtin: sinh only supports 1 argument");
@@ -542,7 +542,7 @@ const detail::expression_node* sinh_derivative(const std::vector<const detail::e
 	});
 }
 
-number tanh_eval(const std::vector<const detail::expression_node*>& args) {
+number tanh_eval(const std::vector<const detail::mathexpr_node*>& args) {
 	if (args.size() > 1) {
 		throw std::invalid_argument("funcs:builtin: tanh only supports 1 argument");
 	}
@@ -555,14 +555,14 @@ number tanh_eval(const std::vector<const detail::expression_node*>& args) {
 	}, value.p_data);
 }
 
-const detail::expression_node* tanh_reduce(const std::vector<const detail::expression_node*>& args) {
+const detail::mathexpr_node* tanh_reduce(const std::vector<const detail::mathexpr_node*>& args) {
 	if (args.size() > 1) {
 		throw std::invalid_argument("funcs:builtin: tanh only supports 1 argument");
 	}
 	return current_context->node_manager().make_func(funcs::tanh, args);
 }
 
-const detail::expression_node* tanh_derivative(const std::vector<const detail::expression_node*>& args, const detail::expression_node* wrt) {
+const detail::mathexpr_node* tanh_derivative(const std::vector<const detail::mathexpr_node*>& args, const detail::mathexpr_node* wrt) {
 	// tanh'(x) = u'(x)(1 - tanh²(u(x))
 	if (args.size() > 1) {
 		throw std::invalid_argument("funcs:builtin: tanh only supports 1 argument");
@@ -578,7 +578,7 @@ const detail::expression_node* tanh_derivative(const std::vector<const detail::e
 	});
 }
 
-number sqrt_eval(const std::vector<const detail::expression_node*>& args) {
+number sqrt_eval(const std::vector<const detail::mathexpr_node*>& args) {
 	if (args.size() > 1) {
 		throw std::invalid_argument("funcs:builtin: sqrt only supports 1 argument");
 	}
@@ -591,14 +591,14 @@ number sqrt_eval(const std::vector<const detail::expression_node*>& args) {
 	}, value.p_data);
 }
 
-const detail::expression_node* sqrt_reduce(const std::vector<const detail::expression_node*>& args) {
+const detail::mathexpr_node* sqrt_reduce(const std::vector<const detail::mathexpr_node*>& args) {
 	if (args.size() > 1) {
 		throw std::invalid_argument("funcs:builtin: sqrt only supports 1 argument");
 	}
 	return current_context->node_manager().make_func(funcs::sqrt, args);
 }
 
-const detail::expression_node* sqrt_derivative(const std::vector<const detail::expression_node*>& args, const detail::expression_node* wrt) {
+const detail::mathexpr_node* sqrt_derivative(const std::vector<const detail::mathexpr_node*>& args, const detail::mathexpr_node* wrt) {
 	// sqrt'(u(x)) = u'(x)/(2 sqrt(u(x)))
 	if (args.size() > 1) {
 		throw std::invalid_argument("funcs:builtin: sqrt only supports 1 argument");
@@ -614,7 +614,7 @@ const detail::expression_node* sqrt_derivative(const std::vector<const detail::e
 	);
 }
 
-number abs_eval(const std::vector<const detail::expression_node*>& args) {
+number abs_eval(const std::vector<const detail::mathexpr_node*>& args) {
 	if (args.size() > 1) {
 		throw std::invalid_argument("funcs:builtin: abs only supports 1 argument");
 	}
@@ -629,14 +629,14 @@ number abs_eval(const std::vector<const detail::expression_node*>& args) {
 	}, value.p_data);
 }
 
-const detail::expression_node* abs_reduce(const std::vector<const detail::expression_node*>& args) {
+const detail::mathexpr_node* abs_reduce(const std::vector<const detail::mathexpr_node*>& args) {
 	if (args.size() > 1) {
 		throw std::invalid_argument("funcs:builtin: abs only supports 1 argument");
 	}
 	return current_context->node_manager().make_func(funcs::abs, args);
 }
 
-const detail::expression_node* abs_derivative(const std::vector<const detail::expression_node*>& args, const detail::expression_node* wrt) {
+const detail::mathexpr_node* abs_derivative(const std::vector<const detail::mathexpr_node*>& args, const detail::mathexpr_node* wrt) {
 	// abs'(u(x)) = u(x) < 0 ? -u'(x) : u'(x)
 	// TODO : multi-parts functions
 	if (args.size() > 1) {

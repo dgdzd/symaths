@@ -28,3 +28,5 @@ target_link_libraries(symaths_cmd_exe PRIVATE
         symaths::core
         ftxui::ftxui
 )
+
+set_target_properties(symaths_cmd_exe PROPERTIES OUTPUT_NAME symaths)

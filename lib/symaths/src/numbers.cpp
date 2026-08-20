@@ -1,6 +1,6 @@
 #include "symaths/numbers.hpp"
 
-#include "symaths/utils/maths.hpp"
+#include "symaths/program.hpp"
 
 #include <numeric>
 
@@ -15,6 +15,10 @@ numbers::rational numbers::rational::simplified() const {
 	return rational{num / gcd, den / gcd};
 }
 
+
+number::number(const program_output& out) {
+	p_data = out.cast<number>().p_data;
+}
 
 void number::downcast() {
 	p_data = std::visit(overloaded {

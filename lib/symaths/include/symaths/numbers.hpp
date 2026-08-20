@@ -19,26 +19,31 @@
 #include <variant>
 
 namespace sym {
+	class program_output;
+	using int_type = long long;
+	using positive_int_type = unsigned long long;
+	using float_type = double;
+
 	namespace numbers {
 		struct nan {
 			bool operator==(const nan&) const = default;
 		};
 
 		struct natural {
-			unsigned long long val;
+			positive_int_type val;
 
 			bool operator==(const natural&) const = default;
 		};
 
 		struct integer {
-			long long val;
+			int_type val;
 
 			bool operator==(const integer&) const = default;
 		};
 
 		struct rational {
-			long long num;
-			long long den;
+			int_type num;
+			int_type den;
 
 			rational(long long num, long long den) : num(num), den(den) {}
 			rational(unsigned long long num, unsigned long long den) : num(static_cast<long long>(num)), den(static_cast<long long>(den)) {}
@@ -49,13 +54,13 @@ namespace sym {
 		};
 
 		struct real {
-			double val;
+			float_type val;
 
 			bool operator==(const real&) const = default;
 		};
 
 		struct complex {
-			std::complex<double> val;
+			std::complex<float_type> val;
 
 			bool operator==(const complex&) const = default;
 		};
@@ -72,6 +77,7 @@ namespace sym {
 
 		number() : p_data(numbers::nan{}) {}
 		number(internal_data_t x) : p_data(x) {}
+		number(const program_output& out);
 		number(numbers::natural x) : p_data(x) {}
 		number(numbers::integer x) : p_data(x) {}
 		number(numbers::rational x) : p_data(x) {}
@@ -80,7 +86,7 @@ namespace sym {
 		number(numbers::nan x) : p_data(x) {}
 
 		void downcast();
-		std::string string() const;
+		[[nodiscard]] std::string string() const;
 
 		bool operator==(const number& rhs) const;
 		operator std::string() const;

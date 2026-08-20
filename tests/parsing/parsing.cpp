@@ -15,14 +15,15 @@ TEST(parsing, lexer_tokenize) {
 }
 
 TEST(parsing, parse_single) {
-	sym::expression expr1 = sym::parse_single("3*x+2*y");
-	sym::expression expr2 = sym::parse_single("3*(x+y+z)*4");
-	sym::expression expr3 = sym::parse_single("3(x+y+z)*4");
-	sym::expression expr4 = sym::parse_single("sin(x)");
-	sym::expression expr5 = sym::parse_single("sin(x)cos(x)");
-	sym::expression expr6 = sym::parse_single("sin(x)cos(x)+3a");
-	sym::expression expr7 = sym::parse_single("sin(1+tan(x))x");
-	sym::expression expr8 = sym::parse_single("cos(x)^2+sin(x)^2");
+	sym::expression expr1 = sym::parse_expression("3*x+2*y");
+	sym::expression expr2 = sym::parse_expression("3*(x+y+z)*4");
+	sym::expression expr3 = sym::parse_expression("3(x+y+z)*4");
+	sym::expression expr4 = sym::parse_expression("sin(x)");
+	sym::expression expr5 = sym::parse_expression("sin(x)cos(x)");
+	sym::expression expr6 = sym::parse_expression("sin(x)cos(x)+3a");
+	sym::expression expr7 = sym::parse_expression("sin(1+tan(x))x");
+	sym::expression expr8 = sym::parse_expression("cos(x)^2+sin(x)^2");
+	sym::expression expr9 = sym::parse_expression("2x^2");
 
 	ASSERT_EQ(expr1.string(), "3x+2y");
 	ASSERT_EQ(expr2.string(), "3(x+y+z)*4");
@@ -32,20 +33,38 @@ TEST(parsing, parse_single) {
 	ASSERT_EQ(expr6.string(), "sin(x)cos(x)+3a");
 	ASSERT_EQ(expr7.string(), "sin(1+tan(x))x");
 	ASSERT_EQ(expr8.string(), "cos(x)^2+sin(x)^2");
+	ASSERT_EQ(expr9.string(), "2x^2");
 }
 
 TEST(parsing, parse_multi) {
-	const sym::context_table_t* context = sym::parse("3x+7;a(3b+7);(a+2)(a+3)");
+	sym::context_table_t ctx;
+	sym::program prog = sym::parse("3x+7;a(3b+7);(a+2)(a+3)");
 
-	ASSERT_EQ(context->get_expressions().size(), 3);
+	ASSERT_NO_THROW(prog.evaluate(&ctx));
 }
 
 TEST(parsing, named_objects) {
-	sym::context_table_t* context = sym::parse("expr a: 3x+67");
-	sym::expression a(0.0);
+	sym::program prog = sym::parse("expr a: 3x+67");
+	sym::expression a;
 
-	ASSERT_NO_THROW(a = context->find_expression("a").value());
+	ASSERT_NO_THROW(a = prog.evaluate());
 
-	ASSERT_EQ(context->get_expressions().size(), 1);
 	ASSERT_EQ(a.string(), "3x+67");
+}
+
+TEST(parsing, program_exec) {
+	sym::symbol x("x");
+
+	sym::program prog1 = sym::parse("expr a: reduce(3x+7x)+reduce(3+7)");
+	sym::program prog2 = sym::parse("differentiate(x^3+2x^2-x, x)");
+	sym::expression expr2 = sym::pow(x, 3) + 2 * sym::pow(x, 2) - x;
+
+	sym::expression a1;
+	sym::expression a2;
+
+	ASSERT_NO_THROW(a1 = prog1.evaluate());
+	ASSERT_EQ(a1.string(), "10x+10");
+	ASSERT_NO_THROW(a2 = prog2.evaluate());
+	ASSERT_EQ(sym::differentiate(expr2, x).string(), "3x^2+4x-1");
+	ASSERT_EQ(sym::differentiate(expr2, x), a2);
 }

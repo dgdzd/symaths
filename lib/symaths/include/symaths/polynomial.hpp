@@ -20,11 +20,11 @@
 
 namespace sym {
 	class polynomial {
-		void validate_expr(const detail::expression_node* node, const detail::expression_node* variable = nullptr);
+		void validate_expr(const detail::mathexpr_node* node, const detail::mathexpr_node* variable = nullptr);
 
 	public:
 		symbol symb;
-		std::vector<const detail::expression_node*> coeffs;
+		std::vector<const detail::mathexpr_node*> coeffs;
 		expression expr;
 
 		polynomial(const expression& root);

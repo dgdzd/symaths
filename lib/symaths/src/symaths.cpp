@@ -1,7 +1,7 @@
 #include "symaths/symaths.hpp"
 
 #include "symaths/base_functions.hpp"
-#include "symaths/detail/expression_node.hpp"
+#include "symaths/detail/mathexpr_node.hpp"
 
 #include <stdexcept>
 
@@ -60,67 +60,144 @@ const sym::context_table_t& sym::library::context_table() const {
 	return m_context_table;
 }
 
-const sym::detail::expression_node* sym::make_constant(double val) {
+const sym::detail::mathexpr_node* sym::make_constant(double val) {
 	if (!current_context) {
 		throw std::runtime_error("sym::make_constant: current context is null");
 	}
 	return current_context->node_manager().make_constant(val);
 }
 
-const sym::detail::expression_node* sym::make_symbol(const std::string& name) {
+const sym::detail::mathexpr_node* sym::make_symbol(const std::string& name) {
 	if (!current_context) {
 		throw std::runtime_error("sym::make_symbol: current context is null");
 	}
 	return current_context->node_manager().make_symbol(name);
 }
 
-const sym::detail::expression_node* sym::make_negation(const detail::expression_node* node) {
+const sym::detail::mathexpr_node* sym::make_negation(const detail::mathexpr_node* node) {
 	if (!current_context) {
 		throw std::runtime_error("sym::make_negation: current context is null");
 	}
 	return current_context->node_manager().make_negation(node);
 }
 
-const sym::detail::expression_node* sym::make_addition(const std::vector<const detail::expression_node*>& operands) {
+const sym::detail::mathexpr_node* sym::make_addition(const std::vector<const detail::mathexpr_node*>& operands) {
 	if (!current_context) {
 		throw std::runtime_error("sym::make_addition: current context is null");
 	}
 	return current_context->node_manager().make_add(operands);
 }
 
-const sym::detail::expression_node* sym::make_multiplication(const std::vector<const detail::expression_node*>& operands) {
+const sym::detail::mathexpr_node* sym::make_multiplication(const std::vector<const detail::mathexpr_node*>& operands) {
 	if (!current_context) {
 		throw std::runtime_error("sym::make_multiplication: current context is null");
 	}
 	return current_context->node_manager().make_mul(operands);
 }
 
-const sym::detail::expression_node* sym::make_div(const detail::expression_node* numerator, const detail::expression_node* denominator) {
+const sym::detail::mathexpr_node* sym::make_div(const detail::mathexpr_node* numerator, const detail::mathexpr_node* denominator) {
 	if (!current_context) {
 		throw std::runtime_error("sym::make_div: current context is null");
 	}
 	return current_context->node_manager().make_div(numerator, denominator);
 }
 
-const sym::detail::expression_node* sym::make_power(const detail::expression_node* base, const detail::expression_node* exponent) {
+const sym::detail::mathexpr_node* sym::make_power(const detail::mathexpr_node* base, const detail::mathexpr_node* exponent) {
 	if (!current_context) {
 		throw std::runtime_error("sym::make_power: current context is null");
 	}
 	return current_context->node_manager().make_pow(base, exponent);
 }
 
-const sym::detail::expression_node* sym::make_func(uint32_t f_id, const detail::expression_node* arg) {
+const sym::detail::mathexpr_node* sym::make_func(uint32_t f_id, const detail::mathexpr_node* arg) {
 	if (!current_context) {
 		throw std::runtime_error("sym::make_func: current context is null");
 	}
 	return current_context->node_manager().make_func(f_id, {arg});
 }
 
-const sym::detail::expression_node* sym::make_func(uint32_t f_id, const std::vector<const detail::expression_node*>& args) {
+const sym::detail::mathexpr_node* sym::make_func(uint32_t f_id, const std::vector<const detail::mathexpr_node*>& args) {
 	if (!current_context) {
 		throw std::runtime_error("sym::make_func: current context is null");
 	}
 	return current_context->node_manager().make_func(f_id, args);
+}
+
+const sym::detail::statement_node* sym::make_sequence(const std::vector<const detail::statement_node*>& statements) {
+	if (!current_context) {
+		throw std::runtime_error("sym::make_sequence: current context is null");
+	}
+	return current_context->node_manager().make_sequence(statements);
+}
+
+const sym::detail::statement_node* sym::make_assignment(const std::string& name, const detail::mathexpr_node* value) {
+	if (!current_context) {
+		throw std::runtime_error("sym::make_assignment: current context is null");
+	}
+	return current_context->node_manager().make_assignment(name, value);
+}
+
+const sym::detail::statement_node* sym::make_assignment(const std::string& name, const detail::predicate_node* value) {
+	if (!current_context) {
+		throw std::runtime_error("sym::make_assignment: current context is null");
+	}
+	return current_context->node_manager().make_assignment(name, value);
+}
+
+const sym::detail::statement_node* sym::make_assignment(const std::string& name, const detail::set_node* value) {
+	if (!current_context) {
+		throw std::runtime_error("sym::make_assignment: current context is null");
+	}
+	return current_context->node_manager().make_assignment(name, value);
+}
+
+const sym::detail::statement_node* sym::make_expression_statement(const detail::mathexpr_node* expr) {
+	if (!current_context) {
+		throw std::runtime_error("sym::make_expression_statement: current context is null");
+	}
+	return current_context->node_manager().make_expression_statement(expr);
+}
+
+const sym::detail::statement_node* sym::make_expression_statement(const detail::predicate_node* expr) {
+	if (!current_context) {
+		throw std::runtime_error("sym::make_expression_statement: current context is null");
+	}
+	return current_context->node_manager().make_expression_statement(expr);
+}
+
+const sym::detail::statement_node* sym::make_expression_statement(const detail::set_node* expr) {
+	if (!current_context) {
+		throw std::runtime_error("sym::make_expression_statement: current context is null");
+	}
+	return current_context->node_manager().make_expression_statement(expr);
+}
+
+const sym::detail::statement_node* sym::make_conditional(const detail::statement_node* condition, const detail::statement_node* then_branch, const detail::statement_node* else_branch) {
+	if (!current_context) {
+		throw std::runtime_error("sym::make_conditional: current context is null");
+	}
+	return current_context->node_manager().make_conditional(condition, then_branch, else_branch);
+}
+
+/*const sym::detail::statement_node* sym::make_while_loop(const detail::predicate_node* condition, const detail::statement_node* body) {
+	if (!current_context) {
+		throw std::runtime_error("sym::make_while_loop: current context is null");
+	}
+	return current_context->node_manager().make_while_loop(condition, body);
+}
+
+const sym::detail::statement_node* sym::make_for_loop(const detail::mathexpr_node* variable, const detail::set_node* iterable, const detail::statement_node* body) {
+	if (!current_context) {
+		throw std::runtime_error("sym::make_for_loop: current context is null");
+	}
+	return current_context->node_manager().make_for_loop(variable, iterable, body);
+}*/
+
+const sym::detail::statement_node* sym::make_function_definition(const std::string& name, const std::vector<std::string>& params, const detail::statement_node* body) {
+	if (!current_context) {
+		throw std::runtime_error("sym::make_function_definition: current context is null");
+	}
+	return current_context->node_manager().make_function_definition(name, params, body);
 }
 
 
@@ -204,7 +281,7 @@ sym::symbol::symbol(const expression& expr) {
 	ref = expr.root;
 }
 
-sym::symbol::symbol(const detail::expression_node* root) {
+sym::symbol::symbol(const detail::mathexpr_node* root) {
 	if (!std::holds_alternative<detail::symbol>(root->p_data)) {
 		throw std::invalid_argument("sym::symbol: expression is not a symbol");
 	}

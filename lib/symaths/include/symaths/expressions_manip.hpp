@@ -18,7 +18,7 @@
 namespace sym {
 	class expression;
 	namespace detail {
-		class expression_node;
+		class mathexpr_node;
 	}
 
 	/**
@@ -43,18 +43,18 @@ namespace sym {
 	namespace detail {
 		struct term {
 			number coefficient;
-			const expression_node* symbolic;
+			const mathexpr_node* symbolic;
 		};
 
 		struct expr_term {
-			const expression_node* coefficient;
-			const expression_node* symbolic;
+			const mathexpr_node* coefficient;
+			const mathexpr_node* symbolic;
 		};
 
-		term extract_term(const expression_node* node);
-		expr_term extract_term_advanced(const expression_node* node);
+		term extract_term(const mathexpr_node* node);
+		expr_term extract_term_advanced(const mathexpr_node* node);
 
-		const expression_node* develop(const expression_node* node);
+		const mathexpr_node* develop(const mathexpr_node* node);
 	}
 }
 
