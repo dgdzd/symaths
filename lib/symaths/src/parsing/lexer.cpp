@@ -97,25 +97,29 @@ lexer::token lexer::next_token(char*& pc) {
 				}
 			}
 		}
-
-		if (ret) {
-			token& tok = current_token.value();
-			if (tok.type == NONE) {
-				while (tok.type == NONE && !tok.value.empty()) {
-					tok.value.pop_back();
-					pc--;
-					m_current_column--;
-					if (op_types.contains(tok.value)) tok.type = op_types[tok.value];
-				}
-			}
-			return tok;
+		if (*(pc + 1) == '\0') {
+			pc++;
+			ret = true;
 		}
+
+		if (ret) break;
 
 		c = *++pc; // Get reference to next char
 		m_current_column++;
 	}
 
-	return current_token.value_or(token{NONE, ""});
+	if (!current_token.has_value()) return token{NONE, "", m_current_line, m_current_column};
+
+	token& tok = current_token.value();
+	if (tok.type == NONE) {
+		while (tok.type == NONE && !tok.value.empty()) {
+			tok.value.pop_back();
+			pc--;
+			m_current_column--;
+			if (op_types.contains(tok.value)) tok.type = op_types[tok.value];
+		}
+	}
+	return tok;
 }
 
 void lexer::tokenize(std::string input) {

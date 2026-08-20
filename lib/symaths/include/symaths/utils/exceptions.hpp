@@ -47,6 +47,7 @@ namespace sym {
 		lexer::token m_token;
 
 	public:
+		parsing_error() = default;
 		parsing_error(error_type err, const lexer::token& token, const std::string& message);
 	};
 }

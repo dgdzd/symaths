@@ -184,6 +184,18 @@ const detail::statement_node* parser::parse_stmt(context_table_t* table, detail:
 	auto& nm = current_context->node_manager();
 
 	if (current_token().type == lexer::open_parenthesis) {
+
+		// First try parsing as mathexpr
+		size_t last_index = m_index;
+		size_t last_errsize = m_errors.size();
+		const detail::mathexpr_node* node = parse_mathexpr(0);
+		if (node) {
+			return nm.make_expression_statement(node);
+		}
+		m_index = last_index;
+		m_errors.resize(last_errsize);
+
+		// Fallback : parse statement
 		advance();
 		out = parse_stmt(table, m_context_type.back());
 		if (!consume(lexer::close_parenthesis)) return nullptr;
