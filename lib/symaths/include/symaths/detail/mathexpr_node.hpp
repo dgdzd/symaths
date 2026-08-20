@@ -13,12 +13,11 @@
 #ifndef SYM_NODE_EXPRESSION_HPP
 #define SYM_NODE_EXPRESSION_HPP
 
-#include "symaths/base_functions.hpp"
 #include "symaths/numbers.hpp"
+#include "symaths/detail/types.hpp"
 
 #include <deque>
 #include <unordered_map>
-#include <memory>
 #include <string>
 #include <variant>
 
@@ -26,7 +25,7 @@ namespace sym {
 	class node_manager_t;
 
 	namespace detail {
-		class expression_node;
+		class mathexpr_node;
 	}
 
 	namespace detail {
@@ -48,44 +47,44 @@ namespace sym {
 
 		struct expr_negation {
 			static constexpr unsigned int priority = 2;
-			const expression_node* child;
+			const mathexpr_node* child;
 
-			[[nodiscard]] const expression_node* sorted() const;
-			[[nodiscard]] const expression_node* reduced() const;
-			[[nodiscard]] const expression_node* expanded() const;
+			[[nodiscard]] const mathexpr_node* sorted() const;
+			[[nodiscard]] const mathexpr_node* reduced() const;
+			[[nodiscard]] const mathexpr_node* expanded() const;
 
 			bool operator==(const expr_negation&) const = default;
 		};
 
 		struct addition {
 			static constexpr unsigned int priority = 1;
-			std::vector<const expression_node*> operands;
+			std::vector<const mathexpr_node*> operands;
 
-			[[nodiscard]] const expression_node* sorted() const;
-			[[nodiscard]] const expression_node* reduced() const;
-			[[nodiscard]] const expression_node* expanded() const;
+			[[nodiscard]] const mathexpr_node* sorted() const;
+			[[nodiscard]] const mathexpr_node* reduced() const;
+			[[nodiscard]] const mathexpr_node* expanded() const;
 
 			bool operator==(const addition&) const = default;
 		};
 
 		struct multiplication {
 			static constexpr unsigned int priority = 2;
-			std::vector<const expression_node*> operands;
+			std::vector<const mathexpr_node*> operands;
 
-			[[nodiscard]] const expression_node* sorted() const;
-			[[nodiscard]] const expression_node* reduced() const;
-			[[nodiscard]] const expression_node* expanded() const;
+			[[nodiscard]] const mathexpr_node* sorted() const;
+			[[nodiscard]] const mathexpr_node* reduced() const;
+			[[nodiscard]] const mathexpr_node* expanded() const;
 
 			bool operator==(const multiplication&) const = default;
 		};
 
 		struct power {
 			static constexpr unsigned int priority = 3;
-			const expression_node* base;
-			const expression_node* exponent;
+			const mathexpr_node* base;
+			const mathexpr_node* exponent;
 
-			[[nodiscard]] const expression_node* reduced() const;
-			[[nodiscard]] const expression_node* expanded() const;
+			[[nodiscard]] const mathexpr_node* reduced() const;
+			[[nodiscard]] const mathexpr_node* expanded() const;
 
 			bool operator==(const power&) const = default;
 		};
@@ -93,34 +92,43 @@ namespace sym {
 		struct function_call {
 			static constexpr unsigned int priority = 0;
 			uint32_t f_id;
-			std::vector<const expression_node*> args;
+			std::vector<const mathexpr_node*> args;
 
 			bool operator==(const function_call&) const = default;
 		};
 
+		struct builtin_call {
+			static constexpr unsigned int priority = 0;
+			uint32_t id;
+			std::vector<expression_value_t> args;
+
+			bool operator==(const builtin_call&) const = default;
+		};
+
 
 		// Base node
-		class expression_node {
+		class mathexpr_node {
 		public:
-			using internal_data_t = std::variant<symbol, constant, expr_negation, addition, multiplication, power, function_call>;
+			using internal_data_t = std::variant<symbol, constant, expr_negation, addition, multiplication, power, function_call, builtin_call>;
 
 			internal_data_t p_data;
 			size_t p_hash = 0;
 
-			expression_node() = default;
-			virtual ~expression_node() = default;
+			mathexpr_node() = default;
+			virtual ~mathexpr_node() = default;
 
 			[[nodiscard]] unsigned int priority() const;
 			[[nodiscard]] number eval(const Context* ctx) const;
-			[[nodiscard]] std::string string(const expression_node* parent, bool first = true) const;
+			[[nodiscard]] const mathexpr_node* resolve_builtins() const;
+			[[nodiscard]] std::string string(const mathexpr_node* parent = nullptr, bool first = true) const;
 			[[nodiscard]] bool is_ground() const;
-			[[nodiscard]] bool depends_on(const expression_node* n) const;
+			[[nodiscard]] bool depends_on(const mathexpr_node* n) const;
 		};
 
-		using node_path_t = std::deque<const expression_node*>;
+		using node_path_t = std::deque<const mathexpr_node*>;
 
-		std::vector<node_path_t> search_node(const expression_node* parent, const expression_node* to_search);
-		std::vector<const expression_node*> list_symbols(const expression_node* parent);
+		std::vector<node_path_t> search_node(const mathexpr_node* parent, const mathexpr_node* to_search);
+		std::vector<const mathexpr_node*> list_symbols(const mathexpr_node* parent);
 	}
 }
 

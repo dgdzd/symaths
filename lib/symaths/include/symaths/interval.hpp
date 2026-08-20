@@ -15,12 +15,12 @@
 
 namespace sym {
 	namespace detail {
-		class expression_node;
+		class mathexpr_node;
 	}
 
 	class interval {
-		const detail::expression_node* lower = nullptr;
-		const detail::expression_node* upper = nullptr;
+		const detail::mathexpr_node* lower = nullptr;
+		const detail::mathexpr_node* upper = nullptr;
 		bool lower_included = true;
 		bool upper_included = true;
 

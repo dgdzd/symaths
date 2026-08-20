@@ -5,6 +5,7 @@ add_library(symaths_lib STATIC)
 set(SYMATHS_LIB_SOURCES
         src/symaths.cpp
         src/base_functions.cpp
+        src/builtin_functions.cpp
         src/context_table.cpp
         src/differentiation.cpp
         src/expression.cpp
@@ -12,12 +13,16 @@ set(SYMATHS_LIB_SOURCES
         src/numbers.cpp
         src/polynomial.cpp
         src/predicate.cpp
+        src/program.cpp
         src/set.cpp
-        src/detail/expression_node.cpp
+        src/detail/mathexpr_node.cpp
         src/detail/node_manager.cpp
         src/detail/predicate_node.cpp
+        src/detail/set_node.cpp
+        src/detail/statement_node.cpp
         src/parsing/lexer.cpp
         src/parsing/parser.cpp
+        src/utils/exceptions.cpp
         src/utils/maths.cpp
 )
 

@@ -25,13 +25,13 @@ namespace sym {
 		friend expression sym::differentiate(const expression& expr, const symbol& symbol);
 
 	public:
-		const detail::expression_node* ref;
+		const detail::mathexpr_node* ref;
 
 		symbol();
 		symbol(const std::string& name);
 		symbol(const char* name);
 		symbol(const expression& expr);
-		symbol(const detail::expression_node* root);
+		symbol(const detail::mathexpr_node* root);
 
 		[[nodiscard]] const std::string& name() const;
 		const std::string& name(const std::string& new_name);

@@ -33,22 +33,20 @@ void app::run() {
 	auto cmds_history = Container::Vertical({first_log});
 
 	// Clear and rebuild list
-	auto add_to_history = [&](const std::string& cmd) {
+	auto add_to_history = [&](const std::string& cmd, const std::string& output) {
 		if (cmd.empty()) return;
 
-		m_history_items.push_back({cmd, "HO LEE SHEET"});
+		m_history_items.push_back({cmd, output});
 
 		cmds_history->DetachAllChildren();
 		for (const auto& item : m_history_items) {
-			ButtonOption option = ButtonOption::Simple();
+			ButtonOption option_in = ButtonOption::Simple();
+			ButtonOption option_out = ButtonOption::Simple();
 
-			option.transform = [item](const EntryState& state) {
+			option_in.transform = [item](const EntryState& state) {
 				auto content = hbox({
 					text(" ") ,
-					paragraph(item.input),
-					filler(),
-					paragraph(item.output) | dim | color(Color::GrayDark),
-					text(" ") ,
+					paragraph(std::format("> {}", item.input)) | color(Color::White)
 				});
 
 				if (state.focused) {
@@ -58,25 +56,57 @@ void app::run() {
 				return content | size(HEIGHT, EQUAL, 1);
 			};
 
-			auto btn = Button(item.input, [&, item] {
+			option_out.transform = [item](const EntryState& state) {
+				auto content = hbox({
+					text(" ") ,
+					paragraph(std::format("> {}", item.output)),
+				});
+
+				if (state.focused) {
+					content = content | inverted;
+				}
+
+				return content | size(HEIGHT, EQUAL, 1) | color(Color::Grey30);
+			};
+
+			auto btn_in = Button(item.input, [&, item] {
 				m_input = item.input;
-			}, option);
+			}, option_in);
+			auto btn_out = Button(item.output, [&, item] {
+				m_input = item.output;
+			}, option_out);
 
-			cmds_history->Add(btn);
+			cmds_history->Add(btn_in);
+			cmds_history->Add(btn_out);
 		}
 	};
 
+	int cursor_pos = 0;
 	InputOption input_option;
-	input_option.on_enter = [&] {
-		m_input.pop_back(); // Remove '\n' char
-		m_input = utils::trim(m_input);
-		if (!m_input.empty()) {
-			add_to_history(m_input);
-			m_input.clear();
-		}
-	};
+	input_option.cursor_position = &cursor_pos;
+	input_option.multiline = true;
 
 	auto input_component = Input(&m_input, "Type a command...", input_option);
+	input_component |= CatchEvent([&](Event e) {
+		if (e == Event::CtrlN) {
+			m_input.insert(cursor_pos, "\n");
+			cursor_pos += 1;
+			return true;
+		}
+
+		if (e == Event::Return) {
+			m_input = utils::trim(m_input);
+			if (!m_input.empty()) {
+				sym::program prog = sym::parse(m_input);
+				sym::program_output out = prog.evaluate();
+				add_to_history(m_input, out.string());
+				m_input.clear();
+				cursor_pos = 0;
+			}
+			return true;
+		}
+		return false;
+	});
 
 	auto home_component = Container::Vertical({
 		cmds_history,

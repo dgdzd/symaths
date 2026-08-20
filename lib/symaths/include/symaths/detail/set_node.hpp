@@ -15,6 +15,7 @@
 
 #include "symaths/interval.hpp"
 
+#include <string>
 #include <variant>
 #include <vector>
 
@@ -48,7 +49,7 @@ namespace sym {
 
 		struct conditional_set {
 			const set_node* base_set;
-			const expression_node* symbol;
+			const mathexpr_node* symbol;
 
 			bool operator==(const conditional_set&) const = default;
 		};
@@ -67,6 +68,7 @@ namespace sym {
 			size_t p_hash = 0;
 
 			bool contains();
+			[[nodiscard]] std::string string() const;
 		};
 	}
 }

@@ -1,5 +1,6 @@
-#include "symaths/detail/expression_node.hpp"
+#include "symaths/detail/mathexpr_node.hpp"
 
+#include "symaths/builtin_functions.hpp"
 #include "symaths/base_functions.hpp"
 #include "symaths/expressions_manip.hpp"
 #include "symaths/symaths.hpp"
@@ -14,14 +15,128 @@
 
 using namespace sym;
 
+namespace sym::detail {
+	void find_all_paths_r(const mathexpr_node* current, const mathexpr_node* target, node_path_t& current_path, std::vector<node_path_t>& paths);
+	void find_symbols_r(const mathexpr_node* current, std::vector<const mathexpr_node*>& result);
+}
 
-unsigned int detail::expression_node::priority() const {
+static bool builtin_arg_is_ground(const detail::expression_value_t& arg) {
+	if (auto* mp = std::get_if<const detail::mathexpr_node*>(&arg)) return (*mp)->is_ground();
+	return true;
+}
+
+static bool builtin_arg_depends_on(const detail::expression_value_t& arg, const detail::mathexpr_node* n) {
+	if (auto* mp = std::get_if<const detail::mathexpr_node*>(&arg)) return (*mp)->depends_on(n);
+	return false;
+}
+
+static void builtin_arg_find_all_paths(const detail::expression_value_t& arg, const detail::mathexpr_node* target, detail::node_path_t& path, std::vector<detail::node_path_t>& paths) {
+	if (auto* mp = std::get_if<const detail::mathexpr_node*>(&arg)) find_all_paths_r(*mp, target, path, paths);
+}
+
+static void builtin_arg_find_symbols(const detail::expression_value_t& arg, std::vector<const detail::mathexpr_node*>& result) {
+	if (auto* mp = std::get_if<const detail::mathexpr_node*>(&arg)) find_symbols_r(*mp, result);
+}
+
+static std::string builtin_arg_string(const detail::expression_value_t& arg) {
+	return std::visit(overloaded {
+		[&](const bool& b) -> std::string { return b ? "true" : "false"; },
+		[&](const number n) -> std::string { return n.string(); },
+		[&](const exception& e) -> std::string { return e.string(); },
+		[&](const auto& p) -> std::string { return p->string(); }
+	}, arg);
+}
+
+void detail::find_all_paths_r(const mathexpr_node* current, const mathexpr_node* target, node_path_t& current_path, std::vector<node_path_t>& paths) {
+	if (!current) return;
+
+	current_path.push_back(current);
+	if (current == target) {
+		paths.push_back(current_path);
+	}
+
+	std::visit([&](const auto& x) {
+		using T = std::decay_t<decltype(x)>;
+
+		if constexpr (std::is_same_v<T, expr_negation>) {
+			find_all_paths_r(x.child, target, current_path, paths);
+		}
+
+		if constexpr (std::is_same_v<T, addition> || std::is_same_v<T, multiplication>) {
+			for (auto* c : x.operands) {
+				find_all_paths_r(c, target, current_path, paths);
+			}
+		}
+
+		if constexpr (std::is_same_v<T, power>) {
+			find_all_paths_r(x.base, target, current_path, paths);
+			find_all_paths_r(x.exponent, target, current_path, paths);
+		}
+
+		if constexpr (std::is_same_v<T, function_call>) {
+			for (auto* c : x.args) {
+				find_all_paths_r(c, target, current_path, paths);
+			}
+		}
+
+		if constexpr (std::is_same_v<T, builtin_call>) {
+			for (auto& c : x.args) {
+				builtin_arg_find_all_paths(c, target, current_path, paths);
+			}
+		}
+	}, current->p_data);
+	current_path.pop_back();
+}
+
+void detail::find_symbols_r(const mathexpr_node* current, std::vector<const mathexpr_node*>& result) {
+	if (!current) return;
+
+	std::visit([&](const auto& x) {
+		using T = std::decay_t<decltype(x)>;
+
+		if constexpr (std::is_same_v<T, symbol>) {
+			if (std::ranges::find(result, current) == result.end()) {
+				result.push_back(current);
+			}
+		}
+
+		if constexpr (std::is_same_v<T, expr_negation>) {
+			find_symbols_r(x.child, result);
+		}
+
+		if constexpr (std::is_same_v<T, addition> || std::is_same_v<T, multiplication>) {
+			for (auto* c : x.operands) {
+				find_symbols_r(c, result);
+			}
+		}
+
+		if constexpr (std::is_same_v<T, power>) {
+			find_symbols_r(x.base, result);
+			find_symbols_r(x.exponent, result);
+		}
+
+		if constexpr (std::is_same_v<T, function_call>) {
+			for (auto* c : x.args) {
+				find_symbols_r(c, result);
+			}
+		}
+
+		if constexpr (std::is_same_v<T, builtin_call>) {
+			for (auto& c : x.args) {
+				builtin_arg_find_symbols(c, result);
+			}
+		}
+	}, current->p_data);
+}
+
+
+unsigned int detail::mathexpr_node::priority() const {
 	return std::visit([](const auto& x) {
 		return x.priority;
 	}, p_data);
 }
 
-number detail::expression_node::eval(const Context* ctx) const {
+number detail::mathexpr_node::eval(const Context* ctx) const {
 	number num = std::visit(overloaded {
 		[&](const constant& x) -> number { return x.value; },
 		[&](const symbol& x) -> number { return ctx->at(x.name); },
@@ -46,17 +161,90 @@ number detail::expression_node::eval(const Context* ctx) const {
 		[&](const function_call& x) -> number {
 			const auto& func = get_func(funcs::builtin_fn_id{x.f_id});
 			return func.eval(x.args);
+		},
+		[&](const builtin_call& x) -> number {
+			return resolve_builtins()->eval(ctx);
 		}
 	}, p_data);
 	num.downcast();
 	return num;
 }
 
-bool should_be_preceeded_by_star(const detail::expression_node* parent, const detail::expression_node* node) {
+const detail::mathexpr_node* detail::mathexpr_node::resolve_builtins() const {
+	auto& nm = current_context->node_manager();
+	return std::visit(overloaded {
+		[&](const builtin_call& x) -> const mathexpr_node* {
+			std::vector<expression_value_t> resolved_args;
+			resolved_args.reserve(x.args.size());
+			for (auto& arg : x.args) {
+				if (auto* mp = std::get_if<const mathexpr_node*>(&arg)) {
+					resolved_args.push_back((*mp)->resolve_builtins());
+				} else {
+					resolved_args.push_back(arg);
+				}
+			}
+			const auto& b = get_builtin(x.id);
+			expression_value_t result = b.handler(resolved_args, nullptr);
+			if (auto** mp = std::get_if<const mathexpr_node*>(&result)) {
+				return *mp;
+			}
+			return this;
+		},
+		[&](const expr_negation& x) -> const mathexpr_node* {
+			auto* child = x.child->resolve_builtins();
+			if (child == x.child) return this;
+			return nm.make_negation(child);
+		},
+		[&](const addition& x) -> const mathexpr_node* {
+			std::vector<const mathexpr_node*> ops;
+			bool changed = false;
+			for (auto* op : x.operands) {
+				auto* r = op->resolve_builtins();
+				ops.push_back(r);
+				if (r != op) changed = true;
+			}
+			if (!changed) return this;
+			return nm.make_add(ops);
+		},
+		[&](const multiplication& x) -> const mathexpr_node* {
+			std::vector<const mathexpr_node*> ops;
+			bool changed = false;
+			for (auto* op : x.operands) {
+				auto* r = op->resolve_builtins();
+				ops.push_back(r);
+				if (r != op) changed = true;
+			}
+			if (!changed) return this;
+			return nm.make_mul(ops);
+		},
+		[&](const power& x) -> const mathexpr_node* {
+			auto* b = x.base->resolve_builtins();
+			auto* e = x.exponent->resolve_builtins();
+			if (b == x.base && e == x.exponent) return this;
+			return nm.make_pow(b, e);
+		},
+		[&](const function_call& x) -> const mathexpr_node* {
+			std::vector<const mathexpr_node*> resolved_args;
+			bool changed = false;
+			for (auto* arg : x.args) {
+				auto* r = arg->resolve_builtins();
+				resolved_args.push_back(r);
+				if (r != arg) changed = true;
+			}
+			if (!changed) return this;
+			return nm.make_func(x.f_id, resolved_args);
+		},
+		[&](const auto&) -> const mathexpr_node* {
+			return this;
+		},
+	}, p_data);
+}
+
+bool should_be_preceeded_by_star(const detail::mathexpr_node* parent, const detail::mathexpr_node* node) {
 	return std::visit([&](const auto& x) {
 		using T = std::decay_t<decltype(x)>;
 
-		if constexpr (std::is_same_v<T, detail::constant> || std::is_same_v<T, detail::function_call>) {
+		if constexpr (std::is_same_v<T, detail::constant> || std::is_same_v<T, detail::function_call> || std::is_same_v<T, detail::builtin_call>) {
 			return parent->priority() > node->priority();
 		}
 
@@ -80,7 +268,7 @@ bool should_be_preceeded_by_star(const detail::expression_node* parent, const de
 	}, node->p_data);
 }
 
-std::string detail::expression_node::string(const expression_node* parent, bool first) const {
+std::string detail::mathexpr_node::string(const mathexpr_node* parent, bool first) const {
 	return std::visit([&](const auto& x) -> std::string {
 		using T = std::decay_t<decltype(x)>;
 
@@ -184,11 +372,24 @@ std::string detail::expression_node::string(const expression_node* parent, bool 
 			return s + ")";
 		}
 
+		else if constexpr (std::is_same_v<T, builtin_call>) {
+			const auto& b = get_builtin(x.id);
+			std::string s = std::string(b.name) + "(";
+			for (int i = 0; i < x.args.size(); ++i) {
+				auto& arg = x.args[i];
+				if (i != 0) {
+					s += ", ";
+				}
+				s += builtin_arg_string(arg);
+			}
+			return s + ")";
+		}
+
 		return "";
 	}, p_data);
 }
 
-bool detail::expression_node::is_ground() const {
+bool detail::mathexpr_node::is_ground() const {
 	return std::visit([](const auto& x) {
 		using T = std::decay_t<decltype(x)>;
 
@@ -216,11 +417,15 @@ bool detail::expression_node::is_ground() const {
 			return std::ranges::all_of(x.args, [](const auto& arg) { return arg->is_ground(); });
 		}
 
+		if constexpr (std::is_same_v<T, builtin_call>) {
+			return std::ranges::all_of(x.args, builtin_arg_is_ground);
+		}
+
 		return false;
 	}, p_data);
 }
 
-bool detail::expression_node::depends_on(const expression_node* n) const {
+bool detail::mathexpr_node::depends_on(const mathexpr_node* n) const {
 	return std::visit([&](const auto& x) {
 		using T = std::decay_t<decltype(x)>;
 		if constexpr (std::is_same_v<T, constant>) {
@@ -247,95 +452,29 @@ bool detail::expression_node::depends_on(const expression_node* n) const {
 			return std::ranges::any_of(x.args, [&](const auto& arg) { return arg->depends_on(n); });
 		}
 
+		if constexpr (std::is_same_v<T, builtin_call>) {
+			return std::ranges::any_of(x.args, [&](const auto& a) { return builtin_arg_depends_on(a, n); });
+		}
+
 		return false;
 	}, p_data);
 }
 
-void find_all_paths_r(const detail::expression_node* current, const detail::expression_node* target, detail::node_path_t& current_path, std::vector<detail::node_path_t>& paths) {
-	if (!current) return;
-
-	current_path.push_back(current);
-	if (current == target) {
-		paths.push_back(current_path);
-	}
-
-	std::visit([&](const auto& x) {
-		using T = std::decay_t<decltype(x)>;
-
-		if constexpr (std::is_same_v<T, detail::expr_negation>) {
-			find_all_paths_r(x.child, target, current_path, paths);
-		}
-
-		if constexpr (std::is_same_v<T, detail::addition> || std::is_same_v<T, detail::multiplication>) {
-			for (auto* c : x.operands) {
-				find_all_paths_r(c, target, current_path, paths);
-			}
-		}
-
-		if constexpr (std::is_same_v<T, detail::power>) {
-			find_all_paths_r(x.base, target, current_path, paths);
-			find_all_paths_r(x.exponent, target, current_path, paths);
-		}
-
-		if constexpr (std::is_same_v<T, detail::function_call>) {
-			for (auto* c : x.args) {
-				find_all_paths_r(c, target, current_path, paths);
-			}
-		}
-	}, current->p_data);
-	current_path.pop_back();
-}
-
-void find_symbols_r(const detail::expression_node* current, std::vector<const detail::expression_node*>& result) {
-	if (!current) return;
-
-	std::visit([&](const auto& x) {
-		using T = std::decay_t<decltype(x)>;
-
-		if constexpr (std::is_same_v<T, detail::symbol>) {
-			if (std::ranges::find(result, current) == result.end()) {
-				result.push_back(current);
-			}
-		}
-
-		if constexpr (std::is_same_v<T, detail::expr_negation>) {
-			find_symbols_r(x.child, result);
-		}
-
-		if constexpr (std::is_same_v<T, detail::addition> || std::is_same_v<T, detail::multiplication>) {
-			for (auto* c : x.operands) {
-				find_symbols_r(c, result);
-			}
-		}
-
-		if constexpr (std::is_same_v<T, detail::power>) {
-			find_symbols_r(x.base, result);
-			find_symbols_r(x.exponent, result);
-		}
-
-		if constexpr (std::is_same_v<T, detail::function_call>) {
-			for (auto* c : x.args) {
-				find_symbols_r(c, result);
-			}
-		}
-	}, current->p_data);
-}
-
-std::vector<detail::node_path_t> detail::search_node(const expression_node* parent, const expression_node* to_search) {
+std::vector<detail::node_path_t> detail::search_node(const mathexpr_node* parent, const mathexpr_node* to_search) {
 	std::vector<node_path_t> paths;
 	node_path_t current_path;
 	find_all_paths_r(parent, to_search, current_path, paths);
 	return paths;
 }
 
-std::vector<const detail::expression_node*> detail::list_symbols(const expression_node* parent) {
-	std::vector<const expression_node*> result;
+std::vector<const detail::mathexpr_node*> detail::list_symbols(const mathexpr_node* parent) {
+	std::vector<const mathexpr_node*> result;
 	find_symbols_r(parent, result);
 	return result;
 }
 
 
-const detail::expression_node* detail::expr_negation::sorted() const {
+const detail::mathexpr_node* detail::expr_negation::sorted() const {
 	return std::visit([&](const auto& x) {
 		using T = std::decay_t<decltype(x)>;
 
@@ -346,7 +485,7 @@ const detail::expression_node* detail::expr_negation::sorted() const {
 	}, child->p_data);
 }
 
-const detail::expression_node* detail::expr_negation::reduced() const {
+const detail::mathexpr_node* detail::expr_negation::reduced() const {
 	return std::visit([&](const auto& x) {
 		using T = std::decay_t<decltype(x)>;
 
@@ -360,7 +499,7 @@ const detail::expression_node* detail::expr_negation::reduced() const {
 	}, child->p_data);
 }
 
-const detail::expression_node* detail::expr_negation::expanded() const {
+const detail::mathexpr_node* detail::expr_negation::expanded() const {
 	return std::visit([&](const auto& x) {
 		using T = std::decay_t<decltype(x)>;
 
@@ -371,7 +510,7 @@ const detail::expression_node* detail::expr_negation::expanded() const {
 	}, child->p_data);
 }
 
-double get_biggest_power(const detail::expression_node* node) {
+double get_biggest_power(const detail::mathexpr_node* node) {
 	return std::visit([&](const auto& x) {
 		using T = std::decay_t<decltype(x)>;
 
@@ -397,7 +536,7 @@ double get_biggest_power(const detail::expression_node* node) {
 	}, node->p_data);
 }
 
-const detail::expression_node* detail::addition::sorted() const {
+const detail::mathexpr_node* detail::addition::sorted() const {
 	// HOW TO PROCEED : First sort its subexpressions, then sort itself
 	std::vector sorted_ops{operands};
 
@@ -435,9 +574,9 @@ const detail::expression_node* detail::addition::sorted() const {
 		term term2 = extract_term(op2);
 		std::string repr1, repr2;
 		if (term1.symbolic)
-			repr1 = extract_term(op1).symbolic->string(nullptr);
+			repr1 = extract_term(op1).symbolic->string();
 		if (term2.symbolic)
-			repr2 = extract_term(op2).symbolic->string(nullptr);
+			repr2 = extract_term(op2).symbolic->string();
 
 		size_t l1 = repr1.size();
 		size_t l2 = repr2.size();
@@ -449,10 +588,10 @@ const detail::expression_node* detail::addition::sorted() const {
 	return current_context->node_manager().make_add(sorted_ops);
 }
 
-const detail::expression_node* detail::addition::reduced() const {
+const detail::mathexpr_node* detail::addition::reduced() const {
 	// In case of other sub-expressions, recursively simplify them
 	// Hold each variable and its total coefficient
-	std::map<std::string, std::pair<number, const expression_node*>> m;
+	std::map<std::string, std::pair<number, const mathexpr_node*>> m;
 
 	// Get all variables' coefficient
 	for (auto op : operands) {
@@ -500,7 +639,7 @@ const detail::expression_node* detail::addition::reduced() const {
 	auto& nm = current_context->node_manager();
 
 	// ptr<addition> new_expr = std::make_shared<addition>();
-	std::vector<const expression_node*> new_expr;
+	std::vector<const mathexpr_node*> new_expr;
 	for (auto& [name, val] : m) {
 		auto [coeff, expr] = val;
 
@@ -541,9 +680,9 @@ const detail::expression_node* detail::addition::reduced() const {
 	return nm.make_add(new_expr);
 }
 
-const detail::expression_node* detail::addition::expanded() const {
+const detail::mathexpr_node* detail::addition::expanded() const {
 	// Just expand sub-expressions, since expanding an addition makes no sense
-	std::vector<const expression_node*> new_expr;
+	std::vector<const mathexpr_node*> new_expr;
 	for (auto op : operands) {
 		new_expr.push_back(std::visit([&](auto& x) {
 			using T = std::decay_t<decltype(x)>;
@@ -561,7 +700,7 @@ const detail::expression_node* detail::addition::expanded() const {
 	return current_context->node_manager().make_add(new_expr);
 }
 
-const detail::expression_node* detail::multiplication::sorted() const {
+const detail::mathexpr_node* detail::multiplication::sorted() const {
 	// HOW TO PROCEED : First sort its subexpressions, then sort itself
 	std::vector sorted_ops{operands};
 
@@ -605,11 +744,11 @@ const detail::expression_node* detail::multiplication::sorted() const {
 
 		if (pw1 != pw2) return pw1 > pw2;
 
-		size_t l1 = op1->string(nullptr).size();
-		size_t l2 = op2->string(nullptr).size();
+		size_t l1 = op1->string().size();
+		size_t l2 = op2->string().size();
 		if (l1 != l2) return l1 < l2;
 
-		return op1->string(nullptr) < op2->string(nullptr);
+		return op1->string() < op2->string();
 	});
 
 	return current_context->node_manager().make_mul(sorted_ops);
@@ -624,7 +763,7 @@ struct product_term {
 // Internal helper function
 // Note that in case of negative symbols :
 // -x^2 --> base : -x | exp : 2
-product_term extract_products(const detail::expression_node* op) {
+product_term extract_products(const detail::mathexpr_node* op) {
 	return std::visit([&](auto& x) {
 		using T = std::decay_t<decltype(x)>;
 		if constexpr (std::is_same_v<T, detail::power>) {
@@ -640,7 +779,7 @@ product_term extract_products(const detail::expression_node* op) {
 	}, op->p_data);
 }
 
-const detail::expression_node* detail::multiplication::reduced() const {
+const detail::mathexpr_node* detail::multiplication::reduced() const {
 	// Same function as addition::reduced
 	std::map<std::string, product_term> coefficients;
 	number global_coeff = numbers::natural(1);
@@ -680,7 +819,7 @@ const detail::expression_node* detail::multiplication::reduced() const {
 
 	// Now, create a new sorted branch
 
-	std::vector<const expression_node*> new_operands;
+	std::vector<const mathexpr_node*> new_operands;
 	if (std::abs(global_coeff.get<double>() - 1.0) > 1e-12 && std::abs(global_coeff.get<double>() + 1.0)) {
 		new_operands.push_back(current_context->node_manager().make_constant(std::abs(global_coeff.get<double>())));
 	}
@@ -716,14 +855,14 @@ const detail::expression_node* detail::multiplication::reduced() const {
 		}
 		return new_operands.front();
 	}
-	const expression_node* result = current_context->node_manager().make_mul(new_operands);
+	const mathexpr_node* result = current_context->node_manager().make_mul(new_operands);
 	if (global_coeff.get<double>() < 0) {
 		return current_context->node_manager().make_negation(result);
 	}
 	return result;
 }
 
-const detail::expression_node* detail::multiplication::expanded() const {
+const detail::mathexpr_node* detail::multiplication::expanded() const {
 	// HOW : recursively develop expressions and subexpressions
 	//    BASE          DEVELOP       REDUCE
 	// (x+3)(x-2) --> x^2-2x+3x-6 --> x^2+x-6
@@ -735,10 +874,10 @@ const detail::expression_node* detail::multiplication::expanded() const {
 	// Create an addition node
 	// For each subexpressions in first operand
 	//     For each subexpressions in second operand
-	std::vector<std::vector<const expression_node*>> all_operands;
+	std::vector<std::vector<const mathexpr_node*>> all_operands;
 
 	for (auto& op : operands) {
-		const expression_node* expanded = op;
+		const mathexpr_node* expanded = op;
 		std::visit([&](auto& x) {
 			using T = std::decay_t<decltype(x)>;
 
@@ -755,15 +894,15 @@ const detail::expression_node* detail::multiplication::expanded() const {
 		}, op->p_data);
 	}
 
-	std::vector<std::vector<const expression_node*>> products;
+	std::vector<std::vector<const mathexpr_node*>> products;
 	products.emplace_back();
 
 	for (const auto& group : all_operands) {
-		std::vector<std::vector<const expression_node*>> new_products;
+		std::vector<std::vector<const mathexpr_node*>> new_products;
 
 		for (const auto& prefix : products) {
 			for (const auto& item : group) {
-				std::vector<const expression_node*> next = prefix;
+				std::vector<const mathexpr_node*> next = prefix;
 				next.push_back(item);
 				new_products.push_back(std::move(next));
 			}
@@ -773,9 +912,9 @@ const detail::expression_node* detail::multiplication::expanded() const {
 	}
 
 	auto result = std::make_shared<addition>();
-	std::vector<const expression_node*> final_terms;
+	std::vector<const mathexpr_node*> final_terms;
 	for (const auto& prod : products) {
-		std::vector<const expression_node*> final_group_terms;
+		std::vector<const mathexpr_node*> final_group_terms;
 		for (const auto& factor : prod) {
 			if (factor && !(factor->is_ground() && std::abs(factor->eval(nullptr).get<double>() - 1) < 1e-12)) {
 				final_group_terms.push_back(factor);
@@ -793,8 +932,8 @@ const detail::expression_node* detail::multiplication::expanded() const {
 	return current_context->node_manager().make_add(final_terms);
 }
 
-const detail::expression_node* detail::power::reduced() const {
-	const expression_node* base_ = std::visit([&](const auto& x) {
+const detail::mathexpr_node* detail::power::reduced() const {
+	const mathexpr_node* base_ = std::visit([&](const auto& x) {
 		using T = std::decay_t<decltype(x)>;
 
 		if constexpr (std::is_same_v<T, addition> || std::is_same_v<T, multiplication> || std::is_same_v<T, power> || std::is_same_v<T, expr_negation>) {
@@ -803,7 +942,7 @@ const detail::expression_node* detail::power::reduced() const {
 		return base;
 	}, base->p_data);
 
-	const expression_node* exp_ = std::visit([&](const auto& x) {
+	const mathexpr_node* exp_ = std::visit([&](const auto& x) {
 		using T = std::decay_t<decltype(x)>;
 
 		if constexpr (std::is_same_v<T, addition> || std::is_same_v<T, multiplication> || std::is_same_v<T, power> || std::is_same_v<T, expr_negation>) {
@@ -815,11 +954,11 @@ const detail::expression_node* detail::power::reduced() const {
 	return current_context->node_manager().make_pow(base_, exp_);
 }
 
-const detail::expression_node* detail::power::expanded() const {
+const detail::mathexpr_node* detail::power::expanded() const {
 	return std::visit([&](auto& x) {
 		using T = std::decay_t<decltype(x)>;
 
-		const expression_node* expanded_base = base;
+		const mathexpr_node* expanded_base = base;
 		if constexpr (std::is_same_v<T, addition> || std::is_same_v<T, multiplication> || std::is_same_v<T, power> || std::is_same_v<T, expr_negation>) {
 			expanded_base = x.expanded();
 		}
@@ -827,7 +966,7 @@ const detail::expression_node* detail::power::expanded() const {
 		// If the base is a multiplication, it's easy : distribute power to each operand
 		if (std::holds_alternative<multiplication>(expanded_base->p_data)) {
 			multiplication expanded_data = std::get<multiplication>(expanded_base->p_data);
-			std::vector<const expression_node*> final_terms;
+			std::vector<const mathexpr_node*> final_terms;
 			for (const auto& op : expanded_data.operands) {
 				final_terms.push_back(current_context->node_manager().make_pow(op, exponent));
 			}

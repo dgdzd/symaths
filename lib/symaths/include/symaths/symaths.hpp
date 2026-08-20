@@ -17,6 +17,7 @@
 #include "symaths/expression.hpp"
 #include "symaths/expressions_manip.hpp"
 #include "symaths/symbol.hpp"
+#include "symaths/program.hpp"
 #include "symaths/detail/node_manager.hpp"
 #include "symaths/parsing/parser.hpp"
 
@@ -70,15 +71,27 @@ namespace sym {
 	void make_context_current(library& ctx);
 	library* get_current_context();
 
-	const detail::expression_node* make_constant(double val);
-	const detail::expression_node* make_symbol(const std::string& name);
-	const detail::expression_node* make_negation(const detail::expression_node* node);
-	const detail::expression_node* make_addition(const std::vector<const detail::expression_node*>& operands);
-	const detail::expression_node* make_multiplication(const std::vector<const detail::expression_node*>& operands);
-	const detail::expression_node* make_div(const detail::expression_node* numerator, const detail::expression_node* denominator);
-	const detail::expression_node* make_power(const detail::expression_node* base, const detail::expression_node* exponent);
-	const detail::expression_node* make_func(uint32_t f_id, const detail::expression_node* arg);
-	const detail::expression_node* make_func(uint32_t f_id, const std::vector<const detail::expression_node*>& args);
+	const detail::mathexpr_node* make_constant(double val);
+	const detail::mathexpr_node* make_symbol(const std::string& name);
+	const detail::mathexpr_node* make_negation(const detail::mathexpr_node* node);
+	const detail::mathexpr_node* make_addition(const std::vector<const detail::mathexpr_node*>& operands);
+	const detail::mathexpr_node* make_multiplication(const std::vector<const detail::mathexpr_node*>& operands);
+	const detail::mathexpr_node* make_div(const detail::mathexpr_node* numerator, const detail::mathexpr_node* denominator);
+	const detail::mathexpr_node* make_power(const detail::mathexpr_node* base, const detail::mathexpr_node* exponent);
+	const detail::mathexpr_node* make_func(uint32_t f_id, const detail::mathexpr_node* arg);
+	const detail::mathexpr_node* make_func(uint32_t f_id, const std::vector<const detail::mathexpr_node*>& args);
+
+	const detail::statement_node* make_sequence(const std::vector<const detail::statement_node*>& statements);
+	const detail::statement_node* make_assignment(const std::string& name, const detail::mathexpr_node* value);
+	const detail::statement_node* make_assignment(const std::string& name, const detail::predicate_node* value);
+	const detail::statement_node* make_assignment(const std::string& name, const detail::set_node* value);
+	const detail::statement_node* make_expression_statement(const detail::mathexpr_node* expr);
+	const detail::statement_node* make_expression_statement(const detail::predicate_node* expr);
+	const detail::statement_node* make_expression_statement(const detail::set_node* expr);
+	const detail::statement_node* make_conditional(const detail::statement_node* condition, const detail::statement_node* then_branch, const detail::statement_node* else_branch);
+	/*const detail::statement_node* make_while_loop(const detail::predicate_node* condition, const detail::statement_node* body);
+	const detail::statement_node* make_for_loop(const detail::mathexpr_node* variable, const detail::set_node* iterable, const detail::statement_node* body);*/
+	const detail::statement_node* make_function_definition(const std::string& name, const std::vector<std::string>& params, const detail::statement_node* body);
 
 	expression pow(const expression& lhs, const expression& rhs);
 	expression cos(const expression& arg);

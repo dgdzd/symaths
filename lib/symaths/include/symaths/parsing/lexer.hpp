@@ -61,10 +61,16 @@ namespace sym {
 		struct token {
 			token_type type = NONE;
 			std::string value;
+			size_t line;
+			size_t column;
 		};
 
 	private:
+		size_t m_current_line = 0;
+		size_t m_current_column = 0;
 		std::vector<token> m_tokens;
+
+		token next_token(char*& pc);
 
 	public:
 		lexer() = default;

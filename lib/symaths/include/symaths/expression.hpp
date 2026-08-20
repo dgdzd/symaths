@@ -13,23 +13,26 @@
 #ifndef SYM_EXPRESSION_HPP
 #define SYM_EXPRESSION_HPP
 
-#include "symaths/detail/expression_node.hpp"
+#include "symaths/detail/mathexpr_node.hpp"
 
 namespace sym {
 	class symbol;
 	class polynomial;
 	class function;
+	class program_output;
 
 	class expression {
 	public:
-		const detail::expression_node* root;
+		const detail::mathexpr_node* root = nullptr;
 
+		expression() = default;
 		expression(double val);
+		expression(const program_output& out);
 		expression(const symbol& var);
 		expression(const polynomial& var);
 		expression(const std::string& name);
 		expression(const char* name);
-		expression(const detail::expression_node* node);
+		expression(const detail::mathexpr_node* node);
 
 		number operator()(const detail::Context& ctx) const;
 		number operator()() const;

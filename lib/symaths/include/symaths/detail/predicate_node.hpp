@@ -13,13 +13,14 @@
 #ifndef SYM_NODE_PREDICATE_HPP
 #define SYM_NODE_PREDICATE_HPP
 
+#include <string>
 #include <variant>
 #include <vector>
 
 namespace sym {
 	namespace detail {
 		class set_node;
-		class expression_node;
+		class mathexpr_node;
 		class predicate_node;
 
 		struct pred_negation {
@@ -29,7 +30,7 @@ namespace sym {
 		};
 
 		struct equality {
-			std::vector<const expression_node*> expressions;
+			std::vector<const mathexpr_node*> expressions;
 
 			bool operator==(const equality&) const = default;
 		};
@@ -42,20 +43,20 @@ namespace sym {
 				GREATER,
 			};
 			kind type;
-			std::vector<const expression_node*> expressions;
+			std::vector<const mathexpr_node*> expressions;
 
 			bool operator==(const inequality&) const = default;
 		};
 
 		struct congruence {
-			const expression_node* mod;
-			std::vector<const expression_node*> expressions;
+			const mathexpr_node* mod;
+			std::vector<const mathexpr_node*> expressions;
 
 			bool operator==(const congruence&) const = default;
 		};
 
 		struct element_inclusion {
-			const expression_node* element;
+			const mathexpr_node* element;
 			const set_node* set;
 
 			bool operator==(const element_inclusion&) const = default;
@@ -95,6 +96,7 @@ namespace sym {
 			virtual ~predicate_node() = default;
 
 			[[nodiscard]] bool is_ground() const;
+			[[nodiscard]] std::string string() const;
 		};
 	}
 }

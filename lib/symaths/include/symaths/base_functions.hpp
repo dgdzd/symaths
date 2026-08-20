@@ -20,7 +20,7 @@
 
 namespace sym {
 	namespace detail {
-		class expression_node;
+		class mathexpr_node;
 	}
 
 	namespace funcs {
@@ -37,9 +37,9 @@ namespace sym {
 		void init_builtin_functions();
 
 		struct builtin_func_descriptor {
-			using eval_t = number (*)(const std::vector<const expression_node*>& args);
-			using reduce_t = const expression_node* (*)(const std::vector<const expression_node*>& args);
-			using derivative_t = const expression_node* (*)(const std::vector<const expression_node*>& args, const expression_node* wrt);
+			using eval_t = number (*)(const std::vector<const mathexpr_node*>& args);
+			using reduce_t = const mathexpr_node* (*)(const std::vector<const mathexpr_node*>& args);
+			using derivative_t = const mathexpr_node* (*)(const std::vector<const mathexpr_node*>& args, const mathexpr_node* wrt);
 
 			const char* name;
 			eval_t eval;

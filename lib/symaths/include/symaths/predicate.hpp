@@ -21,12 +21,15 @@ namespace sym {
 	namespace detail {
 		class predicate_node;
 	}
+	class program_output;
 
 	class predicate {
 	public:
-		const detail::predicate_node* root;
+		const detail::predicate_node* root = nullptr;
 
+		predicate() = default;
 		predicate(const detail::predicate_node* node);
+		predicate(const program_output& out);
 
 		bool operator()() const;
 		[[nodiscard]] std::string string() const;

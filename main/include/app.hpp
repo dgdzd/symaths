@@ -15,6 +15,7 @@
 
 #include <cstdint>
 #include <ftxui/ftxui.hpp>
+#include <symaths/symaths.hpp>
 
 namespace symtool {
 	/**
@@ -39,6 +40,7 @@ namespace symtool {
 		};
 
 	private:
+		sym::library lib;
 		mode m_mode;
 		std::string m_input;
 		std::vector<command_log> m_history_items;

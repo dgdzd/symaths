@@ -1,10 +1,14 @@
 #include "symaths/expression.hpp"
 
+#include "symaths/program.hpp"
 #include "symaths/symaths.hpp"
-
 
 sym::expression::expression(double val) {
 	root = make_constant(val);
+}
+
+sym::expression::expression(const program_output& out) {
+	root = out.cast<const detail::mathexpr_node*>();
 }
 
 sym::expression::expression(const symbol& var) {
@@ -19,20 +23,23 @@ sym::expression::expression(const char* name) {
 	root = make_symbol(name);
 }
 
-sym::expression::expression(const detail::expression_node* node) {
+sym::expression::expression(const detail::mathexpr_node* node) {
 	root = node;
 }
 
 sym::number sym::expression::operator()(const detail::Context& ctx) const {
+	if (!root) return numbers::nan{};
 	return root->eval(&ctx);
 }
 
 sym::number sym::expression::operator()() const {
+	if (!root) return numbers::nan{};
 	return root->eval(nullptr);
 }
 
 std::string sym::expression::string() const {
-	return root->string(nullptr);
+	if (!root) return "";
+	return root->string();
 }
 
 
