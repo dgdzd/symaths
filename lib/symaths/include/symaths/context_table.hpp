@@ -16,6 +16,7 @@
 #include "symaths/expression.hpp"
 #include "symaths/predicate.hpp"
 #include "symaths/set.hpp"
+#include "symaths/detail/object.hpp"
 #include "symaths/detail/types.hpp"
 
 #include <map>
@@ -27,20 +28,29 @@ namespace sym {
 	}
 
 	class context_table_t {
-		std::map<std::string, detail::expression_value_t> m_table;
+	public:
+		struct entry {
+			detail::value_type_t type = detail::null;
+			object value;
+		};
+
+	private:
+		std::map<std::string, entry> m_table;
 
 	public:
 		context_table_t() = default;
 
-		void add_named_entry(const std::string& varname, detail::expression_value_t entry);
+		void add_entry(const std::string& varname, detail::expression_value_t entry);
+		void add_uninitialized_entry(const std::string& varname, detail::value_type_t type);
 		void remove_entry(const std::string& varname);
 		void clear();
 
+		[[nodiscard]] std::optional<object> find(const std::string& name);
+		[[nodiscard]] std::optional<bool> find_bool(const std::string& name);
+		[[nodiscard]] std::optional<number> find_number(const std::string& name);
 		[[nodiscard]] std::optional<expression> find_expression(const std::string& name);
 		[[nodiscard]] std::optional<predicate> find_predicate(const std::string& name);
 		[[nodiscard]] std::optional<set> find_set(const std::string& name);
-		[[nodiscard]] std::optional<number> find_number(const std::string& name);
-		[[nodiscard]] std::optional<bool> find_bool(const std::string& name);
 	};
 }
 

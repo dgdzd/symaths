@@ -59,7 +59,7 @@ void app::run() {
 			option_out.transform = [item](const EntryState& state) {
 				auto content = hbox({
 					text(" ") ,
-					paragraph(std::format("> {}", item.output)),
+					paragraph(item.output),
 				});
 
 				if (state.focused) {
@@ -77,7 +77,7 @@ void app::run() {
 			}, option_out);
 
 			cmds_history->Add(btn_in);
-			cmds_history->Add(btn_out);
+			if (!item.output.empty()) cmds_history->Add(btn_out);
 		}
 	};
 
@@ -97,9 +97,9 @@ void app::run() {
 		if (e == Event::Return) {
 			m_input = utils::trim(m_input);
 			if (!m_input.empty()) {
-				sym::program prog = sym::parse(m_input);
-				sym::program_output out = prog.evaluate();
-				add_to_history(m_input, out.string());
+				std::ostringstream oss;
+				sym::object out = sym::evaluate(m_input, nullptr, oss);
+				add_to_history(m_input, oss.str());
 				m_input.clear();
 				cursor_pos = 0;
 			}

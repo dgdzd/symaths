@@ -14,7 +14,6 @@ set_target_properties(parsing_test
 target_link_libraries(parsing_test PRIVATE
         gtest_main
         symaths_lib
-        mathgen_lib
 )
 
 include(GoogleTest)

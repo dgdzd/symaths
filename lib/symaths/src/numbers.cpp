@@ -16,7 +16,7 @@ numbers::rational numbers::rational::simplified() const {
 }
 
 
-number::number(const program_output& out) {
+number::number(const object& out) {
 	p_data = out.cast<number>().p_data;
 }
 

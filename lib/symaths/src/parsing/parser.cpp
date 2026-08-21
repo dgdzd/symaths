@@ -67,6 +67,16 @@ std::array<std::string, 9> reserved_identifiers = {
 };
 
 
+parser::parser(const lexer& lexer, context_table_t* table) : m_tokens(lexer.tokens()) {
+	if (table) m_variables = table;
+	else m_variables = &current_context->context_table();
+}
+
+parser::parser(lexer&& lexer, context_table_t* table) : m_tokens(std::move(lexer).tokens()) {
+	if (table) m_variables = table;
+	else m_variables = &current_context->context_table();
+}
+
 bool parser::has_errors() const {
 	return !m_errors.empty();
 }
@@ -77,7 +87,7 @@ exception parser::build_error() const {
 		err_msg += error.string() + "\n";
 	}
 	if (!err_msg.empty()) err_msg.pop_back();
-	return exception(err_msg);
+	return exception{err_msg};
 }
 
 bool parser::has_tokens() const {
@@ -163,11 +173,10 @@ std::optional<lexer::token> parser::expect_identifier(const std::string& name) {
 }
 
 const detail::statement_node* parser::parse() {
-	context_table_t table;
 	auto& nm = current_context->node_manager();
 	std::vector<const detail::statement_node*> stmts;
 	while (has_tokens()) {
-		stmts.push_back(parse_stmt(&table, detail::null));
+		stmts.push_back(parse_stmt(m_variables, detail::null));
 	}
 	if (stmts.empty()) return nullptr;
 	if (has_errors() || std::ranges::any_of(stmts, [&](const detail::statement_node* node) { return !node; })) {
@@ -210,7 +219,7 @@ const detail::statement_node* parser::parse_stmt(context_table_t* table, detail:
 			return nullptr;
 		}
 		out = nm.make_assignment(name, rhs, detail::mathexpr_);
-		m_types[name] = detail::mathexpr_;
+		m_variables->add_uninitialized_entry(name, detail::mathexpr_);
 	}
 
 	else if (expect_identifier("func")) {
@@ -226,7 +235,7 @@ const detail::statement_node* parser::parse_stmt(context_table_t* table, detail:
 			return nullptr;
 		}
 		out = nm.make_assignment(name, rhs, detail::predicate_);
-		m_types[name] = detail::predicate_;
+		m_variables->add_uninitialized_entry(name, detail::predicate_);
 	}
 
 	else if (expect_identifier("set")) {
@@ -238,7 +247,7 @@ const detail::statement_node* parser::parse_stmt(context_table_t* table, detail:
 			return nullptr;
 		}
 		out = nm.make_assignment(name, rhs, detail::set_);
-		m_types[name] = detail::set_;
+		m_variables->add_uninitialized_entry(name, detail::set_);
 	}
 
 	else {
@@ -448,6 +457,7 @@ const detail::mathexpr_node* parser::parse_prefix(const lexer::token& prefix) {
 			if (builtin_id != UINT32_MAX) {
 				return parse_builtin_call(&current_context->context_table(), builtin_id); // TODO add own context table.
 			}
+			m_variables->add_uninitialized_entry(prefix.value, detail::mathexpr_);
 			return nm.make_symbol(prefix.value);
 		}
 		case lexer::op_addition: {
@@ -665,7 +675,7 @@ program sym::parse(const std::string& input) {
 expression sym::parse_expression(const lexer& lexer) {
 	parser p(lexer);
 	auto out = p.parse_stmt(&current_context->context_table(), detail::null);
-	return std::get<const detail::mathexpr_node*>(out->eval().value());
+	return std::get<const detail::mathexpr_node*>(out->eval(&std::cout, &current_context->context_table()).value());
 }
 
 expression sym::parse_expression(const std::string& input) {
@@ -673,5 +683,5 @@ expression sym::parse_expression(const std::string& input) {
 	l.tokenize(input);
 	parser p(l);
 	auto out = p.parse_stmt(&current_context->context_table(), detail::null);
-	return std::get<const detail::mathexpr_node*>(out->eval().value());
+	return std::get<const detail::mathexpr_node*>(out->eval(&std::cout, &current_context->context_table()).value());
 }

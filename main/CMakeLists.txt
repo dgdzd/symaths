@@ -5,6 +5,7 @@ FetchContent_Declare(ftxui
         GIT_REPOSITORY https://github.com/ArthurSonzogni/ftxui
         GIT_TAG v7.0.1
 )
+set(FTXUI_ENABLE_INSTALL OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(ftxui)
 
 set(SYMATHS_CMD_EXE_SOURCES
@@ -30,3 +31,7 @@ target_link_libraries(symaths_cmd_exe PRIVATE
 )
 
 set_target_properties(symaths_cmd_exe PROPERTIES OUTPUT_NAME symaths)
+
+if (SYMTOOLS_CMDLINE_INSTALL)
+    install(TARGETS symaths_cmd_exe RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+endif()

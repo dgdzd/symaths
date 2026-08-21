@@ -4,33 +4,40 @@
 
 using namespace sym;
 
-std::string program_output::string() {
-	if (!m_root.has_value()) return "";
-	return std::visit(overloaded {
-		[&](const bool& b) -> std::string { return b ? "true" : "false"; },
-		[&](const number& n) -> std::string { return n.string(); },
-		[&](const exception& e) -> std::string { return e.string(); },
-		[&](const auto& v) -> std::string { return v->string(); }
-	}, m_root.value());
-}
 
-
-program::program(const detail::statement_node* node) {
+program::program(const detail::statement_node* node, std::ostream* p_stream) {
 	root = node;
+	out_stream = p_stream;
 }
 
-program::program(const std::vector<const detail::statement_node*>& statements) {
+program::program(const std::vector<const detail::statement_node*>& statements, std::ostream* p_stream) {
 	root = make_sequence(statements);
+	out_stream = p_stream;
 }
 
-program_output program::execute() const {
-	if (!root) return program_output{};
+context_table_t program::execute() const {
+	if (!root) return context_table_t{};
 	context_table_t ctx;
-	return program_output{root->eval(&ctx)};
+	object out{root->eval(out_stream, &ctx)};
+	return std::move(ctx);
 }
 
-program_output program::evaluate(context_table_t* ctx) const {
-	if (!root) return program_output{};
+object program::evaluate(context_table_t* ctx) const {
+	if (!root) return object{};
 	if (!ctx) ctx = &current_context->context_table();
-	return program_output{root->eval(ctx)};
+	return object{root->eval(out_stream, ctx)};
+}
+
+context_table_t sym::execute(const std::string& code, std::ostream& out) {
+	program prog = parse(code);
+	prog.out_stream = &out;
+	return std::move(prog.execute());
+}
+
+object sym::evaluate(const std::string& code, context_table_t* ctx, std::ostream& out) {
+	program prog = parse(code);
+	prog.out_stream = &out;
+	object ret = prog.evaluate(ctx);
+	out << ret.string() << std::endl;
+	return std::move(ret);
 }

@@ -36,6 +36,13 @@ namespace sym::detail {
 		mathexpr_ = variant_index<expression_value_t, const mathexpr_node*>(),
 		predicate_ = variant_index<expression_value_t, const predicate_node*>(),
 		set_ = variant_index<expression_value_t, const set_node*>(),
+		LEN
+	};
+
+	template <typename T>
+	concept is_symaths_object = requires(T t)
+	{
+		requires variant_index<expression_value_t, decltype(T::root)>() != value_type_t::LEN;
 	};
 }
 

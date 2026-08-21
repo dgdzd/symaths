@@ -21,7 +21,7 @@ namespace sym {
 	namespace detail {
 		class predicate_node;
 	}
-	class program_output;
+	class object;
 
 	class predicate {
 	public:
@@ -29,7 +29,7 @@ namespace sym {
 
 		predicate() = default;
 		predicate(const detail::predicate_node* node);
-		predicate(const program_output& out);
+		predicate(const object& out);
 
 		bool operator()() const;
 		[[nodiscard]] std::string string() const;

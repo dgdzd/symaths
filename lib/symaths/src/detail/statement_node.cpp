@@ -6,32 +6,32 @@
 using namespace sym::detail;
 
 
-std::optional<expression_value_t> statement_node::eval(context_table_t* ctx) const {
+std::optional<expression_value_t> statement_node::eval(std::ostream* p_out, context_table_t* ctx) const {
 	return std::visit(overloaded {
 		[&](const stmt_sequence& seq) -> std::optional<expression_value_t> {
 			for (auto& stmt : seq.statements) {
-				auto out = stmt->eval(ctx);
+				auto out = stmt->eval(p_out, ctx);
 			}
 			return std::nullopt;
 		},
 		[&](const expression_statement& stmt) -> std::optional<expression_value_t> {
 			if (auto* mp = std::get_if<const mathexpr_node*>(&stmt.expr)) {
-				return expression_value_t{(*mp)->resolve_builtins()};
+				return expression_value_t{(*mp)->resolve(p_out, ctx)};
 			}
 			return stmt.expr;
 		},
 		[&](const assignment& stmt) -> std::optional<expression_value_t> {
-			auto val = stmt.value->eval(ctx).value();
+			auto val = stmt.value->eval(p_out, ctx).value();
 			if (auto* mp = std::get_if<const mathexpr_node*>(&val)) {
-				val = expression_value_t{(*mp)->resolve_builtins()};
+				val = expression_value_t{(*mp)->resolve(p_out, ctx)};
 			}
-			ctx->add_named_entry(stmt.varname, val);
+			ctx->add_entry(stmt.varname, val);
 			return val;
 		},
 		[&](const conditional& stmt) -> std::optional<expression_value_t> {
-			bool cond = stmt.condition->eval(ctx).has_value(); // TODO : For now, just check if condition has an expression value.
-			if (cond) return stmt.then_branch->eval(ctx);
-			if (stmt.else_branch) return stmt.else_branch->eval(ctx);
+			bool cond = stmt.condition->eval(p_out, ctx).has_value(); // TODO : For now, just check if condition has an expression value.
+			if (cond) return stmt.then_branch->eval(p_out, ctx);
+			if (stmt.else_branch) return stmt.else_branch->eval(p_out, ctx);
 			return std::nullopt;
 		},
 		[&](const function_definition& stmt) -> std::optional<expression_value_t> {

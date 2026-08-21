@@ -23,6 +23,7 @@
 
 namespace sym {
 	class node_manager_t;
+	class context_table_t;
 
 	namespace detail {
 		class mathexpr_node;
@@ -118,8 +119,8 @@ namespace sym {
 			virtual ~mathexpr_node() = default;
 
 			[[nodiscard]] unsigned int priority() const;
-			[[nodiscard]] number eval(const Context* ctx) const;
-			[[nodiscard]] const mathexpr_node* resolve_builtins() const;
+			[[nodiscard]] number eval(context_table_t* ctx, std::ostream* out = nullptr) const;
+			[[nodiscard]] const mathexpr_node* resolve(std::ostream* p_out, context_table_t* ctx = nullptr) const;
 			[[nodiscard]] std::string string(const mathexpr_node* parent = nullptr, bool first = true) const;
 			[[nodiscard]] bool is_ground() const;
 			[[nodiscard]] bool depends_on(const mathexpr_node* n) const;

@@ -51,6 +51,7 @@ namespace sym {
 		node_manager_t m_node_manager;
 		refactoring_rules_t m_refactoring_rules;
 		context_table_t m_context_table;
+		std::ostream* m_out;
 
 	public:
 		library();
@@ -64,6 +65,8 @@ namespace sym {
 		[[nodiscard]] const refactoring_rules_t& refactoring_rules() const;
 		[[nodiscard]] context_table_t& context_table();
 		[[nodiscard]] const context_table_t& context_table() const;
+		[[nodiscard]] std::ostream*& out_stream();
+		[[nodiscard]] std::ostream* out_stream() const;
 	};
 
 	extern library* current_context;

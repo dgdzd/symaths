@@ -34,8 +34,8 @@ namespace sym {
 		};
 
 		parser() = default;
-		explicit parser(const lexer& lexer) : m_tokens(lexer.m_tokens) {}
-		explicit parser(lexer&& lexer) : m_tokens(std::move(lexer.m_tokens)) {}
+		explicit parser(const lexer& lexer, context_table_t* table = nullptr);
+		explicit parser(lexer&& lexer, context_table_t* table = nullptr);
 
 		[[nodiscard]] bool has_errors() const;
 		[[nodiscard]] exception build_error() const;
@@ -49,9 +49,9 @@ namespace sym {
 
 	private:
 		size_t m_index = 0;
+		context_table_t* m_variables = nullptr;
 		std::vector<lexer::token> m_tokens;
 		std::vector<parsing_error> m_errors;
-		std::map<std::string, detail::value_type_t> m_types;
 		std::vector<detail::value_type_t> m_context_type;
 
 		std::optional<bool> parse_bool();

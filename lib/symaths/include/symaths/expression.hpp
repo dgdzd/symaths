@@ -19,7 +19,7 @@ namespace sym {
 	class symbol;
 	class polynomial;
 	class function;
-	class program_output;
+	class object;
 
 	class expression {
 	public:
@@ -27,14 +27,14 @@ namespace sym {
 
 		expression() = default;
 		expression(double val);
-		expression(const program_output& out);
+		expression(const object& out);
 		expression(const symbol& var);
 		expression(const polynomial& var);
 		expression(const std::string& name);
 		expression(const char* name);
 		expression(const detail::mathexpr_node* node);
 
-		number operator()(const detail::Context& ctx) const;
+		number operator()(context_table_t& ctx) const;
 		number operator()() const;
 		[[nodiscard]] std::string string() const;
 

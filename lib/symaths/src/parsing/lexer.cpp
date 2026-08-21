@@ -97,12 +97,14 @@ lexer::token lexer::next_token(char*& pc) {
 				}
 			}
 		}
-		if (*(pc + 1) == '\0') {
-			pc++;
-			ret = true;
-		}
 
 		if (ret) break;
+
+		if (*(pc + 1) == '\0') {
+			pc++;
+			break;
+		}
+
 
 		c = *++pc; // Get reference to next char
 		m_current_column++;

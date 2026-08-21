@@ -19,7 +19,7 @@
 #include <variant>
 
 namespace sym {
-	class program_output;
+	class object;
 	using int_type = long long;
 	using positive_int_type = unsigned long long;
 	using float_type = double;
@@ -77,7 +77,7 @@ namespace sym {
 
 		number() : p_data(numbers::nan{}) {}
 		number(internal_data_t x) : p_data(x) {}
-		number(const program_output& out);
+		number(const object& out);
 		number(numbers::natural x) : p_data(x) {}
 		number(numbers::integer x) : p_data(x) {}
 		number(numbers::rational x) : p_data(x) {}

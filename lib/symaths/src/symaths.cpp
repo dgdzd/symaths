@@ -60,6 +60,14 @@ const sym::context_table_t& sym::library::context_table() const {
 	return m_context_table;
 }
 
+std::ostream*& sym::library::out_stream() {
+	return m_out;
+}
+
+std::ostream* sym::library::out_stream() const {
+	return m_out;
+}
+
 const sym::detail::mathexpr_node* sym::make_constant(double val) {
 	if (!current_context) {
 		throw std::runtime_error("sym::make_constant: current context is null");

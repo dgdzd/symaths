@@ -16,7 +16,11 @@
 #include "symaths/detail/types.hpp"
 
 #include <optional>
+#include <optional>
+#include <optional>
 #include <string>
+#include <variant>
+#include <variant>
 #include <variant>
 #include <vector>
 
@@ -95,7 +99,7 @@ namespace sym {
 			internal_data_t p_data;
 			size_t p_hash = 0;
 
-			[[nodiscard]] std::optional<expression_value_t> eval(context_table_t* ctx = nullptr) const;
+			[[nodiscard]] std::optional<expression_value_t> eval(std::ostream* p_out, context_table_t* ctx = nullptr) const;
 			[[nodiscard]] value_type_t return_type() const;
 
 			statement_node() = default;

@@ -2,6 +2,7 @@
 
 #include "symaths/builtin_functions.hpp"
 #include "symaths/base_functions.hpp"
+#include "symaths/context_table.hpp"
 #include "symaths/expressions_manip.hpp"
 #include "symaths/symaths.hpp"
 #include "symaths/detail/node_manager.hpp"
@@ -136,10 +137,18 @@ unsigned int detail::mathexpr_node::priority() const {
 	}, p_data);
 }
 
-number detail::mathexpr_node::eval(const Context* ctx) const {
+number detail::mathexpr_node::eval(context_table_t* ctx, std::ostream* out) const {
 	number num = std::visit(overloaded {
 		[&](const constant& x) -> number { return x.value; },
-		[&](const symbol& x) -> number { return ctx->at(x.name); },
+		[&](const symbol& x) -> number {
+			auto n = ctx->find_number(x.name);
+			if (!n) {
+				exception e{std::format(R"(Reference "{}" isn't of the required "number" type.)", x.name)};
+				if (out) *out << e.string() << "\n";
+				return numbers::nan{};
+			}
+			return n.value();
+		},
 		[&](const expr_negation& x) -> number { return -x.child->eval(ctx); },
 		[&](const addition& x) -> number {
 			number sum = numbers::natural(0);
@@ -163,22 +172,34 @@ number detail::mathexpr_node::eval(const Context* ctx) const {
 			return func.eval(x.args);
 		},
 		[&](const builtin_call& x) -> number {
-			return resolve_builtins()->eval(ctx);
+			return resolve(out, ctx)->eval(ctx);
 		}
 	}, p_data);
 	num.downcast();
 	return num;
 }
 
-const detail::mathexpr_node* detail::mathexpr_node::resolve_builtins() const {
+const detail::mathexpr_node* detail::mathexpr_node::resolve(std::ostream* p_out, context_table_t* ctx) const {
+	if (!ctx) ctx = &current_context->context_table();
 	auto& nm = current_context->node_manager();
 	return std::visit(overloaded {
+		[&](const symbol& x) -> const mathexpr_node* {
+			auto val = ctx->find(x.name);
+			if (!val || !val.value()) {
+				return nm.make_symbol(x.name); // Either not in context_table or not initialized.
+			}
+			if (val.value().type() != mathexpr_) {
+				exception e{std::format(R"(Reference "{}" isn't of the required "mathexpr" type.)", x.name)};
+				if (p_out) *p_out << e.string() << "\n";
+			}
+			return val.value().cast<const mathexpr_node*>(); // Get the mathexpr mapped to this name
+		},
 		[&](const builtin_call& x) -> const mathexpr_node* {
 			std::vector<expression_value_t> resolved_args;
 			resolved_args.reserve(x.args.size());
 			for (auto& arg : x.args) {
 				if (auto* mp = std::get_if<const mathexpr_node*>(&arg)) {
-					resolved_args.push_back((*mp)->resolve_builtins());
+					resolved_args.emplace_back((*mp)->resolve(p_out, ctx));
 				} else {
 					resolved_args.push_back(arg);
 				}
@@ -191,7 +212,7 @@ const detail::mathexpr_node* detail::mathexpr_node::resolve_builtins() const {
 			return this;
 		},
 		[&](const expr_negation& x) -> const mathexpr_node* {
-			auto* child = x.child->resolve_builtins();
+			auto* child = x.child->resolve(p_out, ctx);
 			if (child == x.child) return this;
 			return nm.make_negation(child);
 		},
@@ -199,7 +220,7 @@ const detail::mathexpr_node* detail::mathexpr_node::resolve_builtins() const {
 			std::vector<const mathexpr_node*> ops;
 			bool changed = false;
 			for (auto* op : x.operands) {
-				auto* r = op->resolve_builtins();
+				auto* r = op->resolve(p_out, ctx);
 				ops.push_back(r);
 				if (r != op) changed = true;
 			}
@@ -210,7 +231,7 @@ const detail::mathexpr_node* detail::mathexpr_node::resolve_builtins() const {
 			std::vector<const mathexpr_node*> ops;
 			bool changed = false;
 			for (auto* op : x.operands) {
-				auto* r = op->resolve_builtins();
+				auto* r = op->resolve(p_out, ctx);
 				ops.push_back(r);
 				if (r != op) changed = true;
 			}
@@ -218,8 +239,8 @@ const detail::mathexpr_node* detail::mathexpr_node::resolve_builtins() const {
 			return nm.make_mul(ops);
 		},
 		[&](const power& x) -> const mathexpr_node* {
-			auto* b = x.base->resolve_builtins();
-			auto* e = x.exponent->resolve_builtins();
+			auto* b = x.base->resolve(p_out, ctx);
+			auto* e = x.exponent->resolve(p_out, ctx);
 			if (b == x.base && e == x.exponent) return this;
 			return nm.make_pow(b, e);
 		},
@@ -227,7 +248,7 @@ const detail::mathexpr_node* detail::mathexpr_node::resolve_builtins() const {
 			std::vector<const mathexpr_node*> resolved_args;
 			bool changed = false;
 			for (auto* arg : x.args) {
-				auto* r = arg->resolve_builtins();
+				auto* r = arg->resolve(p_out, ctx);
 				resolved_args.push_back(r);
 				if (r != arg) changed = true;
 			}

@@ -1,5 +1,10 @@
 # lib/
 # Add working submodules
 
-add_subdirectory(symaths)
-add_subdirectory(mathgen)
+if (SYMATHS_BUILD)
+    add_subdirectory(symaths)
+endif()
+
+if (MATHGEN_BUILD)
+    add_subdirectory(mathgen)
+endif()

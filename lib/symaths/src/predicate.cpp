@@ -8,7 +8,7 @@ predicate::predicate(const detail::predicate_node* node) {
 	root = node;
 }
 
-predicate::predicate(const program_output& out) {
+predicate::predicate(const object& out) {
 	root = out.cast<const detail::predicate_node*>();
 }
 

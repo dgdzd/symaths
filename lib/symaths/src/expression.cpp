@@ -7,7 +7,7 @@ sym::expression::expression(double val) {
 	root = make_constant(val);
 }
 
-sym::expression::expression(const program_output& out) {
+sym::expression::expression(const object& out) {
 	root = out.cast<const detail::mathexpr_node*>();
 }
 
@@ -27,7 +27,7 @@ sym::expression::expression(const detail::mathexpr_node* node) {
 	root = node;
 }
 
-sym::number sym::expression::operator()(const detail::Context& ctx) const {
+sym::number sym::expression::operator()(context_table_t& ctx) const {
 	if (!root) return numbers::nan{};
 	return root->eval(&ctx);
 }
