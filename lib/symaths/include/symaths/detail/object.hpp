@@ -22,24 +22,24 @@ namespace sym {
 
 	// Friendly wrapper around std::optional<detail::expression_value_t>
 	class object {
-		std::optional<detail::expression_value_t> m_root;
-
 	public:
+		std::optional<detail::expression_value_t> root;
+
 		object() = default;
-		explicit object(const std::optional<detail::expression_value_t>& root) : m_root(root) {}
+		explicit object(const std::optional<detail::expression_value_t>& root) : root(root) {}
 
 		template <detail::is_symaths_object T>
 		T cast() const {
-			if (m_root.has_value()) {
-				return T(std::get<decltype(T::root)>(m_root.value()));
+			if (root.has_value()) {
+				return T(std::get<decltype(T::root)>(root.value()));
 			}
 			throw std::logic_error{"Cannot cast null program_output."};
 		}
 
 		template <typename T>
 		T cast() const {
-			if (m_root.has_value()) {
-				return std::get<T>(m_root.value());
+			if (root.has_value()) {
+				return std::get<T>(root.value());
 			}
 			throw std::logic_error{"Cannot cast null program_output."};
 		}

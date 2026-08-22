@@ -67,7 +67,7 @@ const detail::mathexpr_node* abs_reduce(const std::vector<const detail::mathexpr
 const detail::mathexpr_node* abs_derivative(const std::vector<const detail::mathexpr_node*>& args, const detail::mathexpr_node* wrt);
 
 
-void detail::init_builtin_functions() {
+void detail::init_maths_functions() {
 	using namespace funcs;
 
 	builtin_table[static_cast<size_t>(funcs::cos)] = {

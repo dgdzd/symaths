@@ -45,15 +45,15 @@ void app::run() {
 
 			option_in.transform = [item](const EntryState& state) {
 				auto content = hbox({
-					text(" ") ,
-					paragraph(std::format("> {}", item.input)) | color(Color::White)
+					text(" > ") ,
+					paragraph(item.input) | color(Color::White)
 				});
 
 				if (state.focused) {
 					content = content | inverted;
 				}
 
-				return content | size(HEIGHT, EQUAL, 1);
+				return content;
 			};
 
 			option_out.transform = [item](const EntryState& state) {
@@ -66,7 +66,7 @@ void app::run() {
 					content = content | inverted;
 				}
 
-				return content | size(HEIGHT, EQUAL, 1) | color(Color::Grey30);
+				return content | color(Color::Grey30);
 			};
 
 			auto btn_in = Button(item.input, [&, item] {
@@ -99,7 +99,8 @@ void app::run() {
 			if (!m_input.empty()) {
 				std::ostringstream oss;
 				sym::object out = sym::evaluate(m_input, nullptr, oss);
-				add_to_history(m_input, oss.str());
+				std::string str_out = utils::trim(utils::trim(oss.str()), '\n');
+				add_to_history(m_input, str_out);
 				m_input.clear();
 				cursor_pos = 0;
 			}

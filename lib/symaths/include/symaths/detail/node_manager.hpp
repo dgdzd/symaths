@@ -105,6 +105,7 @@ namespace sym {
 		/*const detail::statement_node* make_while_loop(const detail::predicate_node* condition, const detail::statement_node* body);
 		const detail::statement_node* make_for_loop(const detail::mathexpr_node* variable, const detail::set_node* iterable, const detail::statement_node* body);*/
 		const detail::statement_node* make_function_definition(const std::string& name, const std::vector<std::string>& params, const detail::statement_node* body);
+		const detail::statement_node* make_function_call(uint32_t id, const std::vector<detail::expression_value_t>& params);
 
 	private:
 		const detail::mathexpr_node* intern(detail::mathexpr_node::internal_data_t data);

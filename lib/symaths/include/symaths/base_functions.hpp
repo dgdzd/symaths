@@ -34,7 +34,7 @@ namespace sym {
 	}
 
 	namespace detail {
-		void init_builtin_functions();
+		void init_maths_functions();
 
 		struct builtin_func_descriptor {
 			using eval_t = number (*)(const std::vector<const mathexpr_node*>& args);

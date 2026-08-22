@@ -166,6 +166,10 @@ std::size_t statement_node_hash::operator()(const node_key<detail::statement_nod
 			h ^= std::hash<const detail::statement_node*>{}(x.body);
 		}
 
+		else if constexpr (std::is_same_v<T, detail::function_call>) {
+			h ^= std::hash<uint32_t>{}(x.id);
+		}
+
 		return h;
 	}, k.data);
 }
@@ -293,11 +297,11 @@ const detail::mathexpr_node* node_manager_t::make_pow(const detail::mathexpr_nod
 }
 
 const detail::mathexpr_node* node_manager_t::make_func(uint32_t f_id, const std::vector<const detail::mathexpr_node*>& args) {
-	return intern(detail::function_call{f_id, args});
+	return intern(detail::mathfunc_call{f_id, args});
 }
 
 const detail::mathexpr_node* node_manager_t::make_func(funcs::builtin_fn_id f_id, const std::vector<const detail::mathexpr_node*>& args) {
-	return intern(detail::function_call{static_cast<uint32_t>(f_id), args});
+	return intern(detail::mathfunc_call{static_cast<uint32_t>(f_id), args});
 }
 
 const detail::mathexpr_node* node_manager_t::make_builtin_call(uint32_t id, const std::vector<detail::expression_value_t>& args) {
@@ -382,4 +386,8 @@ const detail::statement_node* node_manager_t::make_for_loop(const detail::mathex
 
 const detail::statement_node* node_manager_t::make_function_definition(const std::string& name, const std::vector<std::string>& params, const detail::statement_node* body) {
 	return intern(detail::function_definition{name, params, body});
+}
+
+const detail::statement_node* node_manager_t::make_function_call(uint32_t id, const std::vector<detail::expression_value_t>& params) {
+	return intern(detail::function_call{id, params});
 }

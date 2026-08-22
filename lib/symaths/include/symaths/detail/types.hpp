@@ -44,6 +44,27 @@ namespace sym::detail {
 	{
 		requires variant_index<expression_value_t, decltype(T::root)>() != value_type_t::LEN;
 	};
+
+	inline std::string value_type_string(value_type_t type) {
+		switch (type) {
+			case null:
+				return "null";
+			case bool_:
+				return "bool";
+			case number_:
+				return "number";
+			case exception_:
+				return "exception";
+			case mathexpr_:
+				return "mathexpr";
+			case predicate_:
+				return "predicate";
+			case set_:
+				return "set";
+			default:
+				return "<unknown>";
+		}
+	}
 }
 
 #endif

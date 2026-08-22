@@ -74,7 +74,7 @@ void detail::find_all_paths_r(const mathexpr_node* current, const mathexpr_node*
 			find_all_paths_r(x.exponent, target, current_path, paths);
 		}
 
-		if constexpr (std::is_same_v<T, function_call>) {
+		if constexpr (std::is_same_v<T, mathfunc_call>) {
 			for (auto* c : x.args) {
 				find_all_paths_r(c, target, current_path, paths);
 			}
@@ -116,7 +116,7 @@ void detail::find_symbols_r(const mathexpr_node* current, std::vector<const math
 			find_symbols_r(x.exponent, result);
 		}
 
-		if constexpr (std::is_same_v<T, function_call>) {
+		if constexpr (std::is_same_v<T, mathfunc_call>) {
 			for (auto* c : x.args) {
 				find_symbols_r(c, result);
 			}
@@ -167,7 +167,7 @@ number detail::mathexpr_node::eval(context_table_t* ctx, std::ostream* out) cons
 		[&](const power& x) -> number {
 			return pow_calc(x.base->eval(ctx), x.exponent->eval(ctx));
 		},
-		[&](const function_call& x) -> number {
+		[&](const mathfunc_call& x) -> number {
 			const auto& func = get_func(funcs::builtin_fn_id{x.f_id});
 			return func.eval(x.args);
 		},
@@ -205,9 +205,9 @@ const detail::mathexpr_node* detail::mathexpr_node::resolve(std::ostream* p_out,
 				}
 			}
 			const auto& b = get_builtin(x.id);
-			expression_value_t result = b.handler(resolved_args, nullptr);
-			if (auto** mp = std::get_if<const mathexpr_node*>(&result)) {
-				return *mp;
+			object result = b.handler(resolved_args, ctx);
+			if (result.type() == mathexpr_) {
+				return result.cast<const mathexpr_node*>();
 			}
 			return this;
 		},
@@ -244,7 +244,7 @@ const detail::mathexpr_node* detail::mathexpr_node::resolve(std::ostream* p_out,
 			if (b == x.base && e == x.exponent) return this;
 			return nm.make_pow(b, e);
 		},
-		[&](const function_call& x) -> const mathexpr_node* {
+		[&](const mathfunc_call& x) -> const mathexpr_node* {
 			std::vector<const mathexpr_node*> resolved_args;
 			bool changed = false;
 			for (auto* arg : x.args) {
@@ -265,7 +265,7 @@ bool should_be_preceeded_by_star(const detail::mathexpr_node* parent, const deta
 	return std::visit([&](const auto& x) {
 		using T = std::decay_t<decltype(x)>;
 
-		if constexpr (std::is_same_v<T, detail::constant> || std::is_same_v<T, detail::function_call> || std::is_same_v<T, detail::builtin_call>) {
+		if constexpr (std::is_same_v<T, detail::constant> || std::is_same_v<T, detail::mathfunc_call> || std::is_same_v<T, detail::builtin_call>) {
 			return parent->priority() > node->priority();
 		}
 
@@ -380,7 +380,7 @@ std::string detail::mathexpr_node::string(const mathexpr_node* parent, bool firs
 			return x.base->string(this, false) + "^" + x.exponent->string(this, false);
 		}
 
-		else if constexpr (std::is_same_v<T, function_call>) {
+		else if constexpr (std::is_same_v<T, mathfunc_call>) {
 			const auto& func = get_func(funcs::builtin_fn_id{x.f_id});
 			std::string s = std::string(func.name) + "(";
 			for (int i = 0; i < x.args.size(); ++i) {
@@ -434,7 +434,7 @@ bool detail::mathexpr_node::is_ground() const {
 			return x.base->is_ground() && x.exponent->is_ground();
 		}
 
-		if constexpr (std::is_same_v<T, function_call>) {
+		if constexpr (std::is_same_v<T, mathfunc_call>) {
 			return std::ranges::all_of(x.args, [](const auto& arg) { return arg->is_ground(); });
 		}
 
@@ -469,7 +469,7 @@ bool detail::mathexpr_node::depends_on(const mathexpr_node* n) const {
 			return x.base->depends_on(n) || x.exponent->depends_on(n);
 		}
 
-		if constexpr (std::is_same_v<T, function_call>) {
+		if constexpr (std::is_same_v<T, mathfunc_call>) {
 			return std::ranges::any_of(x.args, [&](const auto& arg) { return arg->depends_on(n); });
 		}
 
@@ -815,7 +815,7 @@ const detail::mathexpr_node* detail::multiplication::reduced() const {
 			return op;
 		}, op->p_data);
 
-		bool is_func = std::holds_alternative<function_call>(op->p_data);
+		bool is_func = std::holds_alternative<mathfunc_call>(op->p_data);
 		if (op->is_ground() && (!is_func || (is_func && !current_context->refactoring_rules().keep_ground_functions))) {
 			if (std::abs(op->eval(nullptr).get<double>()) < 1e-12) {
 				return current_context->node_manager().make_constant(0);

@@ -1,6 +1,7 @@
 #include "symaths/symaths.hpp"
 
 #include "symaths/base_functions.hpp"
+#include "symaths/builtin_functions.hpp"
 #include "symaths/detail/mathexpr_node.hpp"
 
 #include <stdexcept>
@@ -19,6 +20,7 @@ sym::library::library() {
 	if (!current_context) {
 		current_context = this;
 	}
+	detail::init_maths_functions();
 	detail::init_builtin_functions();
 }
 

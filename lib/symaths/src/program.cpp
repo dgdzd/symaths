@@ -18,6 +18,7 @@ program::program(const std::vector<const detail::statement_node*>& statements, s
 context_table_t program::execute() const {
 	if (!root) return context_table_t{};
 	context_table_t ctx;
+	ctx.out_stream() = out_stream;
 	object out{root->eval(out_stream, &ctx)};
 	return std::move(ctx);
 }
@@ -25,6 +26,7 @@ context_table_t program::execute() const {
 object program::evaluate(context_table_t* ctx) const {
 	if (!root) return object{};
 	if (!ctx) ctx = &current_context->context_table();
+	ctx->out_stream() = out_stream;
 	return object{root->eval(out_stream, ctx)};
 }
 

@@ -90,12 +90,12 @@ namespace sym {
 			bool operator==(const power&) const = default;
 		};
 
-		struct function_call {
+		struct mathfunc_call {
 			static constexpr unsigned int priority = 0;
 			uint32_t f_id;
 			std::vector<const mathexpr_node*> args;
 
-			bool operator==(const function_call&) const = default;
+			bool operator==(const mathfunc_call&) const = default;
 		};
 
 		struct builtin_call {
@@ -110,7 +110,7 @@ namespace sym {
 		// Base node
 		class mathexpr_node {
 		public:
-			using internal_data_t = std::variant<symbol, constant, expr_negation, addition, multiplication, power, function_call, builtin_call>;
+			using internal_data_t = std::variant<symbol, constant, expr_negation, addition, multiplication, power, mathfunc_call, builtin_call>;
 
 			internal_data_t p_data;
 			size_t p_hash = 0;

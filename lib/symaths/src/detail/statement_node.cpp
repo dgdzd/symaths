@@ -1,5 +1,6 @@
 #include "symaths/detail/statement_node.hpp"
 
+#include "symaths/builtin_functions.hpp"
 #include "symaths/context_table.hpp"
 #include "symaths/utils/helpers.hpp"
 
@@ -38,6 +39,10 @@ std::optional<expression_value_t> statement_node::eval(std::ostream* p_out, cont
 			// TODO : define function
 			return std::nullopt;
 		},
+		[&](const function_call& stmt) -> std::optional<expression_value_t> {
+			auto func = get_builtin(stmt.id);
+			return func.handler(stmt.args, ctx).root;
+		},
 		[&](const auto&) -> std::optional<expression_value_t> {
 			return std::nullopt;
 		}
@@ -70,6 +75,9 @@ value_type_t statement_node::return_type() const {
 		},
 		[](const function_definition&) -> value_type_t {
 			return null;
+		},
+		[](const function_call& fc) -> value_type_t {
+			return get_builtin(fc.id).return_type;
 		},
 		[](const auto&) -> value_type_t {
 			return null;

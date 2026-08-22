@@ -63,7 +63,8 @@ namespace sym {
 		const detail::mathexpr_node* parse_prefix(const lexer::token& prefix);
 		const detail::mathexpr_node* parse_infix(const detail::mathexpr_node* left, const lexer::token& infix);
 		std::vector<const detail::mathexpr_node*> parse_func_call();
-		const detail::mathexpr_node* parse_builtin_call(context_table_t* ctx, uint32_t builtin_id);
+		const detail::mathexpr_node* parse_mathexpr_builtin(context_table_t* ctx, uint32_t builtin_id);
+		const detail::statement_node* parse_statement_builtin(context_table_t* ctx, uint32_t builtin_id);
 		bool consume(lexer::token_type type);
 		bool expect(lexer::token_type type);
 		bool expect2(lexer::token_type type1, lexer::token_type type2);

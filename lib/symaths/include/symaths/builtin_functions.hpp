@@ -11,7 +11,7 @@
 #include <vector>
 
 namespace sym {
-	using builtin_handler_t = std::function<detail::expression_value_t(
+	using builtin_handler_t = std::function<object(
 		const std::vector<detail::expression_value_t>&,
 		context_table_t*
 	)>;
@@ -21,7 +21,12 @@ namespace sym {
 		const char* name;
 		builtin_handler_t handler;
 		std::vector<args_list_t> arg_types;
+		detail::value_type_t return_type = detail::null;
 	};
+
+	namespace detail {
+		void init_builtin_functions();
+	}
 
 	uint32_t get_builtin_id(const std::string& name);
 	uint32_t builtin_count();

@@ -91,10 +91,17 @@ namespace sym {
 			bool operator==(const function_definition&) const = default;
 		};
 
+		struct function_call {
+			uint32_t id;
+			std::vector<expression_value_t> args;
+
+			bool operator==(const function_call&) const = default;
+		};
+
 		class statement_node {
 		public:
 			using internal_data_t = std::variant<stmt_sequence, assignment, expression_statement,
-				conditional, /*while_loop, for_loop,*/ function_definition>;
+				conditional, /*while_loop, for_loop,*/ function_definition, function_call>;
 
 			internal_data_t p_data;
 			size_t p_hash = 0;

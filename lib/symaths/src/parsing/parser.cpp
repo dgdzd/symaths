@@ -250,6 +250,15 @@ const detail::statement_node* parser::parse_stmt(context_table_t* table, detail:
 		m_variables->add_uninitialized_entry(name, detail::set_);
 	}
 
+	else if (uint32_t fid = get_builtin_id(current_token().value); fid != UINT32_MAX) {
+		advance();
+		out = parse_statement_builtin(table, fid);
+		if (out->return_type() == detail::mathexpr_) {
+			detail::function_call node = std::get<detail::function_call>(out->p_data);
+			out = nm.make_expression_statement(nm.make_builtin_call(node.id, node.args));
+		}
+	}
+
 	else {
 		switch (m_context_type.back()) {
 			case detail::bool_:
@@ -455,7 +464,11 @@ const detail::mathexpr_node* parser::parse_prefix(const lexer::token& prefix) {
 			}
 			auto builtin_id = get_builtin_id(prefix.value);
 			if (builtin_id != UINT32_MAX) {
-				return parse_builtin_call(&current_context->context_table(), builtin_id); // TODO add own context table.
+				auto rt = get_builtin(builtin_id).return_type;
+				if (rt == detail::mathexpr_) {
+					return parse_mathexpr_builtin(&current_context->context_table(), builtin_id); // TODO add own context table.
+				}
+				m_errors.emplace_back(type_error, prefix, std::format(R"(Expected return type "mathexpr" but got "{}" instead.)", detail::value_type_string(rt)));
 			}
 			m_variables->add_uninitialized_entry(prefix.value, detail::mathexpr_);
 			return nm.make_symbol(prefix.value);
@@ -529,7 +542,7 @@ const detail::mathexpr_node* parser::parse_infix(const detail::mathexpr_node* le
 			}
 			auto builtin_id = get_builtin_id(prefix.value);
 			if (builtin_id != UINT32_MAX) {
-				const detail::mathexpr_node* n = parse_builtin_call(&current_context->context_table(), builtin_id);
+				const detail::mathexpr_node* n = parse_mathexpr_builtin(&current_context->context_table(), builtin_id);
 				return n ? nm.make_mul({left, n}) : nullptr;
 			}
 			const detail::mathexpr_node* right = parse_mathexpr(0);
@@ -561,8 +574,13 @@ const detail::mathexpr_node* parser::parse_infix(const detail::mathexpr_node* le
 			}
 			auto builtin_id = get_builtin_id(infix.value);
 			if (builtin_id != UINT32_MAX) {
-				const detail::mathexpr_node* n = parse_builtin_call(&current_context->context_table(), builtin_id);
-				return n ? nm.make_mul({left, n}) : nullptr;
+				auto rt = get_builtin(builtin_id).return_type;
+				if (rt == detail::mathexpr_) {
+					const detail::mathexpr_node* n = parse_mathexpr_builtin(&current_context->context_table(), builtin_id);
+					return n ? nm.make_mul({left, n}) : nullptr;; // TODO add own context table.
+				}
+				m_errors.emplace_back(type_error, prefix, std::format(R"(Expected return type "mathexpr" but got "{}" instead.)", detail::value_type_string(rt)));
+				return nullptr;
 			}
 			m_index--;
 			const detail::mathexpr_node* right = parse_mathexpr(30); // precedence of multiplication = 30
@@ -597,7 +615,7 @@ std::vector<const detail::mathexpr_node*> parser::parse_func_call() {
 	return {};
 }
 
-const detail::mathexpr_node* parser::parse_builtin_call(context_table_t* ctx, uint32_t builtin_id) {
+const detail::mathexpr_node* parser::parse_mathexpr_builtin(context_table_t* ctx, uint32_t builtin_id) {
 	if (!consume(lexer::open_parenthesis)) return nullptr;
 
 	auto& nm = current_context->node_manager();
@@ -608,6 +626,10 @@ const detail::mathexpr_node* parser::parse_builtin_call(context_table_t* ctx, ui
 		const detail::statement_node* stmt_node = parse_stmt(ctx, detail::null);
 		std::optional<detail::expression_value_t> value = std::visit(overloaded {
 			[&](const detail::expression_statement& stmt) -> std::optional<detail::expression_value_t> { return stmt.expr; },
+			[&](const detail::function_call& stmt) -> std::optional<detail::expression_value_t> {
+				auto func = get_builtin(stmt.id);
+				return func.handler(args, ctx).root;
+			},
 			[&](const auto&) -> std::optional<detail::expression_value_t> {
 				m_errors.emplace_back(unexpected_token, current_token(), "Unexpected statement.");
 				return std::nullopt;
@@ -636,7 +658,17 @@ const detail::mathexpr_node* parser::parse_builtin_call(context_table_t* ctx, ui
 	}
 
 	if (candidates.empty()) {
-		m_errors.emplace_back(invalid_signature, current_token(), std::format("No viable candidate for call to \"{}\".", desc.name));
+		std::string msg = std::format("No viable candidate for call to \"{}\". Possible candidates are :\n", desc.name);
+		for (auto& candidate : desc.arg_types) {
+			std::string cdt = std::format("  - {}(", desc.name);
+			for (auto& arg : candidate) {
+				cdt += detail::value_type_string(arg);
+				if (&arg != &candidate.back()) cdt += ", ";
+			}
+			cdt += ")\n";
+			msg += cdt;
+		}
+		m_errors.emplace_back(invalid_signature, current_token(), msg);
 		return nullptr;
 	}
 	if (candidates.size() > 1) {
@@ -645,6 +677,71 @@ const detail::mathexpr_node* parser::parse_builtin_call(context_table_t* ctx, ui
 	}
 
 	return nm.make_builtin_call(builtin_id, args);
+}
+
+const detail::statement_node* parser::parse_statement_builtin(context_table_t* ctx, uint32_t builtin_id) {
+	if (!consume(lexer::open_parenthesis)) return nullptr;
+
+	auto& nm = current_context->node_manager();
+	const auto& desc = get_builtin(builtin_id);
+
+	std::vector<detail::expression_value_t> args;
+	while (has_tokens() && current_token().type != lexer::close_parenthesis) {
+		const detail::statement_node* stmt_node = parse_stmt(ctx, detail::null);
+		std::optional<detail::expression_value_t> value = std::visit(overloaded {
+			[&](const detail::expression_statement& stmt) -> std::optional<detail::expression_value_t> { return stmt.expr; },
+			[&](const detail::function_call& stmt) -> std::optional<detail::expression_value_t> {
+				auto func = get_builtin(stmt.id);
+				return func.handler(stmt.args, ctx).root;
+			},
+			[&](const auto&) -> std::optional<detail::expression_value_t> {
+				m_errors.emplace_back(unexpected_token, current_token(), "Unexpected statement.");
+				return std::nullopt;
+			},
+		}, stmt_node->p_data);
+		if (!value.has_value()) return nullptr;
+		args.push_back(value.value());
+
+		if (!has_tokens()) break;
+		if (current_token().type != lexer::close_parenthesis) consume(lexer::comma);
+	}
+
+	if (!consume(lexer::close_parenthesis)) return nullptr;
+
+	auto candidates = get_candidates(desc, args.size());
+
+	// Type validation
+	for (size_t i = 0; i < args.size(); ++i) {
+		auto& arg = args[i];
+		for (size_t j = 0; j < candidates.size(); ++j) {
+			auto& candidate = candidates[j];
+			if (arg.index() != candidate[i]) {
+				candidates.erase(candidates.begin() + j);
+				j--;
+			}
+		}
+	}
+
+	if (candidates.empty()) {
+		std::string msg = std::format("No viable candidate for call to \"{}\". Possible candidates are :\n", desc.name);
+		for (auto& candidate : desc.arg_types) {
+			std::string cdt = std::format("  - {}(", desc.name);
+			for (auto& arg : candidate) {
+				cdt += detail::value_type_string(arg);
+				if (&arg != &candidate.back()) cdt += ", ";
+			}
+			cdt += ")\n";
+			msg += cdt;
+		}
+		m_errors.emplace_back(invalid_signature, current_token(), msg);
+		return nullptr;
+	}
+	if (candidates.size() > 1) {
+		m_errors.emplace_back(invalid_signature, current_token(), std::format("Too many candidates for call to \"{}\".", desc.name));
+		return nullptr;
+	}
+
+	return nm.make_function_call(builtin_id, args);
 }
 
 program sym::parse_single(const lexer& lexer) {

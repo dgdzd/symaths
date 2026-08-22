@@ -2,6 +2,14 @@
 
 using namespace sym;
 
+std::ostream* context_table_t::out_stream() const {
+	return m_out;
+}
+
+std::ostream*& context_table_t::out_stream() {
+	return m_out;
+}
+
 void context_table_t::add_entry(const std::string& varname, detail::expression_value_t entry) {
 	m_table[varname] = {static_cast<detail::value_type_t>(entry.index()), object{entry}};
 }

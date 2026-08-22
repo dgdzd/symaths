@@ -93,7 +93,7 @@ expression sym::differentiate(const expression& expr, const symbol& symbol) {
 			return nm.make_constant(0);
 		}
 
-		else if constexpr (std::is_same_v<T, detail::function_call>) {
+		else if constexpr (std::is_same_v<T, detail::mathfunc_call>) {
 			auto& f = detail::get_func(funcs::builtin_fn_id{x.f_id});
 			return f.derivative(x.args, symbol.ref);
 		}

@@ -19,6 +19,7 @@
 #include "symaths/detail/object.hpp"
 #include "symaths/detail/types.hpp"
 
+#include <iostream>
 #include <map>
 #include <optional>
 
@@ -36,10 +37,13 @@ namespace sym {
 
 	private:
 		std::map<std::string, entry> m_table;
+		std::ostream* m_out = &std::cout;
 
 	public:
 		context_table_t() = default;
 
+		[[nodiscard]] std::ostream* out_stream() const;
+		[[nodiscard]] std::ostream*& out_stream();
 		void add_entry(const std::string& varname, detail::expression_value_t entry);
 		void add_uninitialized_entry(const std::string& varname, detail::value_type_t type);
 		void remove_entry(const std::string& varname);
