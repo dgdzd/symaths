@@ -79,7 +79,7 @@ namespace sym {
 		const detail::mathexpr_node* make_div(const detail::mathexpr_node* a, const detail::mathexpr_node* b);
 		const detail::mathexpr_node* make_pow(const detail::mathexpr_node* b, const detail::mathexpr_node* e);
 		const detail::mathexpr_node* make_func(uint32_t f_id, const std::vector<const detail::mathexpr_node*>& args);
-		const detail::mathexpr_node* make_func(funcs::builtin_fn_id f_id, const std::vector<const detail::mathexpr_node*>& args);
+		const detail::mathexpr_node* make_func(funcs::math_fn_id f_id, const std::vector<const detail::mathexpr_node*>& args);
 		const detail::mathexpr_node* make_builtin_call(uint32_t id, const std::vector<detail::expression_value_t>& args);
 
 		// Make predicate

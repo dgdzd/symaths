@@ -2,6 +2,7 @@
 
 #include "symaths/builtin_functions.hpp"
 #include "symaths/context_table.hpp"
+#include "symaths/symaths.hpp"
 #include "symaths/utils/helpers.hpp"
 
 using namespace sym::detail;
@@ -40,7 +41,7 @@ std::optional<expression_value_t> statement_node::eval(std::ostream* p_out, cont
 			return std::nullopt;
 		},
 		[&](const function_call& stmt) -> std::optional<expression_value_t> {
-			auto func = get_builtin(stmt.id);
+			auto func = ctx->get_func(stmt.id);
 			return func.handler(stmt.args, ctx).root;
 		},
 		[&](const auto&) -> std::optional<expression_value_t> {
@@ -77,7 +78,7 @@ value_type_t statement_node::return_type() const {
 			return null;
 		},
 		[](const function_call& fc) -> value_type_t {
-			return get_builtin(fc.id).return_type;
+			return current_context->context_table().get_func(fc.id).return_type;
 		},
 		[](const auto&) -> value_type_t {
 			return null;

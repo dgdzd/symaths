@@ -21,25 +21,25 @@ namespace sym::detail {
 	void find_symbols_r(const mathexpr_node* current, std::vector<const mathexpr_node*>& result);
 }
 
-static bool builtin_arg_is_ground(const detail::expression_value_t& arg) {
+static bool func_arg_is_ground(const detail::expression_value_t& arg) {
 	if (auto* mp = std::get_if<const detail::mathexpr_node*>(&arg)) return (*mp)->is_ground();
 	return true;
 }
 
-static bool builtin_arg_depends_on(const detail::expression_value_t& arg, const detail::mathexpr_node* n) {
+static bool func_arg_depends_on(const detail::expression_value_t& arg, const detail::mathexpr_node* n) {
 	if (auto* mp = std::get_if<const detail::mathexpr_node*>(&arg)) return (*mp)->depends_on(n);
 	return false;
 }
 
-static void builtin_arg_find_all_paths(const detail::expression_value_t& arg, const detail::mathexpr_node* target, detail::node_path_t& path, std::vector<detail::node_path_t>& paths) {
+static void func_arg_find_all_paths(const detail::expression_value_t& arg, const detail::mathexpr_node* target, detail::node_path_t& path, std::vector<detail::node_path_t>& paths) {
 	if (auto* mp = std::get_if<const detail::mathexpr_node*>(&arg)) find_all_paths_r(*mp, target, path, paths);
 }
 
-static void builtin_arg_find_symbols(const detail::expression_value_t& arg, std::vector<const detail::mathexpr_node*>& result) {
+static void func_arg_find_symbols(const detail::expression_value_t& arg, std::vector<const detail::mathexpr_node*>& result) {
 	if (auto* mp = std::get_if<const detail::mathexpr_node*>(&arg)) find_symbols_r(*mp, result);
 }
 
-static std::string builtin_arg_string(const detail::expression_value_t& arg) {
+static std::string func_arg_string(const detail::expression_value_t& arg) {
 	return std::visit(overloaded {
 		[&](const bool& b) -> std::string { return b ? "true" : "false"; },
 		[&](const number n) -> std::string { return n.string(); },
@@ -80,9 +80,9 @@ void detail::find_all_paths_r(const mathexpr_node* current, const mathexpr_node*
 			}
 		}
 
-		if constexpr (std::is_same_v<T, builtin_call>) {
+		if constexpr (std::is_same_v<T, general_func_call>) {
 			for (auto& c : x.args) {
-				builtin_arg_find_all_paths(c, target, current_path, paths);
+				func_arg_find_all_paths(c, target, current_path, paths);
 			}
 		}
 	}, current->p_data);
@@ -122,9 +122,9 @@ void detail::find_symbols_r(const mathexpr_node* current, std::vector<const math
 			}
 		}
 
-		if constexpr (std::is_same_v<T, builtin_call>) {
+		if constexpr (std::is_same_v<T, general_func_call>) {
 			for (auto& c : x.args) {
-				builtin_arg_find_symbols(c, result);
+				func_arg_find_symbols(c, result);
 			}
 		}
 	}, current->p_data);
@@ -168,10 +168,10 @@ number detail::mathexpr_node::eval(context_table_t* ctx, std::ostream* out) cons
 			return pow_calc(x.base->eval(ctx), x.exponent->eval(ctx));
 		},
 		[&](const mathfunc_call& x) -> number {
-			const auto& func = get_func(funcs::builtin_fn_id{x.f_id});
+			const auto& func = get_func(funcs::math_fn_id{x.f_id});
 			return func.eval(x.args);
 		},
-		[&](const builtin_call& x) -> number {
+		[&](const general_func_call& x) -> number {
 			return resolve(out, ctx)->eval(ctx);
 		}
 	}, p_data);
@@ -194,7 +194,7 @@ const detail::mathexpr_node* detail::mathexpr_node::resolve(std::ostream* p_out,
 			}
 			return val.value().cast<const mathexpr_node*>(); // Get the mathexpr mapped to this name
 		},
-		[&](const builtin_call& x) -> const mathexpr_node* {
+		[&](const general_func_call& x) -> const mathexpr_node* {
 			std::vector<expression_value_t> resolved_args;
 			resolved_args.reserve(x.args.size());
 			for (auto& arg : x.args) {
@@ -204,7 +204,7 @@ const detail::mathexpr_node* detail::mathexpr_node::resolve(std::ostream* p_out,
 					resolved_args.push_back(arg);
 				}
 			}
-			const auto& b = get_builtin(x.id);
+			const auto& b = ctx->get_func(x.id);
 			object result = b.handler(resolved_args, ctx);
 			if (result.type() == mathexpr_) {
 				return result.cast<const mathexpr_node*>();
@@ -265,7 +265,7 @@ bool should_be_preceeded_by_star(const detail::mathexpr_node* parent, const deta
 	return std::visit([&](const auto& x) {
 		using T = std::decay_t<decltype(x)>;
 
-		if constexpr (std::is_same_v<T, detail::constant> || std::is_same_v<T, detail::mathfunc_call> || std::is_same_v<T, detail::builtin_call>) {
+		if constexpr (std::is_same_v<T, detail::constant> || std::is_same_v<T, detail::mathfunc_call> || std::is_same_v<T, detail::general_func_call>) {
 			return parent->priority() > node->priority();
 		}
 
@@ -289,7 +289,7 @@ bool should_be_preceeded_by_star(const detail::mathexpr_node* parent, const deta
 	}, node->p_data);
 }
 
-std::string detail::mathexpr_node::string(const mathexpr_node* parent, bool first) const {
+std::string detail::mathexpr_node::string(const mathexpr_node* parent, bool first, context_table_t* ctx) const {
 	return std::visit([&](const auto& x) -> std::string {
 		using T = std::decay_t<decltype(x)>;
 
@@ -315,11 +315,11 @@ std::string detail::mathexpr_node::string(const mathexpr_node* parent, bool firs
 		else if constexpr (std::is_same_v<T, expr_negation>) {
 			// If parent is sum then no need to add "-" sign
 			if (parent && std::holds_alternative<addition>(parent->p_data)) {
-				return x.child->string(this, first);
+				return x.child->string(this, first, ctx);
 			}
 
 			if (first && !(parent && parent->priority() > priority())) {
-				return "-" + x.child->string(this, first);
+				return "-" + x.child->string(this, first, ctx);
 			}
 
 			return "(-" + x.child->string(this,first) + ")";
@@ -333,10 +333,10 @@ std::string detail::mathexpr_node::string(const mathexpr_node* parent, bool firs
 				auto& op = x.operands[i];
 				if (std::holds_alternative<expr_negation>(op->p_data) || (std::holds_alternative<constant>(op->p_data) && op->eval(nullptr).template get<double>() < 0)) {
 					if (i == 0) {
-						s += "-" + op->string(this, true);
+						s += "-" + op->string(this, true, ctx);
 					}
 					else {
-						s += "-" + std::string(print_policies.sum.operand_spaces, ' ') + op->string(this, false);
+						s += "-" + std::string(print_policies.sum.operand_spaces, ' ') + op->string(this, false, ctx);
 					}
 				}
 				else {
@@ -374,14 +374,14 @@ std::string detail::mathexpr_node::string(const mathexpr_node* parent, bool firs
 		else if constexpr (std::is_same_v<T, power>) {
 			bool par = parent && parent->priority() > priority();
 			if (par) {
-				return "(" + x.base->string(this, false) + "^" + x.exponent->string(this, false) + ")";
+				return "(" + x.base->string(this, false, ctx) + "^" + x.exponent->string(this, false, ctx) + ")";
 			}
 
-			return x.base->string(this, false) + "^" + x.exponent->string(this, false);
+			return x.base->string(this, false, ctx) + "^" + x.exponent->string(this, false, ctx);
 		}
 
 		else if constexpr (std::is_same_v<T, mathfunc_call>) {
-			const auto& func = get_func(funcs::builtin_fn_id{x.f_id});
+			const auto& func = get_func(funcs::math_fn_id{x.f_id});
 			std::string s = std::string(func.name) + "(";
 			for (int i = 0; i < x.args.size(); ++i) {
 				auto& arg = x.args[i];
@@ -393,15 +393,15 @@ std::string detail::mathexpr_node::string(const mathexpr_node* parent, bool firs
 			return s + ")";
 		}
 
-		else if constexpr (std::is_same_v<T, builtin_call>) {
-			const auto& b = get_builtin(x.id);
+		else if constexpr (std::is_same_v<T, general_func_call>) {
+			const auto& b = ctx->get_func(x.id);
 			std::string s = std::string(b.name) + "(";
 			for (int i = 0; i < x.args.size(); ++i) {
 				auto& arg = x.args[i];
 				if (i != 0) {
 					s += ", ";
 				}
-				s += builtin_arg_string(arg);
+				s += func_arg_string(arg);
 			}
 			return s + ")";
 		}
@@ -438,8 +438,8 @@ bool detail::mathexpr_node::is_ground() const {
 			return std::ranges::all_of(x.args, [](const auto& arg) { return arg->is_ground(); });
 		}
 
-		if constexpr (std::is_same_v<T, builtin_call>) {
-			return std::ranges::all_of(x.args, builtin_arg_is_ground);
+		if constexpr (std::is_same_v<T, general_func_call>) {
+			return std::ranges::all_of(x.args, func_arg_is_ground);
 		}
 
 		return false;
@@ -473,8 +473,8 @@ bool detail::mathexpr_node::depends_on(const mathexpr_node* n) const {
 			return std::ranges::any_of(x.args, [&](const auto& arg) { return arg->depends_on(n); });
 		}
 
-		if constexpr (std::is_same_v<T, builtin_call>) {
-			return std::ranges::any_of(x.args, [&](const auto& a) { return builtin_arg_depends_on(a, n); });
+		if constexpr (std::is_same_v<T, general_func_call>) {
+			return std::ranges::any_of(x.args, [&](const auto& a) { return func_arg_depends_on(a, n); });
 		}
 
 		return false;

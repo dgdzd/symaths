@@ -10,15 +10,13 @@
 
 using namespace sym;
 
-static std::vector<builtin_descriptor> table{};
-
-void detail::init_builtin_functions() {
-	table.push_back({
+void detail::init_builtin_functions(std::vector<internal_func_descriptor>& out) {
+	out.push_back({
 			"print", [](const std::vector<expression_value_t>& args, context_table_t* ctx) -> object {
 				auto out = ctx->out_stream();
 
 				if (out) *out << std::visit(overloaded {
-					[&](const mathexpr_node* node) -> std::string { return node->resolve(out, ctx)->string(); },
+					[&](const mathexpr_node* node) -> std::string { return node->resolve(out, ctx)->string(nullptr, true, ctx); },
 					[&](const auto&) -> std::string { return object{args[0]}.string(); },
 				}, args[0]) << std::endl;
 				return object{};
@@ -32,7 +30,7 @@ void detail::init_builtin_functions() {
 			},
 			null
 		});
-	table.push_back({
+	out.push_back({
 			"reduce", [](const std::vector<expression_value_t>& args, context_table_t*) -> object {
 				expression expr(std::get<const mathexpr_node*>(args[0]));
 				return object{reduce(expr).root};
@@ -40,7 +38,7 @@ void detail::init_builtin_functions() {
 			{ args_list_t{mathexpr_} },
 			mathexpr_
 		});
-	table.push_back({
+	out.push_back({
 			"expand", [](const std::vector<expression_value_t>& args, context_table_t*) -> object {
 				expression expr(std::get<const mathexpr_node*>(args[0]));
 				return object{expand(expr).root};
@@ -48,7 +46,7 @@ void detail::init_builtin_functions() {
 			{ args_list_t{mathexpr_} },
 			mathexpr_
 		});
-	table.push_back({
+	out.push_back({
 			"sort", [](const std::vector<expression_value_t>& args, context_table_t*) -> object {
 				expression expr(std::get<const mathexpr_node*>(args[0]));
 				return object{sort(expr).root};
@@ -56,7 +54,7 @@ void detail::init_builtin_functions() {
 			{ args_list_t{mathexpr_} },
 			mathexpr_
 		});
-	table.push_back({
+	out.push_back({
 			"differentiate", [](const std::vector<expression_value_t>& args, context_table_t*) -> object {
 				expression expr(std::get<const mathexpr_node*>(args[0]));
 				sym::symbol wrt(std::get<const mathexpr_node*>(args[1]));
@@ -65,35 +63,4 @@ void detail::init_builtin_functions() {
 			{ args_list_t{mathexpr_, mathexpr_} },
 			mathexpr_
 		});
-}
-
-
-static std::vector<builtin_descriptor>& builtins() {
-	return table;
-}
-
-uint32_t sym::get_builtin_id(const std::string& name) {
-	auto& table = builtins();
-	for (uint32_t i = 0; i < table.size(); ++i) {
-		if (table[i].name == name) return i;
-	}
-	return UINT32_MAX;
-}
-
-uint32_t sym::builtin_count() {
-	return builtins().size();
-}
-
-const builtin_descriptor& sym::get_builtin(uint32_t id) {
-	return builtins()[id];
-}
-
-std::vector<args_list_t> sym::get_candidates(const builtin_descriptor& builtin, size_t arguments_count) {
-	std::vector<args_list_t> candidates;
-	for (auto& args : builtin.arg_types) {
-		if (args.size() == arguments_count) {
-			candidates.push_back(args);
-		}
-	}
-	return candidates;
 }

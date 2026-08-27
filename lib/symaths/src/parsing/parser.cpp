@@ -250,12 +250,14 @@ const detail::statement_node* parser::parse_stmt(context_table_t* table, detail:
 		m_variables->add_uninitialized_entry(name, detail::set_);
 	}
 
-	else if (uint32_t fid = get_builtin_id(current_token().value); fid != UINT32_MAX) {
+	else if (uint32_t fid = m_variables->get_func_id(current_token().value); fid != UINT32_MAX) {
+		auto saved_index = m_index;
 		advance();
-		out = parse_statement_builtin(table, fid);
+		out = parse_statement_func(table, fid);
+		if (!out) return nullptr;
 		if (out->return_type() == detail::mathexpr_) {
-			detail::function_call node = std::get<detail::function_call>(out->p_data);
-			out = nm.make_expression_statement(nm.make_builtin_call(node.id, node.args));
+			m_index = saved_index;
+			out = make_expression_statement(parse_mathexpr(0));
 		}
 	}
 
@@ -451,22 +453,23 @@ const detail::mathexpr_node* parser::parse_prefix(const lexer::token& prefix) {
 			return nm.make_constant(std::stod(prefix.value));
 		}
 		case lexer::identifier: {
-			auto func_id = detail::get_func_id(prefix.value);
-			if (func_id != funcs::LEN) {
+			auto mathfunc_id = detail::get_func_id(prefix.value);
+			if (mathfunc_id != funcs::LEN) {
 				if (consume(lexer::open_parenthesis)) {
 					std::vector<const detail::mathexpr_node*> args = parse_func_call();
 					if (std::ranges::any_of(args, [](const auto& node) { return !node; })) {
 						return nullptr;
 					}
-					return nm.make_func(func_id, args);
+					return nm.make_func(mathfunc_id, args);
 				}
 				return nullptr;
 			}
-			auto builtin_id = get_builtin_id(prefix.value);
-			if (builtin_id != UINT32_MAX) {
-				auto rt = get_builtin(builtin_id).return_type;
+			// General functions
+			auto func_id = m_variables->get_func_id(prefix.value);
+			if (func_id != UINT32_MAX) {
+				auto rt = m_variables->get_func(func_id).return_type;
 				if (rt == detail::mathexpr_) {
-					return parse_mathexpr_builtin(&current_context->context_table(), builtin_id); // TODO add own context table.
+					return parse_mathexpr_general_func(&current_context->context_table(), func_id); // TODO add own context table.
 				}
 				m_errors.emplace_back(type_error, prefix, std::format(R"(Expected return type "mathexpr" but got "{}" instead.)", detail::value_type_string(rt)));
 			}
@@ -531,18 +534,18 @@ const detail::mathexpr_node* parser::parse_infix(const detail::mathexpr_node* le
 			return nullptr;
 		}
 		case lexer::open_parenthesis: {
-			auto func_id = detail::get_func_id(prefix.value);
-			if (func_id != funcs::LEN) {
+			auto mathfunc_id = detail::get_func_id(prefix.value);
+			if (mathfunc_id != funcs::LEN) {
 				advance();
 				std::vector<const detail::mathexpr_node*> args = parse_func_call();
 				if (std::ranges::any_of(args, [](const auto& node) { return !node; })) {
 					return nullptr;
 				}
-				return nm.make_func(func_id, args);
+				return nm.make_func(mathfunc_id, args);
 			}
-			auto builtin_id = get_builtin_id(prefix.value);
-			if (builtin_id != UINT32_MAX) {
-				const detail::mathexpr_node* n = parse_mathexpr_builtin(&current_context->context_table(), builtin_id);
+			auto func_id = m_variables->get_func_id(prefix.value);
+			if (func_id != UINT32_MAX) {
+				const detail::mathexpr_node* n = parse_mathexpr_general_func(&current_context->context_table(), func_id);
 				return n ? nm.make_mul({left, n}) : nullptr;
 			}
 			const detail::mathexpr_node* right = parse_mathexpr(0);
@@ -561,22 +564,22 @@ const detail::mathexpr_node* parser::parse_infix(const detail::mathexpr_node* le
 
 		// Handle implicit multiplication
 		case lexer::identifier: {
-			auto func_id = detail::get_func_id(infix.value);
-			if (func_id != funcs::LEN) {
+			auto mathfunc_id = detail::get_func_id(infix.value);
+			if (mathfunc_id != funcs::LEN) {
 				if (consume(lexer::open_parenthesis)) {
 					std::vector<const detail::mathexpr_node*> args = parse_func_call();
 					if (std::ranges::any_of(args, [](const auto& node) { return !node; })) {
 						return nullptr;
 					}
-					return nm.make_mul({left, nm.make_func(func_id, args)});
+					return nm.make_mul({left, nm.make_func(mathfunc_id, args)});
 				}
 				return nullptr;
 			}
-			auto builtin_id = get_builtin_id(infix.value);
-			if (builtin_id != UINT32_MAX) {
-				auto rt = get_builtin(builtin_id).return_type;
+			auto func_id = m_variables->get_func_id(infix.value);
+			if (func_id != UINT32_MAX) {
+				auto rt = m_variables->get_func(func_id).return_type;
 				if (rt == detail::mathexpr_) {
-					const detail::mathexpr_node* n = parse_mathexpr_builtin(&current_context->context_table(), builtin_id);
+					const detail::mathexpr_node* n = parse_mathexpr_general_func(&current_context->context_table(), func_id);
 					return n ? nm.make_mul({left, n}) : nullptr;; // TODO add own context table.
 				}
 				m_errors.emplace_back(type_error, prefix, std::format(R"(Expected return type "mathexpr" but got "{}" instead.)", detail::value_type_string(rt)));
@@ -615,11 +618,11 @@ std::vector<const detail::mathexpr_node*> parser::parse_func_call() {
 	return {};
 }
 
-const detail::mathexpr_node* parser::parse_mathexpr_builtin(context_table_t* ctx, uint32_t builtin_id) {
+const detail::mathexpr_node* parser::parse_mathexpr_general_func(context_table_t* ctx, uint32_t builtin_id) {
 	if (!consume(lexer::open_parenthesis)) return nullptr;
 
 	auto& nm = current_context->node_manager();
-	const auto& desc = get_builtin(builtin_id);
+	const auto& desc = m_variables->get_func(builtin_id);
 
 	std::vector<detail::expression_value_t> args;
 	while (has_tokens() && current_token().type != lexer::close_parenthesis) {
@@ -627,7 +630,7 @@ const detail::mathexpr_node* parser::parse_mathexpr_builtin(context_table_t* ctx
 		std::optional<detail::expression_value_t> value = std::visit(overloaded {
 			[&](const detail::expression_statement& stmt) -> std::optional<detail::expression_value_t> { return stmt.expr; },
 			[&](const detail::function_call& stmt) -> std::optional<detail::expression_value_t> {
-				auto func = get_builtin(stmt.id);
+				auto func = m_variables->get_func(stmt.id);
 				return func.handler(args, ctx).root;
 			},
 			[&](const auto&) -> std::optional<detail::expression_value_t> {
@@ -644,7 +647,7 @@ const detail::mathexpr_node* parser::parse_mathexpr_builtin(context_table_t* ctx
 
 	if (!consume(lexer::close_parenthesis)) return nullptr;
 
-	auto candidates = get_candidates(desc, args.size());
+	auto candidates = m_variables->get_candidates(desc, args.size());
 
 	// Type validation
 	for (size_t i = 0; i < args.size(); ++i) {
@@ -679,19 +682,20 @@ const detail::mathexpr_node* parser::parse_mathexpr_builtin(context_table_t* ctx
 	return nm.make_builtin_call(builtin_id, args);
 }
 
-const detail::statement_node* parser::parse_statement_builtin(context_table_t* ctx, uint32_t builtin_id) {
+const detail::statement_node* parser::parse_statement_func(context_table_t* ctx, uint32_t builtin_id) {
 	if (!consume(lexer::open_parenthesis)) return nullptr;
 
 	auto& nm = current_context->node_manager();
-	const auto& desc = get_builtin(builtin_id);
+	const auto& desc = m_variables->get_func(builtin_id);
 
 	std::vector<detail::expression_value_t> args;
 	while (has_tokens() && current_token().type != lexer::close_parenthesis) {
 		const detail::statement_node* stmt_node = parse_stmt(ctx, detail::null);
+		if (!stmt_node) return nullptr;
 		std::optional<detail::expression_value_t> value = std::visit(overloaded {
 			[&](const detail::expression_statement& stmt) -> std::optional<detail::expression_value_t> { return stmt.expr; },
 			[&](const detail::function_call& stmt) -> std::optional<detail::expression_value_t> {
-				auto func = get_builtin(stmt.id);
+				auto func = m_variables->get_func(stmt.id);
 				return func.handler(stmt.args, ctx).root;
 			},
 			[&](const auto&) -> std::optional<detail::expression_value_t> {
@@ -708,7 +712,7 @@ const detail::statement_node* parser::parse_statement_builtin(context_table_t* c
 
 	if (!consume(lexer::close_parenthesis)) return nullptr;
 
-	auto candidates = get_candidates(desc, args.size());
+	auto candidates = m_variables->get_candidates(desc, args.size());
 
 	// Type validation
 	for (size_t i = 0; i < args.size(); ++i) {
@@ -730,7 +734,8 @@ const detail::statement_node* parser::parse_statement_builtin(context_table_t* c
 				cdt += detail::value_type_string(arg);
 				if (&arg != &candidate.back()) cdt += ", ";
 			}
-			cdt += ")\n";
+			cdt += ")";
+			if (&candidate != &desc.arg_types.back()) cdt += '\n';
 			msg += cdt;
 		}
 		m_errors.emplace_back(invalid_signature, current_token(), msg);

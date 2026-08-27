@@ -36,7 +36,7 @@ namespace sym {
 
 		number operator()(context_table_t& ctx) const;
 		number operator()() const;
-		[[nodiscard]] std::string string() const;
+		[[nodiscard]] std::string string(context_table_t* = nullptr) const;
 
 		/**
 		 * @brief Checks if the expression is composed of constants only

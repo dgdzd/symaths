@@ -45,6 +45,12 @@ namespace sym::detail {
 		requires variant_index<expression_value_t, decltype(T::root)>() != value_type_t::LEN;
 	};
 
+	template <typename T>
+	concept is_object = requires(T t)
+	{
+		requires variant_index<expression_value_t, T>() != value_type_t::LEN;
+	};
+
 	inline std::string value_type_string(value_type_t type) {
 		switch (type) {
 			case null:

@@ -10,6 +10,7 @@ set(SYMATHS_LIB_SOURCES
         src/differentiation.cpp
         src/expression.cpp
         src/expressions_manip.cpp
+        src/function_descriptor.cpp
         src/numbers.cpp
         src/polynomial.cpp
         src/predicate.cpp

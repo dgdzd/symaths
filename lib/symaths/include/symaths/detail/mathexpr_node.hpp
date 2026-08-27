@@ -98,19 +98,19 @@ namespace sym {
 			bool operator==(const mathfunc_call&) const = default;
 		};
 
-		struct builtin_call {
+		struct general_func_call {
 			static constexpr unsigned int priority = 0;
 			uint32_t id;
 			std::vector<expression_value_t> args;
 
-			bool operator==(const builtin_call&) const = default;
+			bool operator==(const general_func_call&) const = default;
 		};
 
 
 		// Base node
 		class mathexpr_node {
 		public:
-			using internal_data_t = std::variant<symbol, constant, expr_negation, addition, multiplication, power, mathfunc_call, builtin_call>;
+			using internal_data_t = std::variant<symbol, constant, expr_negation, addition, multiplication, power, mathfunc_call, general_func_call>;
 
 			internal_data_t p_data;
 			size_t p_hash = 0;
@@ -121,7 +121,7 @@ namespace sym {
 			[[nodiscard]] unsigned int priority() const;
 			[[nodiscard]] number eval(context_table_t* ctx, std::ostream* out = nullptr) const;
 			[[nodiscard]] const mathexpr_node* resolve(std::ostream* p_out, context_table_t* ctx = nullptr) const;
-			[[nodiscard]] std::string string(const mathexpr_node* parent = nullptr, bool first = true) const;
+			[[nodiscard]] std::string string(const mathexpr_node* parent = nullptr, bool first = true, context_table_t* ctx = nullptr) const;
 			[[nodiscard]] bool is_ground() const;
 			[[nodiscard]] bool depends_on(const mathexpr_node* n) const;
 		};

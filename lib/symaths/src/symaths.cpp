@@ -21,7 +21,6 @@ sym::library::library() {
 		current_context = this;
 	}
 	detail::init_maths_functions();
-	detail::init_builtin_functions();
 }
 
 sym::library::~library() {

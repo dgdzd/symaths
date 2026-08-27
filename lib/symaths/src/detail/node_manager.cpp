@@ -38,7 +38,7 @@ std::size_t expr_node_hash::operator()(const node_key<detail::mathexpr_node>& k)
 			h ^= std::hash<const detail::mathexpr_node*>{}(x.exponent);
 		}
 
-		else if constexpr (std::is_same_v<T, detail::builtin_call>) {
+		else if constexpr (std::is_same_v<T, detail::general_func_call>) {
 			h ^= std::hash<uint32_t>{}(x.id);
 			for (auto& arg : x.args) {
 				std::visit(overloaded {
@@ -300,12 +300,12 @@ const detail::mathexpr_node* node_manager_t::make_func(uint32_t f_id, const std:
 	return intern(detail::mathfunc_call{f_id, args});
 }
 
-const detail::mathexpr_node* node_manager_t::make_func(funcs::builtin_fn_id f_id, const std::vector<const detail::mathexpr_node*>& args) {
+const detail::mathexpr_node* node_manager_t::make_func(funcs::math_fn_id f_id, const std::vector<const detail::mathexpr_node*>& args) {
 	return intern(detail::mathfunc_call{static_cast<uint32_t>(f_id), args});
 }
 
 const detail::mathexpr_node* node_manager_t::make_builtin_call(uint32_t id, const std::vector<detail::expression_value_t>& args) {
-	return intern(detail::builtin_call{id, args});
+	return intern(detail::general_func_call{id, args});
 }
 
 const detail::predicate_node* node_manager_t::make_equal(const std::vector<const detail::mathexpr_node*>& members, bool negated) {

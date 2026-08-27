@@ -37,9 +37,9 @@ sym::number sym::expression::operator()() const {
 	return root->eval(nullptr);
 }
 
-std::string sym::expression::string() const {
+std::string sym::expression::string(context_table_t* ctx) const {
 	if (!root) return "";
-	return root->string();
+	return root->string(nullptr, true, ctx);
 }
 
 

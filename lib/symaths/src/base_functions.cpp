@@ -8,7 +8,7 @@
 
 using namespace sym;
 
-static detail::builtin_func_descriptor builtin_table[funcs::LEN];
+static detail::math_func_descriptor builtin_table[funcs::LEN];
 
 number cos_eval(const std::vector<const detail::mathexpr_node*>& args);
 const detail::mathexpr_node* cos_reduce(const std::vector<const detail::mathexpr_node*>& args);
@@ -114,11 +114,11 @@ void detail::init_maths_functions() {
 	};
 }
 
-const detail::builtin_func_descriptor& detail::get_func(funcs::builtin_fn_id id) {
+const detail::math_func_descriptor& detail::get_func(funcs::math_fn_id id) {
 	return builtin_table[static_cast<size_t>(id)];
 }
 
-funcs::builtin_fn_id detail::get_func_id(const std::string& name) {
+funcs::math_fn_id detail::get_func_id(const std::string& name) {
 	if (name == "cos") {
 		return funcs::cos;
 	}

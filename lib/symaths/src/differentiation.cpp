@@ -63,7 +63,7 @@ expression sym::differentiate(const expression& expr, const symbol& symbol) {
 						nm.make_add({
 							nm.make_mul({
 								dg,
-								nm.make_func(funcs::builtin_fn_id::ln, {x.base})
+								nm.make_func(funcs::math_fn_id::ln, {x.base})
 							}),
 							nm.make_div(
 								df,
@@ -87,14 +87,14 @@ expression sym::differentiate(const expression& expr, const symbol& symbol) {
 				return nm.make_mul({
 					expr.root,
 					df,
-					nm.make_func(funcs::builtin_fn_id::ln, {x.base})
+					nm.make_func(funcs::math_fn_id::ln, {x.base})
 				});
 			}
 			return nm.make_constant(0);
 		}
 
 		else if constexpr (std::is_same_v<T, detail::mathfunc_call>) {
-			auto& f = detail::get_func(funcs::builtin_fn_id{x.f_id});
+			auto& f = detail::get_func(funcs::math_fn_id{x.f_id});
 			return f.derivative(x.args, symbol.ref);
 		}
 

@@ -24,7 +24,7 @@ namespace sym {
 	}
 
 	namespace funcs {
-		enum builtin_fn_id : uint32_t {
+		enum math_fn_id : uint32_t {
 			cos, sin, tan, acos, asin, atan,
 			exp, ln, log10, cosh, sinh, tanh,
 			sqrt,
@@ -36,7 +36,7 @@ namespace sym {
 	namespace detail {
 		void init_maths_functions();
 
-		struct builtin_func_descriptor {
+		struct math_func_descriptor {
 			using eval_t = number (*)(const std::vector<const mathexpr_node*>& args);
 			using reduce_t = const mathexpr_node* (*)(const std::vector<const mathexpr_node*>& args);
 			using derivative_t = const mathexpr_node* (*)(const std::vector<const mathexpr_node*>& args, const mathexpr_node* wrt);
@@ -47,9 +47,9 @@ namespace sym {
 			derivative_t derivative;
 		};
 
-		const builtin_func_descriptor& get_func(funcs::builtin_fn_id id);
+		const math_func_descriptor& get_func(funcs::math_fn_id id);
 
-		funcs::builtin_fn_id get_func_id(const std::string& name);
+		funcs::math_fn_id get_func_id(const std::string& name);
 	}
 }
 

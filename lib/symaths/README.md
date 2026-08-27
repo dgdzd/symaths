@@ -39,22 +39,18 @@ target_link_libraries(your_target PRIVATE symaths::core)
 #include <symaths/symaths.hpp>
 
 int main() {
-    symaths::library ctx;
-    symaths::make_context_current(ctx);
+    sym::library ctx;
+    sym::make_context_current(ctx);
 
     // Create symbols and expressions
-    symaths::symbol x("x");
-    symaths::expression expr = x * x + symaths::make_constant(3.0) * x + symaths::make_constant(1.0);
-
-    // Evaluate with a variable binding
-    symaths::Context vars = { {"x", 2.0} };
-    double result = expr(vars); // 2^2 + 3*2 + 1 = 11.0
+    sym::symbol x("x");
+    sym::expression expr = x * x + sym::make_constant(3.0) * x + sym::make_constant(1.0);
 
     // Differentiate
-    symaths::expression derivative = symaths::differentiate(expr, x); // 2*x + 3
+    sym::expression derivative = sym::differentiate(expr, x); // 2*x + 3
 
     // Parse from string
-    symaths::expression parsed = symaths::parse_expression("sin(x) * exp(x)");
+    sym::expression parsed = sym::parse_expression("sin(x) * exp(x)");
 
     return 0;
 }
