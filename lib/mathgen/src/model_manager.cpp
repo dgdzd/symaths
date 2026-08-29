@@ -157,11 +157,11 @@ void ModelManager::fit(size_t generations, size_t maxPop, size_t eliteSize, size
     using Clock = std::chrono::steady_clock;
     auto timeStart = Clock::now();
 
-    for (size_t gen = 0; gen < generations; gen++) {
+    for (currentGen = 0; currentGen < generations; currentGen++) {
         std::vector<double> fitCache(population.size());
         parallelFor(population.size(), [&](size_t from, size_t to) {
             for (size_t i = from; i < to; i++)
-                fitCache[i] = evalFitness(population[i].get(), gen, generations);
+                fitCache[i] = evalFitness(population[i].get(), currentGen, generations);
         });
         std::vector<size_t> idx(population.size());
         std::iota(idx.begin(), idx.end(), 0);
@@ -183,17 +183,17 @@ void ModelManager::fit(size_t generations, size_t maxPop, size_t eliteSize, size
             return;
 
         if (earlyStopCondition) {
-            double bestFit = evalFitness(population[0].get(), gen, generations);
+            double bestFit = evalFitness(population[0].get(), currentGen, generations);
             if (earlyStopCondition(bestFit))
                 return;
         }
 
         size_t printCount = std::min(eliteSize, population.size());
         if (debug) {
-            std::cout << "Gen " << gen << "\n";
+            std::cout << "Gen " << currentGen << "\n";
             for (size_t i = 0; i < printCount; i++) {
                 Node* tree = population[i].get();
-                double f = evalFitness(tree, gen, generations);
+                double f = evalFitness(tree, currentGen, generations);
                 std::cout << "  expr " << std::setw(2) << (i + 1) << ": " << printTree(tree) << " | fitness: " << std::fixed << std::setprecision(4) << f << "\n";
             }
             std::cout << "----------------\n";
@@ -205,8 +205,8 @@ void ModelManager::fit(size_t generations, size_t maxPop, size_t eliteSize, size
             newPop.push_back(population[i]->clone());
 
         while (static_cast<int>(newPop.size()) < (maxPop - newbornSize - eliteSize)) {
-            const Node* p1 = tournamentSelect(gen, generations);
-            const Node* p2 = tournamentSelect(gen, generations);
+            const Node* p1 = tournamentSelect(currentGen, generations);
+            const Node* p2 = tournamentSelect(currentGen, generations);
 
             NodePtr child = crossover(p1, p2);
             child = prune(std::move(child));

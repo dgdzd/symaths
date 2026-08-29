@@ -378,7 +378,7 @@ void IslandManager::run(unsigned int totalGenerations, size_t maxPop, size_t eli
 
     const unsigned int numCycles = (totalGenerations + migrationInterval - 1) / migrationInterval;
 
-    for (unsigned int cycle = 0; cycle < numCycles; cycle++) {
+    for (currentCycle = 0; currentCycle < numCycles; currentCycle++) {
         auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(Clock::now() - timeStart).count();
         if (elapsed >= timeoutSeconds)
             return;
@@ -395,8 +395,8 @@ void IslandManager::run(unsigned int totalGenerations, size_t maxPop, size_t eli
         for (auto& t : threads) t.join();
 
         if (debug) {
-            unsigned int gensRun = (cycle + 1) * migrationInterval;
-            std::cout << "=== Migration cycle: " << cycle << "  (Gen " << gensRun << ") ===\n";
+            unsigned int gensRun = (currentCycle + 1) * migrationInterval;
+            std::cout << "=== Migration cycle: " << currentCycle << "  (Gen " << gensRun << ") ===\n";
 
             for (size_t gi = 0; gi < groups.size(); gi++) {
                 for (size_t si = 0; si < groups[gi].subgroups.size(); si++) {
@@ -420,7 +420,7 @@ void IslandManager::run(unsigned int totalGenerations, size_t maxPop, size_t eli
         }
 
         refreshBackup();
-        refreshHallOfFame(cycle);
+        refreshHallOfFame(currentCycle);
 
         for (size_t i = 0; i < flatAddresses_.size(); i++) {
             const Isle& isle = isleAt(flatAddresses_[i]);

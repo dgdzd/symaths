@@ -24,6 +24,7 @@ public:
     Probs probs = { 0.167, 0.167, 0.167, 0.167, 0.167 };//(const, var, binary, trinary, nary)
     Operators ops;
     unsigned int k = 7;
+    unsigned int currentGen = 0;
 
     std::vector<NodePtr> population;
     Dataset X;
@@ -56,8 +57,9 @@ public:
     void fit(size_t generations = 10, size_t maxPop = 100, size_t eliteSize = 10, size_t newbornSize = 10, CMAESConfig cfg = { }, size_t cmaesThreshold = 8,
         bool debug = false, unsigned int timeoutSeconds = 60, const std::function<bool(double)>& earlyStopCondition = nullptr);
 
-private:
     double evalFitness(const Node* tree, size_t gen, size_t maxGen) const;
+
+private:
     [[nodiscard]] const Node* tournamentSelect(size_t gen, size_t maxGen) const;
 };
 

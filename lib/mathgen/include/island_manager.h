@@ -35,6 +35,7 @@ public:
     unsigned int migrationInterval;
     unsigned int migrantCount;
     double eliteFraction;
+    unsigned int currentCycle = 0;
 
     IslandManager(const std::vector<GroupConfig>& groupConfigs, HallOfFame hallOfFame_, unsigned int migrationInterval_ = 5, unsigned int migrantSize_ = 5,
         double eliteFraction_ = 0.6);
